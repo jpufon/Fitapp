@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "waliFit",
+    "slug": "walifit",
+    "scheme": "walifit",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0f0f"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.walifit.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0a0f0f"
+      },
+      "package": "com.walifit.app"
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Allow waliFit to access your motion and fitness activity."
+        }
+      ],
+      "expo-secure-store"
+    ]
+  }
+}
