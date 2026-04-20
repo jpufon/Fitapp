@@ -10,7 +10,7 @@ Target user: hybrid athletes who train strength AND run (Hyrox, CrossFit, tactic
 Train → Log → Progress → Compete → Repeat
 
 ## Stack
-- Mobile: React Native + Expo SDK 53 · TypeScript strict · NativeWind · gluestack-ui v3
+- Mobile: React Native + Expo SDK 54 · TypeScript strict · NativeWind · gluestack-ui v3
 - Navigation: React Navigation — bottom tabs + native stack. NO expo-router.
 - Backend: Fastify + TypeScript · Prisma ORM · Railway hosting
 - Database: Supabase PostgreSQL (cloud — NO Docker)
