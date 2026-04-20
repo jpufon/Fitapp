@@ -1,1 +1,0 @@
-export { ArenaScreen } from '../ArenaScreen';
