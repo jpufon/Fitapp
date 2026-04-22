@@ -7,7 +7,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  ChevronLeft, ChevronRight, CloudOff, Calendar,
+  AlertCircle, CheckCircle, Circle, X,
+} from 'lucide-react-native';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import {
   addDaysLocal,
@@ -123,11 +126,11 @@ export default function CalendarScreen() {
         </View>
         <View style={styles.dateNav}>
           <TouchableOpacity style={styles.navBtn} accessibilityLabel="Previous" onPress={handlePrevious}>
-            <Ionicons name="chevron-back" color={colors.foreground} size={20} />
+            <ChevronLeft color={colors.foreground} size={20} strokeWidth={1.75} />
           </TouchableOpacity>
           <Text style={styles.monthLabel}>{monthLabel}</Text>
           <TouchableOpacity style={styles.navBtn} accessibilityLabel="Next" onPress={handleNext}>
-            <Ionicons name="chevron-forward" color={colors.foreground} size={20} />
+            <ChevronRight color={colors.foreground} size={20} strokeWidth={1.75} />
           </TouchableOpacity>
         </View>
       </View>
@@ -149,7 +152,7 @@ export default function CalendarScreen() {
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {offlineBanner ? (
           <View style={styles.offlineBanner}>
-            <Ionicons name="cloud-offline-outline" size={16} color={colors.energy} />
+            <CloudOff size={16} color={colors.energy} strokeWidth={1.75} />
             <Text style={styles.offlineBannerText}>Showing cached calendar data while reconnecting.</Text>
           </View>
         ) : null}
@@ -157,14 +160,15 @@ export default function CalendarScreen() {
         {state === 'loading' ? <CalendarSkeleton /> : null}
         {state === 'empty' ? (
           <FeedbackCard
-            icon="calendar-outline"
+            icon={Calendar}
             title="No calendar activity yet"
             message="Your workouts, nutrition, and steps will appear here once you start logging."
           />
         ) : null}
         {state === 'error' ? (
           <FeedbackCard
-            icon="alert-circle-outline"
+            icon={AlertCircle}
+            iconColor={colors.destructive}
             title="Couldn’t load calendar"
             message={rangeQuery.error instanceof Error ? rangeQuery.error.message : 'Please try again.'}
             actionLabel="Retry"
@@ -235,11 +239,11 @@ function DayView({
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Workout</Text>
           <View style={styles.completedRow}>
-            <Ionicons
-              name={day.completed ? 'checkmark-circle' : 'ellipse-outline'}
-              color={day.completed ? colors.primary : colors.mutedForeground}
-              size={14}
-            />
+            {day.completed ? (
+              <CheckCircle color={colors.primary} size={14} strokeWidth={1.75} />
+            ) : (
+              <Circle color={colors.mutedForeground} size={14} strokeWidth={1.75} />
+            )}
             <Text style={[styles.completedText, { color: day.completed ? colors.primary : colors.mutedForeground }]}>
               {day.completed ? 'Complete' : 'Not complete'}
             </Text>
@@ -279,7 +283,7 @@ function DayView({
             <Text style={[styles.heroNumber, { color: colors.primary }]}>{day.vitalityScore}</Text>
           </View>
           <View style={[styles.vitalityCircle, { backgroundColor: colors.primary + '20' }]}>
-            <Ionicons name="checkmark-circle" color={colors.primary} size={32} />
+            <CheckCircle color={colors.primary} size={32} strokeWidth={1.75} />
           </View>
         </View>
       </View>
@@ -441,7 +445,7 @@ function DayDetailModal({
               <Text style={styles.summaryLabel}>{formatSelectedDate(date)}</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.navBtn}>
-              <Ionicons name="close" color={colors.foreground} size={20} />
+              <X color={colors.foreground} size={20} strokeWidth={1.75} />
             </TouchableOpacity>
           </View>
 
@@ -488,7 +492,7 @@ function DayDetailModal({
                   <Text style={styles.summaryLabel}>Vitality Score</Text>
                   <Text style={[styles.heroNumber, { color: colors.primary }]}>{day.vitalityScore}</Text>
                 </View>
-                <Ionicons name="checkmark-circle" size={32} color={colors.primary} />
+                <CheckCircle size={32} color={colors.primary} strokeWidth={1.75} />
               </View>
 
               {day.notes ? (
@@ -506,13 +510,15 @@ function DayDetailModal({
 }
 
 function FeedbackCard({
-  icon,
+  icon: Icon,
+  iconColor,
   title,
   message,
   actionLabel,
   onPress,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: React.ElementType;
+  iconColor?: string;
   title: string;
   message: string;
   actionLabel?: string;
@@ -520,11 +526,7 @@ function FeedbackCard({
 }) {
   return (
     <View style={styles.feedbackCard}>
-      <Ionicons
-        name={icon}
-        size={28}
-        color={icon === 'alert-circle-outline' ? colors.destructive : colors.primary}
-      />
+      <Icon size={28} color={iconColor ?? colors.primary} strokeWidth={1.75} />
       <Text style={styles.feedbackTitle}>{title}</Text>
       <Text style={styles.feedbackMessage}>{message}</Text>
       {actionLabel && onPress ? (
@@ -727,7 +729,7 @@ const styles = StyleSheet.create({
   monthStatLabel: { fontSize: typography.fontSize.xs, color: colors.mutedForeground },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: colors.overlay,
     justifyContent: 'flex-end',
   },
   modalCard: {

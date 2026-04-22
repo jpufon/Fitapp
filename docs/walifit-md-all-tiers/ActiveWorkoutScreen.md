@@ -1,3 +1,10 @@
+# waliFit — ActiveWorkoutScreen
+
+**Destination:** `apps/mobile/screens/ActiveWorkoutScreen.tsx`
+
+---
+
+```tsx
 // waliFit — ActiveWorkoutScreen
 // Full-screen modal — gestureEnabled: false (cannot dismiss accidentally)
 // Includes: Set Logger inline + Plate Calculator + Rest Timer coupling
@@ -10,8 +17,6 @@ import {
 } from 'react-native'
 import { X, Plus, ChevronDown, Calculator, Check, MoreHorizontal, Zap } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
-import type { NativeStackScreenProps } from '@react-navigation/native-stack'
-import type { RootStackParamList } from '../App'
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -54,12 +59,12 @@ const BAR_WEIGHT_KG  = 20
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
-type Props = NativeStackScreenProps<RootStackParamList, 'ActiveWorkout'>
+interface ActiveWorkoutScreenProps {
+  onFinish: () => void
+  onDiscard: () => void
+}
 
-export default function ActiveWorkoutScreen({ navigation }: Props) {
-  const onFinish  = () => navigation.goBack()
-  const onDiscard = () => navigation.goBack()
-
+export default function ActiveWorkoutScreen({ onFinish, onDiscard }: ActiveWorkoutScreenProps) {
   const [exercises, setExercises]   = useState<Exercise[]>(MOCK_WORKOUT)
   const [elapsed, setElapsed]       = useState('00:43:12')
   const [showPlates, setShowPlates] = useState(false)
@@ -335,7 +340,7 @@ const styles = StyleSheet.create({
   discardBtnText:   { fontSize: typography.size.sm, fontWeight: typography.weight.semibold },
   finishBtn:        { flex: 1, height: touchTarget.comfortable, backgroundColor: colors.primary, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
   finishBtnText:    { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.primaryFg },
-  modalOverlay:     { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay },
+  modalOverlay:     { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
   modalSheet:       { backgroundColor: colors.card, borderRadius: radius.xl, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xxl },
   modalHandle:      { width: 36, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.xs },
   modalHeader:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -353,3 +358,4 @@ const styles = StyleSheet.create({
   noPlatesText:     { fontSize: typography.size.sm, color: colors.mutedForeground },
   plateTotal:       { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.foreground },
 })
+```

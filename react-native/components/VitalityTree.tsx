@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { Leaf, Flower } from 'lucide-react-native';
 import { colors, spacing, borderRadius, typography } from '../theme';
 
 interface VitalityTreeProps {
@@ -15,14 +15,15 @@ interface VitalityTreeProps {
 
 export default function VitalityTree({ score, todayScore }: VitalityTreeProps) {
   const getGrowthState = (score: number) => {
-    if (score < 20) return { stage: 'Wilted', color: colors.earthBrown, glow: colors.earthBrown, icon: 'leaf-outline' };
-    if (score < 40) return { stage: 'Recovering', color: colors.earthAmber, glow: colors.energyGlow, icon: 'leaf-outline' };
-    if (score < 60) return { stage: 'Sprouting', color: colors.earthSage, glow: colors.earthSage, icon: 'leaf' };
-    if (score < 80) return { stage: 'Growing', color: colors.vitalityLight, glow: colors.primary, icon: 'leaf' };
-    return { stage: 'Full Vitality', color: colors.primary, glow: colors.vitalityDark, icon: 'flower' };
+    if (score < 20) return { stage: 'Wilted',        color: colors.earthBrown,    glow: colors.earthBrown,   Icon: Leaf,   filled: false };
+    if (score < 40) return { stage: 'Recovering',    color: colors.earthAmber,    glow: colors.energyGlow,   Icon: Leaf,   filled: false };
+    if (score < 60) return { stage: 'Sprouting',     color: colors.earthSage,     glow: colors.earthSage,    Icon: Leaf,   filled: true  };
+    if (score < 80) return { stage: 'Growing',       color: colors.vitalityLight, glow: colors.primary,      Icon: Leaf,   filled: true  };
+    return           { stage: 'Full Vitality', color: colors.primary,       glow: colors.vitalityDark,  Icon: Flower, filled: true  };
   };
 
   const growthState = getGrowthState(score);
+  const GrowthIcon = growthState.Icon;
 
   return (
     <View style={styles.container}>
@@ -43,7 +44,12 @@ export default function VitalityTree({ score, todayScore }: VitalityTreeProps) {
         <View style={styles.treeIconContainer}>
           <View style={[styles.glowRing, { backgroundColor: growthState.glow + '20' }]} />
           <View style={[styles.iconBackground, { backgroundColor: growthState.color + '1A' }]}>
-            <Ionicons name={growthState.icon as any} size={80} color={growthState.color} />
+            <GrowthIcon
+              size={80}
+              color={growthState.color}
+              strokeWidth={1.75}
+              fill={growthState.filled ? growthState.color : 'none'}
+            />
           </View>
         </View>
 

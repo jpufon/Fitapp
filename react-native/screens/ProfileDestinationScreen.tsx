@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ArrowLeft } from 'lucide-react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, spacing, typography } from '../theme';
 import type { RootStackParamList } from '../App';
@@ -35,7 +35,7 @@ export default function ProfileDestinationScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={20} color={colors.foreground} />
+          <ArrowLeft size={20} color={colors.foreground} strokeWidth={1.75} />
         </TouchableOpacity>
         <Text style={styles.title}>{title}</Text>
         <View style={styles.headerSpacer} />

@@ -11,7 +11,8 @@ import type { WorkoutSummary } from './lib/workouts';
 import { configureQueryClient, queryClient } from './lib/queryClient';
 
 // Screens
-import OnboardingScreen from './screens/OnboardingScreen';
+import AuthScreen from './screens/AuthScreen';
+import OnboardingFlowScreen from './screens/OnboardingFlowScreen';
 import HomeScreen from './screens/HomeScreen';
 import TrainScreen from './screens/TrainScreen';
 import CalendarScreen from './screens/CalendarScreen';
@@ -20,12 +21,20 @@ import ProfileScreen from './screens/ProfileScreen';
 import ActiveWorkoutScreen from './screens/ActiveWorkoutScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import ProfileDestinationScreen from './screens/ProfileDestinationScreen';
+import DevScreen from './screens/DevScreen';
+import WorkoutCompleteScreen from './screens/WorkoutCompleteScreen';
+import NutritionLogScreen from './screens/NutritionLogScreen';
+import CoachScreen from './screens/CoachScreen';
+import WaliRunScreen from './screens/WaliRunScreen';
+import { FriendsScreen, BadgesScreen } from './screens/ArenaExtendedScreens';
+import { TreeDetailScreen } from './screens/RemainingScreens';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export type RootStackParamList = {
-  Welcome: undefined;
+  Auth: undefined;
+  OnboardingFlow: undefined;
   MainTabs: undefined;
   ActiveWorkout: {
     workout: WorkoutSummary;
@@ -36,6 +45,14 @@ export type RootStackParamList = {
   Notifications: undefined;
   AccountSettings: undefined;
   PrivacyLegal: undefined;
+  Dev: undefined;
+  WorkoutComplete: undefined;
+  NutritionLog: undefined;
+  Coach: undefined;
+  WaliRun: undefined;
+  Friends: undefined;
+  Badges: undefined;
+  TreeDetail: undefined;
 };
 
 function MainTabs() {
@@ -101,13 +118,23 @@ export default function App() {
       <StatusBar style="light" />
       <QueryClientProvider client={queryClient}>
         <NavigationContainer>
-          <Stack.Navigator initialRouteName={onboardingComplete ? 'MainTabs' : 'Welcome'}>
+          <Stack.Navigator initialRouteName="Dev">
             <Stack.Screen
-              name="Welcome"
+              name="Auth"
               options={{ headerShown: false }}
             >
               {({ navigation }) => (
-                <OnboardingScreen
+                <AuthScreen
+                  onAuthComplete={() => navigation.navigate('OnboardingFlow')}
+                />
+              )}
+            </Stack.Screen>
+            <Stack.Screen
+              name="OnboardingFlow"
+              options={{ headerShown: false }}
+            >
+              {({ navigation }) => (
+                <OnboardingFlowScreen
                   onComplete={() => {
                     setOnboardingComplete(true);
                     navigation.reset({
@@ -142,6 +169,20 @@ export default function App() {
             <Stack.Screen name="Notifications" component={ProfileDestinationScreen} options={{ headerShown: false }} />
             <Stack.Screen name="AccountSettings" component={ProfileDestinationScreen} options={{ headerShown: false }} />
             <Stack.Screen name="PrivacyLegal" component={ProfileDestinationScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Dev" component={DevScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="WorkoutComplete" component={WorkoutCompleteScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="NutritionLog" component={NutritionLogScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Coach" component={CoachScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="WaliRun" component={WaliRunScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Friends" options={{ headerShown: false }}>
+              {({ navigation }) => <FriendsScreen onBack={() => navigation.goBack()} />}
+            </Stack.Screen>
+            <Stack.Screen name="Badges" options={{ headerShown: false }}>
+              {({ navigation }) => <BadgesScreen onBack={() => navigation.goBack()} />}
+            </Stack.Screen>
+            <Stack.Screen name="TreeDetail" options={{ headerShown: false }}>
+              {({ navigation }) => <TreeDetailScreen onClose={() => navigation.goBack()} />}
+            </Stack.Screen>
           </Stack.Navigator>
         </NavigationContainer>
       </QueryClientProvider>

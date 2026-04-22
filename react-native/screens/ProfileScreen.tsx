@@ -10,7 +10,10 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  Sparkles, TrendingUp, Bell, User, Shield,
+  Settings, CloudOff, ChevronRight, LogOut, AlertCircle,
+} from 'lucide-react-native';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import type { RootStackParamList } from '../App';
 import { useUser } from '../hooks/useUser';
@@ -24,42 +27,42 @@ const SETTINGS_ITEMS: Array<{
     RootStackParamList,
     'WaliAI' | 'Analytics' | 'Notifications' | 'AccountSettings' | 'PrivacyLegal'
   >;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: React.ElementType;
   label: string;
   description: string;
   color: string;
 }> = [
   {
     id: 'WaliAI',
-    icon: 'sparkles-outline',
+    icon: Sparkles,
     label: 'Chat with Wali AI',
     description: 'Get personalised coaching',
     color: colors.purple,
   },
   {
     id: 'Analytics',
-    icon: 'trending-up-outline',
+    icon: TrendingUp,
     label: 'Progress & Analytics',
     description: 'View your stats and trends',
     color: colors.blue,
   },
   {
     id: 'Notifications',
-    icon: 'notifications-outline',
+    icon: Bell,
     label: 'Notifications',
     description: 'Manage preferences',
     color: colors.energy,
   },
   {
     id: 'AccountSettings',
-    icon: 'person-outline',
+    icon: User,
     label: 'Account Settings',
     description: 'Profile, units, targets',
     color: colors.mutedForeground,
   },
   {
     id: 'PrivacyLegal',
-    icon: 'shield-outline',
+    icon: Shield,
     label: 'Privacy & Legal',
     description: 'Terms, privacy, AI disclosure',
     color: colors.mutedForeground,
@@ -175,13 +178,13 @@ export default function ProfileScreen() {
             accessibilityLabel="Settings"
             onPress={() => navigation.navigate('Settings')}
           >
-            <Ionicons name="settings-outline" color={colors.foreground} size={20} />
+            <Settings color={colors.foreground} size={20} strokeWidth={1.75} />
           </TouchableOpacity>
         </View>
 
         {userQuery.isOfflineFallback || statsQuery.isOfflineFallback ? (
           <View style={styles.inlineBanner}>
-            <Ionicons name="cloud-offline-outline" size={16} color={colors.energy} />
+            <CloudOff size={16} color={colors.energy} strokeWidth={1.75} />
             <Text style={styles.inlineBannerText}>Showing cached profile data while offline.</Text>
           </View>
         ) : null}
@@ -190,7 +193,8 @@ export default function ProfileScreen() {
 
         {state === 'error' ? (
           <FeedbackCard
-            icon="alert-circle-outline"
+            icon={AlertCircle}
+            iconColor={colors.destructive}
             title="Couldn’t load profile"
             message={
               userQuery.error?.message ??
@@ -228,31 +232,34 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.settingsSection}>
-              {SETTINGS_ITEMS.map((item, index) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[
-                    styles.settingsRow,
-                    index < SETTINGS_ITEMS.length - 1 && styles.settingsRowBorder,
-                  ]}
-                  activeOpacity={0.7}
-                  onPress={() => navigation.navigate(item.id)}
-                >
-                  <View style={[styles.settingsIcon, { backgroundColor: item.color + '18' }]}>
-                    <Ionicons name={item.icon} color={item.color} size={20} />
-                  </View>
-                  <View style={styles.settingsText}>
-                    <Text style={styles.settingsLabel}>{item.label}</Text>
-                    <Text style={styles.settingsDesc}>{item.description}</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" color={colors.mutedForeground} size={18} />
-                </TouchableOpacity>
-              ))}
+              {SETTINGS_ITEMS.map((item, index) => {
+                const Icon = item.icon;
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[
+                      styles.settingsRow,
+                      index < SETTINGS_ITEMS.length - 1 && styles.settingsRowBorder,
+                    ]}
+                    activeOpacity={0.7}
+                    onPress={() => navigation.navigate(item.id)}
+                  >
+                    <View style={[styles.settingsIcon, { backgroundColor: item.color + '18' }]}>
+                      <Icon color={item.color} size={20} strokeWidth={1.75} />
+                    </View>
+                    <View style={styles.settingsText}>
+                      <Text style={styles.settingsLabel}>{item.label}</Text>
+                      <Text style={styles.settingsDesc}>{item.description}</Text>
+                    </View>
+                    <ChevronRight color={colors.mutedForeground} size={18} strokeWidth={1.75} />
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             <TouchableOpacity style={[styles.settingsSection, styles.logoutBtn]} activeOpacity={0.7} onPress={handleLogout}>
               <View style={[styles.settingsIcon, { backgroundColor: colors.destructive + '18' }]}>
-                <Ionicons name="log-out-outline" color={colors.destructive} size={20} />
+                <LogOut color={colors.destructive} size={20} strokeWidth={1.75} />
               </View>
               <View style={styles.settingsText}>
                 <Text style={[styles.settingsLabel, { color: colors.destructive }]}>Log Out</Text>
@@ -272,13 +279,15 @@ export default function ProfileScreen() {
 }
 
 function FeedbackCard({
-  icon,
+  icon: Icon,
+  iconColor,
   title,
   message,
   actionLabel,
   onPress,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: React.ElementType;
+  iconColor?: string;
   title: string;
   message: string;
   actionLabel?: string;
@@ -286,11 +295,7 @@ function FeedbackCard({
 }) {
   return (
     <View style={styles.feedbackCard}>
-      <Ionicons
-        name={icon}
-        size={28}
-        color={icon === 'alert-circle-outline' ? colors.destructive : colors.primary}
-      />
+      <Icon size={28} color={iconColor ?? colors.primary} strokeWidth={1.75} />
       <Text style={styles.feedbackTitle}>{title}</Text>
       <Text style={styles.feedbackMessage}>{message}</Text>
       {actionLabel && onPress ? (

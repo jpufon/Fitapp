@@ -9,7 +9,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  Trophy, Users, TrendingUp, Flame, MessageCircle, Sparkles,
+  AlertCircle, Plus, Medal, CloudOff, Award, Dumbbell,
+} from 'lucide-react-native';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import {
   useArenaFeed,
@@ -91,9 +94,9 @@ export default function ArenaScreen() {
       </View>
 
       <View style={styles.tabBar}>
-        <TabButton icon="trophy-outline" label="PR Feed" active={activeTab === 'feed'} onPress={() => setActiveTab('feed')} />
-        <TabButton icon="people-outline" label="Squads" active={activeTab === 'squads'} onPress={() => setActiveTab('squads')} />
-        <TabButton icon="trending-up-outline" label="Leaderboard" active={activeTab === 'leaderboard'} onPress={() => setActiveTab('leaderboard')} />
+        <TabButton icon={Trophy} label="PR Feed" active={activeTab === 'feed'} onPress={() => setActiveTab('feed')} />
+        <TabButton icon={Users} label="Squads" active={activeTab === 'squads'} onPress={() => setActiveTab('squads')} />
+        <TabButton icon={TrendingUp} label="Leaderboard" active={activeTab === 'leaderboard'} onPress={() => setActiveTab('leaderboard')} />
       </View>
 
       {activeTab === 'feed' ? (
@@ -187,11 +190,11 @@ function PRFeed({
                 onPress={() => onReact(item.id)}
                 disabled={query.isOfflineReadOnly || isReacting}
               >
-                <Ionicons name="flame-outline" color={colors.mutedForeground} size={15} />
+                <Flame color={colors.mutedForeground} size={15} strokeWidth={1.75} />
                 <Text style={styles.reactionCount}>{item.reactions}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.reactionBtn} disabled>
-                <Ionicons name="chatbubble-outline" color={colors.mutedForeground} size={15} />
+                <MessageCircle color={colors.mutedForeground} size={15} strokeWidth={1.75} />
                 <Text style={styles.reactionCount}>
                   {query.isOfflineReadOnly ? 'Read-only offline' : 'React'}
                 </Text>
@@ -251,13 +254,14 @@ function PRFeed({
           <ArenaSkeleton type="feed" />
         ) : state === 'empty' ? (
           <FeedbackCard
-            icon="sparkles-outline"
+            icon={Sparkles}
             title="No PR feed yet"
             message="Once your squad starts training, auto-generated achievements will show up here."
           />
         ) : state === 'error' ? (
           <FeedbackCard
-            icon="alert-circle-outline"
+            icon={AlertCircle}
+            iconColor={colors.destructive}
             title="Couldn’t load the feed"
             message={query.error instanceof Error ? query.error.message : 'Please try again.'}
             actionLabel="Retry"
@@ -296,10 +300,17 @@ function SquadsTab({
       }
     >
       <View style={styles.tabContent}>
+        <View style={styles.squadNavGrid}>
+          <SquadNavCard icon={Users}    label="Friends"    color={colors.primary} onPress={() => {}} />
+          <SquadNavCard icon={Trophy}   label="Challenges" color={colors.energy}  onPress={() => {}} />
+          <SquadNavCard icon={Award}    label="Badges"     color={colors.purple}  onPress={() => {}} />
+          <SquadNavCard icon={Dumbbell} label="Sessions"   color={colors.blue}    onPress={() => {}} />
+        </View>
+
         <View style={styles.feedHeader}>
           <Text style={styles.sectionTitle}>My Squads</Text>
           <TouchableOpacity style={styles.joinBtn}>
-            <Ionicons name="add" color={colors.black} size={14} />
+            <Plus color={colors.black} size={14} strokeWidth={2} />
             <Text style={styles.joinBtnText}>Join Squad</Text>
           </TouchableOpacity>
         </View>
@@ -308,7 +319,8 @@ function SquadsTab({
 
         {state === 'error' ? (
           <FeedbackCard
-            icon="alert-circle-outline"
+            icon={AlertCircle}
+            iconColor={colors.destructive}
             title="Couldn’t load squads"
             message={query.error instanceof Error ? query.error.message : 'Please try again.'}
             actionLabel="Retry"
@@ -318,7 +330,7 @@ function SquadsTab({
 
         {state === 'empty' ? (
           <FeedbackCard
-            icon="people-outline"
+            icon={Users}
             title="No squad yet"
             message="You’re new here. Invite friends and create your first squad to unlock the social layer."
             actionLabel="Invite Squad"
@@ -335,7 +347,7 @@ function SquadsTab({
                     <Text style={styles.squadType}>{squad.type}</Text>
                   </View>
                   <View style={[styles.rankBadge, { backgroundColor: colors.energy + '18' }]}>
-                    <Ionicons name="medal-outline" color={colors.energy} size={14} />
+                    <Medal color={colors.energy} size={14} strokeWidth={1.75} />
                     <Text style={[styles.rankText, { color: colors.energy }]}>#{squad.rank}</Text>
                   </View>
                 </View>
@@ -365,7 +377,7 @@ function SquadsTab({
         {state === 'success' ? (
           <View style={[styles.createSquadCard, { borderColor: colors.primary + '30', backgroundColor: colors.primary + '08' }]}>
             <View style={[styles.createSquadIcon, { backgroundColor: colors.primary + '20' }]}>
-              <Ionicons name="people-outline" color={colors.primary} size={22} />
+              <Users color={colors.primary} size={22} strokeWidth={1.75} />
             </View>
             <View style={styles.createSquadText}>
               <Text style={styles.createSquadTitle}>Create Your Squad</Text>
@@ -388,7 +400,7 @@ function LeaderboardTab({
   onRetry: () => void;
 }) {
   const leaderboard = query.data ?? [];
-  const medalColors: Record<number, string> = { 1: colors.energy, 2: '#94a3b8', 3: '#c2410c' };
+  const medalColors: Record<number, string> = { 1: colors.energy, 2: colors.silverMedal, 3: colors.bronzeMedal };
 
   return (
     <ScrollView
@@ -413,7 +425,8 @@ function LeaderboardTab({
 
         {state === 'error' ? (
           <FeedbackCard
-            icon="alert-circle-outline"
+            icon={AlertCircle}
+            iconColor={colors.destructive}
             title="Couldn’t load leaderboard"
             message={query.error instanceof Error ? query.error.message : 'Please try again.'}
             actionLabel="Retry"
@@ -423,7 +436,7 @@ function LeaderboardTab({
 
         {state === 'empty' ? (
           <FeedbackCard
-            icon="trophy-outline"
+            icon={Trophy}
             title="No leaderboard yet"
             message="Once your squad starts logging workouts, rankings will appear here."
           />
@@ -440,7 +453,7 @@ function LeaderboardTab({
               >
                 <View style={styles.rankCell}>
                   {user.rank <= 3 ? (
-                    <Ionicons name="medal-outline" color={medalColors[user.rank]} size={22} />
+                    <Medal color={medalColors[user.rank]} size={22} strokeWidth={1.75} />
                   ) : (
                     <Text style={styles.rankNumber}>#{user.rank}</Text>
                   )}
@@ -467,20 +480,33 @@ function LeaderboardTab({
   );
 }
 
+function SquadNavCard({ icon: Icon, label, color, onPress }: {
+  icon: React.ElementType; label: string; color: string; onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity style={styles.squadNavCard} onPress={onPress} activeOpacity={0.7}>
+      <View style={[styles.squadNavIcon, { backgroundColor: color + '20' }]}>
+        <Icon color={color} size={20} strokeWidth={1.75} />
+      </View>
+      <Text style={styles.squadNavLabel}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
 function TabButton({
-  icon,
+  icon: Icon,
   label,
   active,
   onPress,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: React.ElementType;
   label: string;
   active: boolean;
   onPress: () => void;
 }) {
   return (
     <TouchableOpacity style={[styles.tab, active && styles.tabActive]} onPress={onPress} activeOpacity={0.7}>
-      <Ionicons name={icon} color={active ? colors.primary : colors.mutedForeground} size={14} />
+      <Icon color={active ? colors.primary : colors.mutedForeground} size={14} strokeWidth={1.75} />
       <Text style={[styles.tabLabel, { color: active ? colors.primary : colors.mutedForeground }]}>
         {label}
       </Text>
@@ -491,20 +517,22 @@ function TabButton({
 function InlineBanner({ message }: { message: string }) {
   return (
     <View style={styles.inlineBanner}>
-      <Ionicons name="cloud-offline-outline" size={16} color={colors.energy} />
+      <CloudOff size={16} color={colors.energy} strokeWidth={1.75} />
       <Text style={styles.inlineBannerText}>{message}</Text>
     </View>
   );
 }
 
 function FeedbackCard({
-  icon,
+  icon: Icon,
+  iconColor,
   title,
   message,
   actionLabel,
   onPress,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: React.ElementType;
+  iconColor?: string;
   title: string;
   message: string;
   actionLabel?: string;
@@ -512,11 +540,7 @@ function FeedbackCard({
 }) {
   return (
     <View style={styles.feedbackCard}>
-      <Ionicons
-        name={icon}
-        size={28}
-        color={icon === 'alert-circle-outline' ? colors.destructive : colors.primary}
-      />
+      <Icon size={28} color={iconColor ?? colors.primary} strokeWidth={1.75} />
       <Text style={styles.feedbackTitle}>{title}</Text>
       <Text style={styles.feedbackMessage}>{message}</Text>
       {actionLabel && onPress ? (
@@ -711,4 +735,8 @@ const styles = StyleSheet.create({
   footerLoader: {
     paddingVertical: spacing.lg,
   },
+  squadNavGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  squadNavCard: { flexBasis: '48%', flexGrow: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.card, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.md, minHeight: 48 },
+  squadNavIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  squadNavLabel: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold, color: colors.foreground },
 });

@@ -11,7 +11,11 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  CloudOff, Bell, Flame, Dumbbell, Clock, Play,
+  Droplets, Utensils, Footprints, MessageCircle, Users,
+  TrendingUp, PlusCircle, Leaf, AlertCircle,
+} from 'lucide-react-native';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import VitalityTree from '../components/VitalityTree';
 import type { RootStackParamList } from '../App';
@@ -185,7 +189,7 @@ export default function HomeScreen() {
       >
         {offlineBanner ? (
           <View style={styles.offlineBanner}>
-            <Ionicons name="cloud-offline-outline" size={16} color={colors.energy} />
+            <CloudOff size={16} color={colors.energy} strokeWidth={1.75} />
             <Text style={styles.offlineBannerText}>{offlineBanner}</Text>
           </View>
         ) : null}
@@ -194,7 +198,7 @@ export default function HomeScreen() {
 
         {state === 'empty' ? (
           <FeedbackCard
-            icon="leaf-outline"
+            icon={Leaf}
             title="Welcome to waliFit"
             message="Sign in and complete your setup to start syncing your vitality data."
           />
@@ -202,7 +206,8 @@ export default function HomeScreen() {
 
         {state === 'error' ? (
           <FeedbackCard
-            icon="alert-circle-outline"
+            icon={AlertCircle}
+            iconColor={colors.destructive}
             title="Couldn’t load your dashboard"
             message={
               userQuery.error?.message ??
@@ -225,7 +230,7 @@ export default function HomeScreen() {
                 <Text style={styles.nameText}>{displayName}</Text>
               </View>
               <TouchableOpacity style={styles.notificationButton}>
-                <Ionicons name="notifications-outline" size={24} color={colors.mutedForeground} />
+                <Bell size={24} color={colors.mutedForeground} strokeWidth={1.75} />
               </TouchableOpacity>
             </View>
 
@@ -235,7 +240,7 @@ export default function HomeScreen() {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
-              <Ionicons name="flame" size={24} color={colors.energy} />
+              <Flame size={24} color={colors.energy} strokeWidth={1.75} />
               <View style={styles.streakTextContainer}>
                 <Text style={styles.streakNumber}>{vitality.streak}</Text>
                 <Text style={styles.streakLabel}>day streak</Text>
@@ -257,7 +262,7 @@ export default function HomeScreen() {
               <Text style={styles.sectionTitle}>Today's Progress</Text>
               <View style={styles.statsGrid}>
                 <StatCard
-                  icon="water"
+                  icon={Droplets}
                   label="Water"
                   value={`${Math.round(nutrition.hydration.current)}/${Math.round(nutrition.hydration.target)}`}
                   unit="ml"
@@ -265,7 +270,7 @@ export default function HomeScreen() {
                   color={colors.blue}
                 />
                 <StatCard
-                  icon="restaurant"
+                  icon={Utensils}
                   label="Protein"
                   value={`${Math.round(nutrition.protein.current)}/${Math.round(nutrition.protein.target)}`}
                   unit="grams"
@@ -273,7 +278,7 @@ export default function HomeScreen() {
                   color={colors.energy}
                 />
                 <StatCard
-                  icon="walk"
+                  icon={Footprints}
                   label="Steps"
                   value={formatNumber(steps.steps)}
                   unit={`of ${formatNumber(steps.target)}`}
@@ -299,11 +304,11 @@ export default function HomeScreen() {
                         <Text style={styles.workoutTitle}>{workout.name}</Text>
                         <View style={styles.workoutMeta}>
                           <View style={styles.workoutMetaItem}>
-                            <Ionicons name="barbell" size={16} color={colors.primary} />
+                            <Dumbbell size={16} color={colors.primary} strokeWidth={1.75} />
                             <Text style={styles.workoutMetaText}>{workout.exerciseCount} exercises</Text>
                           </View>
                           <View style={styles.workoutMetaItem}>
-                            <Ionicons name="time" size={16} color={colors.energy} />
+                            <Clock size={16} color={colors.energy} strokeWidth={1.75} />
                             <Text style={styles.workoutMetaText}>{workout.durationMinutes} min</Text>
                           </View>
                         </View>
@@ -317,7 +322,7 @@ export default function HomeScreen() {
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                       >
-                        <Ionicons name="play" size={32} color={colors.black} style={{ marginLeft: 4 }} />
+                        <Play size={32} color={colors.black} strokeWidth={2} fill={colors.black} style={{ marginLeft: 4 }} />
                       </LinearGradient>
                     </View>
                   </LinearGradient>
@@ -333,10 +338,10 @@ export default function HomeScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Quick Actions</Text>
               <View style={styles.quickActionsGrid}>
-                <QuickActionCard icon="chatbubble" label="Wali AI" color={colors.purple} />
-                <QuickActionCard icon="people" label="Squad" color={colors.blue} />
-                <QuickActionCard icon="trending-up" label="Progress" color={colors.primary} />
-                <QuickActionCard icon="add-circle" label="Quick Log" color={colors.energy} />
+                <QuickActionCard icon={MessageCircle} label="Wali AI" color={colors.purple} />
+                <QuickActionCard icon={Users} label="Squad" color={colors.blue} />
+                <QuickActionCard icon={TrendingUp} label="Progress" color={colors.primary} />
+                <QuickActionCard icon={PlusCircle} label="Quick Log" color={colors.energy} />
               </View>
             </View>
           </>
@@ -346,8 +351,8 @@ export default function HomeScreen() {
   );
 }
 
-function StatCard({ icon, label, value, unit, progress, color }: {
-  icon: keyof typeof Ionicons.glyphMap;
+function StatCard({ icon: Icon, label, value, unit, progress, color }: {
+  icon: React.ElementType;
   label: string;
   value: string;
   unit: string;
@@ -357,7 +362,7 @@ function StatCard({ icon, label, value, unit, progress, color }: {
   return (
     <View style={[styles.statCard, { borderColor: color + '30' }]}>
       <View style={[styles.statIcon, { backgroundColor: color + '1A' }]}>
-        <Ionicons name={icon} size={24} color={color} />
+        <Icon color={color} size={24} strokeWidth={1.75} />
       </View>
       <Text style={styles.statLabel}>{label}</Text>
       <Text style={[styles.statValue, { color }]}>{value}</Text>
@@ -369,15 +374,15 @@ function StatCard({ icon, label, value, unit, progress, color }: {
   );
 }
 
-function QuickActionCard({ icon, label, color }: {
-  icon: keyof typeof Ionicons.glyphMap;
+function QuickActionCard({ icon: Icon, label, color }: {
+  icon: React.ElementType;
   label: string;
   color: string;
 }) {
   return (
     <TouchableOpacity style={[styles.quickActionCard, { borderColor: color + '30' }]}>
       <View style={[styles.quickActionIcon, { backgroundColor: color + '1A' }]}>
-        <Ionicons name={icon} size={28} color={color} />
+        <Icon color={color} size={28} strokeWidth={1.75} />
       </View>
       <Text style={styles.quickActionLabel}>{label}</Text>
     </TouchableOpacity>
@@ -408,13 +413,15 @@ function HomeSkeleton() {
 }
 
 function FeedbackCard({
-  icon,
+  icon: Icon,
+  iconColor,
   title,
   message,
   actionLabel,
   onPress,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: React.ElementType;
+  iconColor?: string;
   title: string;
   message: string;
   actionLabel?: string;
@@ -422,11 +429,7 @@ function FeedbackCard({
 }) {
   return (
     <View style={styles.feedbackCard}>
-      <Ionicons
-        name={icon}
-        size={28}
-        color={icon === 'alert-circle-outline' ? colors.destructive : colors.primary}
-      />
+      <Icon size={28} color={iconColor ?? colors.primary} strokeWidth={1.75} />
       <Text style={styles.feedbackTitle}>{title}</Text>
       <Text style={styles.feedbackMessage}>{message}</Text>
       {actionLabel && onPress ? (

@@ -1,3 +1,10 @@
+# waliFit — SettingsScreen
+
+**Destination:** `apps/mobile/screens/SettingsScreen.tsx`
+
+---
+
+```tsx
 // waliFit — SettingsScreen
 // All 9 settings screens: Home, Edit Profile, Preferences,
 // Notifications, Account, Delete Confirm, Data Export, Legal, About
@@ -12,9 +19,7 @@ import {
   ArrowLeft, User, Sliders, Bell, Shield, Info,
   ChevronRight, LogOut, Trash2, Download, Check, AlertTriangle,
 } from 'lucide-react-native'
-import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
-import type { RootStackParamList } from '../App'
 
 type SettingsView =
   | 'home' | 'profile' | 'preferences' | 'notifications'
@@ -34,8 +39,7 @@ const MOCK_USER = {
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-export default function SettingsScreen({ navigation }: NativeStackScreenProps<RootStackParamList, 'Settings'>) {
-  const onClose = () => navigation.goBack()
+export default function SettingsScreen({ onClose }: { onClose: () => void }) {
   const [view, setView]   = useState<SettingsView>('home')
   const [user, setUser]   = useState(MOCK_USER)
 
@@ -177,6 +181,7 @@ function Preferences({ user, onSave, onBack }: {
   const [units, setUnits]   = useState<'kg' | 'lbs'>(user.units)
   const [protein, setProtein] = useState(String(user.proteinGoal))
   const [water, setWater]   = useState(String(user.waterGoal))
+  const [steps, setSteps]   = useState(String(user.stepsGoal))
   const [trainingDays, setTrainingDays] = useState<string[]>(user.trainingDays)
 
   const toggleDay = (day: string) =>
@@ -203,13 +208,7 @@ function Preferences({ user, onSave, onBack }: {
         <View style={styles.card}>
           <FormRowInline label="Protein goal"  value={protein} onChange={setProtein} unit="g"       />
           <FormRowInline label="Water goal"    value={water}   onChange={setWater}   unit="ml"      />
-          <View style={[styles.settingsRow, styles.settingsRowBorder]}>
-            <View style={styles.settingsText}>
-              <Text style={styles.settingsLabel}>Steps goal</Text>
-              <Text style={styles.settingsDesc}>Set automatically from your step goal in Health settings.</Text>
-            </View>
-            <Text style={styles.stepsGoalValue}>{user.stepsGoal.toLocaleString()}</Text>
-          </View>
+          <FormRowInline label="Steps goal"    value={steps}   onChange={setSteps}   unit="steps"   />
         </View>
 
         <Text style={styles.sectionTitle}>Training days</Text>
@@ -225,7 +224,7 @@ function Preferences({ user, onSave, onBack }: {
           ))}
         </View>
 
-        <TouchableOpacity style={styles.saveBtn} onPress={() => onSave({ units, proteinGoal: parseInt(protein), waterGoal: parseInt(water), stepsGoal: user.stepsGoal, trainingDays })}>
+        <TouchableOpacity style={styles.saveBtn} onPress={() => onSave({ units, proteinGoal: parseInt(protein), waterGoal: parseInt(water), stepsGoal: parseInt(steps), trainingDays })}>
           <Text style={styles.saveBtnText}>Save preferences</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -527,17 +526,17 @@ const styles = StyleSheet.create({
   dayPillText:        { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: colors.mutedForeground },
   inlineInputRow:     { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   inlineInput:        { width: 70, height: 36, backgroundColor: colors.muted, borderRadius: radius.sm, paddingHorizontal: spacing.sm, fontSize: typography.size.base, color: colors.foreground, textAlign: 'right', borderWidth: 0.5, borderColor: colors.border },
-  stepsGoalValue:     { fontSize: typography.size.base, color: colors.mutedForeground, fontWeight: typography.weight.semibold },
   deleteBtn:          { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.destructive + '08', borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.destructive + '30', padding: spacing.md, minHeight: touchTarget.comfortable },
   warningCard:        { backgroundColor: colors.destructive + '08', borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.destructive + '40', padding: spacing.lg, alignItems: 'center', gap: spacing.sm },
   warningTitle:       { fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: colors.destructive },
   warningText:        { fontSize: typography.size.sm, color: colors.foreground, textAlign: 'center', lineHeight: 22 },
   deleteInput:        { height: touchTarget.comfortable, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md, fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: colors.destructive, textAlign: 'center' },
   deleteConfirmBtn:   { height: touchTarget.comfortable, backgroundColor: colors.destructive, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
-  deleteConfirmBtnText:{ fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.white },
+  deleteConfirmBtnText:{ fontSize: typography.size.base, fontWeight: typography.weight.bold, color: '#fff' },
   cancelBtn:          { height: touchTarget.comfortable, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
   cancelBtnText:      { fontSize: typography.size.base, color: colors.mutedForeground },
   exportItem:         { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   exportItemText:     { fontSize: typography.size.sm, color: colors.foreground },
   tagline:            { fontSize: typography.size.sm, color: colors.mutedForeground, textAlign: 'center' },
 })
+```

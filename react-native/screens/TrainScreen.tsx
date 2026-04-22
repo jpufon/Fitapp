@@ -12,7 +12,10 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  CloudOff, Play, Clock, Sparkles, Dumbbell,
+  Check, Inbox, AlertCircle,
+} from 'lucide-react-native';
 import { colors, borderRadius, spacing, typography } from '../theme';
 import type { RootStackParamList } from '../App';
 import {
@@ -172,13 +175,13 @@ export default function TrainScreen() {
         <View style={styles.tabBar}>
           <TabButton
             label="Start"
-            icon="play"
+            icon={Play}
             active={activeTab === 'start'}
             onPress={() => setActiveTab('start')}
           />
           <TabButton
             label="History"
-            icon="time"
+            icon={Clock}
             active={activeTab === 'history'}
             onPress={() => setActiveTab('history')}
           />
@@ -186,7 +189,7 @@ export default function TrainScreen() {
 
         {offlineBanner ? (
           <View style={styles.offlineBanner}>
-            <Ionicons name="cloud-offline-outline" size={16} color={colors.energy} />
+            <CloudOff size={16} color={colors.energy} strokeWidth={1.75} />
             <Text style={styles.offlineBannerText}>{offlineBanner}</Text>
           </View>
         ) : null}
@@ -216,12 +219,12 @@ export default function TrainScreen() {
 
 function TabButton({
   active,
-  icon,
+  icon: Icon,
   label,
   onPress,
 }: {
   active: boolean;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: React.ElementType;
   label: string;
   onPress: () => void;
 }) {
@@ -230,10 +233,10 @@ function TabButton({
       onPress={onPress}
       style={[styles.tabButton, active && styles.tabButtonActive]}
     >
-      <Ionicons
-        name={icon}
+      <Icon
         size={16}
         color={active ? colors.primary : colors.mutedForeground}
+        strokeWidth={1.75}
       />
       <Text style={[styles.tabButtonText, active && styles.tabButtonTextActive]}>
         {label}
@@ -299,7 +302,7 @@ function StartTab({
           <ActivityIndicator color={colors.black} />
         ) : (
           <>
-            <Ionicons name="sparkles" size={20} color={colors.black} />
+            <Sparkles size={20} color={colors.black} strokeWidth={1.75} />
             <Text style={styles.generateButtonText}>Generate New Plan with Wali AI</Text>
           </>
         )}
@@ -361,11 +364,11 @@ function WorkoutCard({
           <Text style={styles.workoutTitle}>{workout.name}</Text>
           <View style={styles.workoutMetaRow}>
             <View style={styles.metaItem}>
-              <Ionicons name="barbell-outline" size={16} color={colors.primary} />
+              <Dumbbell size={16} color={colors.primary} strokeWidth={1.75} />
               <Text style={styles.metaItemText}>{workout.exerciseCount} exercises</Text>
             </View>
             <View style={styles.metaItem}>
-              <Ionicons name="time-outline" size={16} color={colors.energy} />
+              <Clock size={16} color={colors.energy} strokeWidth={1.75} />
               <Text style={styles.metaItemText}>{workout.durationMinutes} min</Text>
             </View>
           </View>
@@ -375,7 +378,7 @@ function WorkoutCard({
         </View>
 
         <TouchableOpacity onPress={onStartWorkout} style={styles.playButton}>
-          <Ionicons name="play" size={26} color={colors.black} style={styles.playIcon} />
+          <Play size={26} color={colors.black} strokeWidth={2} fill={colors.black} style={styles.playIcon} />
         </TouchableOpacity>
       </View>
 
@@ -396,7 +399,7 @@ function HistoryCard({ workout }: { workout: WorkoutSummary }) {
         <Text style={styles.historyTitle}>{workout.name}</Text>
       </View>
       <View style={styles.historyCheck}>
-        <Ionicons name="checkmark" size={18} color={colors.primary} />
+        <Check size={18} color={colors.primary} strokeWidth={2.5} />
       </View>
     </View>
   );
@@ -419,7 +422,7 @@ function LoadingCards({ count }: { count: number }) {
 function EmptyState({ title, message }: { title: string; message: string }) {
   return (
     <View style={styles.feedbackCard}>
-      <Ionicons name="file-tray-outline" size={24} color={colors.mutedForeground} />
+      <Inbox size={24} color={colors.mutedForeground} strokeWidth={1.75} />
       <Text style={styles.feedbackTitle}>{title}</Text>
       <Text style={styles.feedbackMessage}>{message}</Text>
     </View>
@@ -437,7 +440,7 @@ function ErrorState({
 }) {
   return (
     <View style={styles.feedbackCard}>
-      <Ionicons name="alert-circle-outline" size={24} color={colors.destructive} />
+      <AlertCircle size={24} color={colors.destructive} strokeWidth={1.75} />
       <Text style={styles.feedbackTitle}>{title}</Text>
       <Text style={styles.feedbackMessage}>{message}</Text>
       <TouchableOpacity onPress={onRetry} style={styles.retryButton}>
