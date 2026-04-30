@@ -9,6 +9,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { colors } from './theme';
 import type { WorkoutSummary } from './lib/workouts';
 import { configureQueryClient, queryClient } from './lib/queryClient';
+import { useSyncBootstrap } from './hooks/useSyncBootstrap';
 
 // Screens
 import AuthScreen from './screens/AuthScreen';
@@ -112,6 +113,8 @@ export default function App() {
   useEffect(() => {
     configureQueryClient();
   }, []);
+
+  useSyncBootstrap();
 
   return (
     <>

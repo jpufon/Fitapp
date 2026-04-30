@@ -9,23 +9,24 @@ re-opening closed questions. Add new decisions at the top.
 
 **All four documents compared and conflicts resolved:**
 
-### Colors — zip file is the truth
-Emerald `#10b981` is the primary color. Not violet, not Electric Volt, not
-Space Indigo. The zip's theme.ts is the canonical palette. Rationale: the zip
-represents the most recent design output and was explicitly confirmed by the founder.
+### Colors — zip file is the truth (v1) → superseded by Teal v2.0 (2026-04-28)
+Originally emerald `#10b981`. Replaced by teal `#0BBFBD` per
+`docs/waliFit_Design_Tokens.md` v2.0 (April 2026 founder decision).
 
-Final palette:
-- Background:  `#0a0f0f`
-- Surface:     `#141818`
-- Primary:     `#10b981` (emerald)
-- Text on primary: `#000000` (never white on emerald)
-- Steps:       `#10b981`
-- Protein:     `#f59e0b`
-- Hydration:   `#60a5fa`
-- Energy:      `#fbbf24`
-- Social:      `#a78bfa`
-- Destructive: `#ef4444`
-- Foreground:  `#e5e7eb`
+Final palette (v2.0 teal):
+- Background:    `#0a0f0f`
+- Surface:       `#181c1c`
+- Primary:       `#0BBFBD` (teal)
+- Primary dark:  `#0D6D6B` (points/status/header blocks)
+- Text on primary: `#000000` (never white on teal)
+- Steps:         `#0BBFBD`
+- Protein:       `#f59e0b`
+- Hydration:     `#60a5fa`
+- Energy:        `#fbbf24`
+- Social:        `#a78bfa`
+- Destructive:   `#ef4444`
+- Foreground:    `#ececec`
+- Badge tiers:   Iron `#6b7280` · Bronze `#b45309` · Silver `#9ca3af` · Gold `#fbbf24` · Legendary `#a78bfa`
 
 ### Bottom navigation tabs — V1 Brief wins
 Tabs: **Home · Train · Calendar · Coach · Arena** (in this order)

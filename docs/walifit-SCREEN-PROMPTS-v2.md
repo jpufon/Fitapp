@@ -126,8 +126,8 @@ Rules for this screen:
 - Replace any Ionicons with lucide-react-native equivalents.
 - All tokens from react-native/theme.ts — no hardcoded hex.
 - Mock result: hardcoded MOCK_RESULT (PR on Bench Press, volume stats, tree before/after).
-- PR banner shows in primary green — text color must be primaryFg (#000000), 
-  never white on emerald.
+- PR banner shows in primary teal — text color must be primaryFg (#000000), 
+  never white on teal.
 - Share to Arena button: mock only — console.log on press, no POST yet.
 - Tree impact section: shows before/after score with stage label.
 

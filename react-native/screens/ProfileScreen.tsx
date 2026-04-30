@@ -141,7 +141,7 @@ export default function ProfileScreen() {
 
       navigation.reset({
         index: 0,
-        routes: [{ name: 'Welcome' }],
+        routes: [{ name: 'Auth' }],
       });
     } catch (error) {
       Alert.alert(

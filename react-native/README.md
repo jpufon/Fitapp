@@ -56,14 +56,15 @@ This is the **React Native conversion** of the waliFit web app. This version run
 All colors from the web version are preserved in `theme.ts`:
 
 **Primary Colors:**
-- Emerald: `#10b981` (vitality/growth)
+- Teal: `#0BBFBD` (vitality/growth)
+- Teal Deep: `#0D6D6B` (points, status, header blocks)
 - Amber: `#fbbf24` (energy/achievements)
 - Blue: `#60a5fa` (hydration/calm)
-- Purple: `#a78bfa` (history/premium)
+- Purple: `#a78bfa` (Legendary badge, locked features)
 
 **Backgrounds:**
 - Deep charcoal: `#0a0f0f`
-- Card surface: `#141818`
+- Card surface: `#181c1c`
 - Secondary: `#1a1f1f`
 
 ## 📁 Project Structure
@@ -158,7 +159,7 @@ npm install
 
 The React Native version preserves:
 - ✅ Same dark theme aesthetic
-- ✅ Emerald/amber color palette
+- ✅ Teal/amber color palette (v2.0)
 - ✅ Premium glassmorphism effects
 - ✅ All spacing and typography scales
 - ✅ Vitality Tree gamification

@@ -173,5 +173,5 @@ Tier 3 (last):
 > Source of truth for design: apps/mobile/theme.ts and .stitch/DESIGN.md.
 > Source of truth for architecture: CLAUDE.md and docs/DECISIONS.md.
 > Never hardcode colors or spacing. Never use AsyncStorage. Never add manual step entry.
-> Dark text (#000000) on primary (#10b981) — NEVER white on emerald.
+> Dark text (#000000) on primary (#0BBFBD teal) — NEVER white on primary.
 > Show diffs. Wait for approval. Then apply.

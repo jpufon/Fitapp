@@ -48,9 +48,13 @@ Train → Log → Progress → Compete → Repeat
 - MMKV storage:       react-native/lib/storage.ts
 - Workout utils:      react-native/lib/workouts.ts
 - Design system:      DESIGN.md                    ← at project root
-- AI service:         backend/src/waliAI/           ← create when building backend
-- Prisma schema:      backend/prisma/schema.prisma  ← create when building backend
-- Shared types:       packages/shared/src/types/    ← create when needed
+- Backend root:       backend/                      ← Fastify + Prisma (Phase 1 scaffolded 2026-04-29)
+- Backend entry:      backend/src/server.ts
+- Backend env config: backend/src/config.ts (Zod-validated)
+- Prisma schema:      backend/prisma/schema.prisma  ← models land in Phase 2
+- Prisma client:      backend/src/lib/prisma.ts
+- AI service:         backend/src/waliAI/           ← Phase 6+
+- Shared types:       packages/shared/src/         ← walifit-shared package, Zod schemas
 
 ## Screens already built (DO NOT recreate these)
 - react-native/screens/HomeScreen.tsx
@@ -76,18 +80,20 @@ Train → Log → Progress → Compete → Repeat
 - react-native/hooks/useUser.ts
 - react-native/hooks/useCachedQuery.ts
 
-## Design tokens (SOURCE OF TRUTH: react-native/theme.ts)
+## Design tokens (SOURCE OF TRUTH: react-native/theme.ts · spec: docs/waliFit_Design_Tokens.md v2.0)
 - Background:        #0a0f0f  (deep charcoal)
-- Card surface:      #141818
-- Primary/Emerald:   #10b981  (tree, actions, completion)
-- Primary text on:   #000000  (ALWAYS dark text on emerald — NEVER white)
-- Steps pillar:      #10b981  (emerald — 40% tree weight)
+- Card surface:      #181c1c
+- Primary/Teal:      #0BBFBD  (CTA, tree, progress rings, active tabs)
+- Primary dark:      #0D6D6B  (points/status/header blocks)
+- Primary text on:   #000000  (ALWAYS dark text on teal — NEVER white)
+- Steps pillar:      #0BBFBD  (teal — matches primary, 40% tree weight)
 - Protein pillar:    #f59e0b  (amber — 30% tree weight)
 - Hydration pillar:  #60a5fa  (blue — 30% tree weight)
-- Energy/Amber:      #fbbf24  (streaks, achievements)
-- Social/Purple:     #a78bfa  (Arena, squad features)
+- Energy/Amber:      #fbbf24  (streaks, achievements, Gold badge)
+- Social/Purple:     #a78bfa  (Legendary badge, locked features)
 - Destructive:       #ef4444  (errors, stop, wilting)
-- Foreground text:   #e5e7eb
+- Foreground text:   #ececec
+- Badge tiers:       Iron #6b7280 · Bronze #b45309 · Silver #9ca3af · Gold #fbbf24 · Legendary #a78bfa
 
 ## Vitality Tree — 6 health states
 Wilted (0–15) → Recovering (16–35) → Sprout (36–55) →
@@ -110,7 +116,7 @@ Single tree visual in V1. No species/biomes until V2.
 - ALL weights stored in kg in DB — UI converts via displayWeight()
 - ALL durations stored in seconds in DB — UI formats on display
 - Steps data from native health APIs only — NEVER ask user to enter steps manually
-- Dark text (#000000) on primary (#10b981) backgrounds — NEVER white text on emerald
+- Dark text (#000000) on primary (#0BBFBD teal) backgrounds — NEVER white text on primary
 - Touch targets: minHeight 44 minimum, 48 for primary actions, 56 for workout CTAs
 - Every screen must implement 4 states: loading (skeleton), success, empty, error
 - Every mutation goes through the offline sync queue — no direct writes that bypass it

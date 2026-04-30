@@ -572,7 +572,7 @@ Reminders:
 - Never hardcode colors or spacing — always apps/mobile/theme.ts
 - Never use AsyncStorage — MMKV encrypted wrapper only
 - Never add manual step entry
-- Dark text (#000000) on primary (#10b981) — never white on emerald
+- Dark text (#000000) on primary (#0BBFBD teal) — never white on primary
 - Show diff. Wait for approval. Then apply.
 
 ---

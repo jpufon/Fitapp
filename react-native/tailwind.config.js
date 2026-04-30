@@ -1,32 +1,41 @@
 /** @type {import('tailwindcss').Config} */
+const { colors, pillarColors } = require('./theme.colors');
+
 module.exports = {
   content: ['./App.{ts,tsx}', './screens/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
   presets: [require('nativewind/preset')],
   theme: {
     extend: {
       colors: {
-        background:  '#0a0f0f',
-        card:        '#141818',
-        secondary:   '#1a1f1f',
-        muted:       '#1f2525',
-        border:      '#2a2f2f',
-        foreground:  '#e5e7eb',
-        'muted-foreground': '#9ca3af',
+        background:  colors.background,
+        card:        colors.card,
+        secondary:   colors.secondary,
+        muted:       colors.muted,
+        border:      colors.border,
+        foreground:  colors.foreground,
+        'muted-foreground': colors.mutedForeground,
         primary: {
-          DEFAULT: '#10b981',
-          light:   '#34d399',
-          dark:    '#059669',
-          fg:      '#000000',
+          DEFAULT: colors.primary,
+          light:   colors.vitalityLight,
+          dark:    colors.primaryDark,
+          fg:      colors.primaryFg,
         },
         pillar: {
-          steps:     '#10b981',
-          protein:   '#f59e0b',
-          hydration: '#60a5fa',
+          steps:     pillarColors.steps,
+          protein:   pillarColors.protein,
+          hydration: pillarColors.hydration,
         },
-        energy:      '#fbbf24',
-        blue:        '#60a5fa',
-        purple:      '#a78bfa',
-        destructive: '#ef4444',
+        badge: {
+          iron:      colors.badgeIron,
+          bronze:    colors.badgeBronze,
+          silver:    colors.badgeSilver,
+          gold:      colors.badgeGold,
+          legendary: colors.badgeLegendary,
+        },
+        energy:      colors.energy,
+        blue:        colors.blue,
+        purple:      colors.purple,
+        destructive: colors.destructive,
       }
     }
   },

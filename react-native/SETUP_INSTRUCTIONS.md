@@ -185,7 +185,7 @@ The foundation is done. A developer can:
 
 All your premium dark theme aesthetics are maintained:
 
-✅ Emerald (#10b981) primary color
+✅ Teal (#0BBFBD) primary color
 ✅ Amber (#fbbf24) energy color
 ✅ Dark charcoal background
 ✅ Glowing effects

@@ -29,9 +29,16 @@ const MOCK_PROGRAM = {
   rationale: 'Upper/lower hybrid split with two run sessions. Matches your 4-day preference and hybrid performance goal. Deload built in at Week 3 and Week 6.',
 }
 
-const MOCK_MESSAGES = [
+type Message = {
+  id: string
+  role: 'ai' | 'user'
+  content: string
+  time: string
+}
+
+const MOCK_MESSAGES: Message[] = [
   {
-    id: '1', role: 'ai' as const,
+    id: '1', role: 'ai',
     content: "Hey Marcus — your program starts with Push Day A today. You said hybrid performance is your goal, so I've built conditioning finishers after every upper session. Quick question to dial this in: how much time do you usually have after your main lifts?",
     time: 'Just now',
   },
@@ -130,14 +137,14 @@ function CoachHome({ onStartChat, onGenerate }: { onStartChat: () => void; onGen
 // ─── Coach Chat ───────────────────────────────────────────────────────────────
 
 function CoachChat({ onBack }: { onBack: () => void }) {
-  const [messages, setMessages] = useState(MOCK_MESSAGES)
+  const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES)
   const [input, setInput]       = useState('')
   const [typing, setTyping]     = useState(false)
   const scrollRef               = useRef<ScrollView>(null)
 
   const send = () => {
     if (!input.trim()) return
-    const userMsg = { id: String(Date.now()), role: 'user' as const, content: input, time: 'Now' }
+    const userMsg: Message = { id: String(Date.now()), role: 'user', content: input, time: 'Now' }
     setMessages(m => [...m, userMsg])
     setInput('')
     setTyping(true)

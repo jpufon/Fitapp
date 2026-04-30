@@ -1,168 +1,165 @@
+// Home data hooks — backed by a single GET /home call, sliced for each consumer.
+// useTodaySteps still drives off Pedometer for instant local feedback; server
+// stepsCount syncing is wired in mutation hooks (useLogNutrition).
+
 import { useEffect, useMemo } from 'react';
 import { Platform } from 'react-native';
 import { Pedometer } from 'expo-sensors';
 import { useCachedQuery } from './useCachedQuery';
-import { apiRequest, hasApiConfig } from '../lib/api';
-import type { WorkoutSummary } from '../lib/workouts';
-import { fetchTodaysPlan } from '../lib/workouts';
+import { apiQuery, hasApiConfig } from '../lib/api';
 import { getCachedJson, setCachedJson } from '../lib/storage';
 
+// ─── Types matching backend GET /home response ─────────────────────────────
+
+type Pillar = {
+  current: number;
+  target: number;
+  progress: number; // 0..1 from backend
+};
+
+export type HomeSnapshot = {
+  vitality: {
+    score: number;
+    treeState: 'wilted' | 'recovering' | 'sprout' | 'growing' | 'thriving' | 'full_vitality';
+    streak: number;
+  };
+  pillars: {
+    steps: Pillar;
+    protein: Pillar;
+    hydration: Pillar;
+  };
+  workout: HomeWorkout | null;
+  unitSystem: 'metric' | 'imperial';
+};
+
+export type HomeWorkout = {
+  id: string;
+  name: string;
+  type: string;
+  startedAt: string;
+  finishedAt: string | null;
+};
+
+// ─── Legacy display shapes — keep stable for HomeScreen ────────────────────
+
 export type NutritionSummary = {
-  protein: {
-    current: number;
-    target: number;
-    progress: number;
-  };
-  hydration: {
-    current: number;
-    target: number;
-    progress: number;
-  };
+  protein: { current: number; target: number; progress: number }; // progress 0..100
+  hydration: { current: number; target: number; progress: number };
 };
 
 export type VitalitySummary = {
   streak: number;
-  score: number;
+  score: number; // 0..100
 };
 
 export type StepsSummary = {
   steps: number;
   target: number;
-  progress: number;
+  progress: number; // 0..100
 };
 
-const mockNutrition: NutritionSummary = {
-  protein: {
-    current: 105,
-    target: 150,
-    progress: 70,
-  },
-  hydration: {
-    current: 2400,
-    target: 3000,
-    progress: 80,
-  },
+export type WorkoutSummary = {
+  id: string;
+  name: string;
+  type: string;
+  exerciseCount: number;
+  durationMinutes: number;
+  completedAt?: string | null;
 };
 
-const mockVitality: VitalitySummary = {
-  streak: 12,
-  score: 75,
-};
+// ─── Canonical query: GET /home ────────────────────────────────────────────
 
-const mockWorkout: WorkoutSummary = {
-  id: 'mock-home-workout',
-  name: 'Upper Body Strength',
-  type: 'Strength',
-  exerciseCount: 6,
-  durationMinutes: 45,
-  completedAt: null,
-};
+const HOME_QUERY_KEY = ['home', 'snapshot'] as const;
 
-const mockSteps: StepsSummary = {
-  steps: 6842,
-  target: 10000,
-  progress: 68,
-};
-
-function clampPercentage(value: number): number {
-  return Math.max(0, Math.min(100, Math.round(value)));
+function fetchHomeSnapshot(): Promise<HomeSnapshot> {
+  return apiQuery<HomeSnapshot>('/home');
 }
 
-function asNumber(value: unknown, fallback = 0): number {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value;
-  }
-
-  if (typeof value === 'string') {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) {
-      return parsed;
-    }
-  }
-
-  return fallback;
+export function useHomeSnapshot() {
+  return useCachedQuery<HomeSnapshot>({
+    queryKey: HOME_QUERY_KEY,
+    cacheKey: 'query.home.snapshot',
+    queryFn: fetchHomeSnapshot,
+    enabled: hasApiConfig,
+  });
 }
 
-function normalizeNutrition(payload: unknown): NutritionSummary {
-  const record = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {};
-  const proteinData = record.protein && typeof record.protein === 'object'
-    ? record.protein as Record<string, unknown>
-    : record;
-  const hydrationData = record.hydration && typeof record.hydration === 'object'
-    ? record.hydration as Record<string, unknown>
-    : record;
+// ─── Sliced hooks — share the underlying /home query via queryKey ──────────
 
-  const proteinCurrent = asNumber(
-    proteinData.current ?? proteinData.grams ?? proteinData.proteinGrams ?? record.proteinGrams
-  );
-  const proteinTarget = asNumber(
-    proteinData.target ?? proteinData.goal ?? proteinData.targetGrams ?? record.proteinTarget ?? 150
-  );
+function pct(value01: number): number {
+  return Math.round(Math.max(0, Math.min(1, value01)) * 100);
+}
 
-  const hydrationCurrent = asNumber(
-    hydrationData.current ?? hydrationData.ml ?? hydrationData.waterMl ?? record.hydrationMl
-  );
-  const hydrationTarget = asNumber(
-    hydrationData.target ?? hydrationData.goal ?? hydrationData.targetMl ?? record.hydrationTarget ?? 3000
-  );
-
+function sliceNutrition(snap: HomeSnapshot): NutritionSummary {
   return {
     protein: {
-      current: proteinCurrent,
-      target: proteinTarget,
-      progress: clampPercentage(proteinTarget > 0 ? (proteinCurrent / proteinTarget) * 100 : 0),
+      current: snap.pillars.protein.current,
+      target: snap.pillars.protein.target,
+      progress: pct(snap.pillars.protein.progress),
     },
     hydration: {
-      current: hydrationCurrent,
-      target: hydrationTarget,
-      progress: clampPercentage(hydrationTarget > 0 ? (hydrationCurrent / hydrationTarget) * 100 : 0),
+      current: snap.pillars.hydration.current,
+      target: snap.pillars.hydration.target,
+      progress: pct(snap.pillars.hydration.progress),
     },
   };
 }
 
-function normalizeVitality(payload: unknown): VitalitySummary {
-  const record = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {};
-  const streak = asNumber(record.streak ?? record.currentStreak ?? record.streakDays);
-  const score = asNumber(record.score ?? record.vitalityScore ?? record.currentScore);
-
+function sliceVitality(snap: HomeSnapshot): VitalitySummary {
   return {
-    streak,
-    score,
+    streak: snap.vitality.streak,
+    score: pct(snap.vitality.score),
   };
 }
 
-async function fetchNutritionToday(): Promise<NutritionSummary> {
-  if (!hasApiConfig) {
-    return mockNutrition;
-  }
-
-  const payload = await apiRequest<unknown>('/nutrition/today');
-  return normalizeNutrition(payload);
+function sliceWorkout(snap: HomeSnapshot): WorkoutSummary | null {
+  if (!snap.workout) return null;
+  return {
+    id: snap.workout.id,
+    name: snap.workout.name,
+    type: snap.workout.type,
+    exerciseCount: 0, // /home doesn't include sets — caller can hit /workouts/:id for detail
+    durationMinutes: 0,
+    completedAt: snap.workout.finishedAt,
+  };
 }
 
-async function fetchVitalityCurrent(): Promise<VitalitySummary> {
-  if (!hasApiConfig) {
-    return mockVitality;
-  }
-
-  const payload = await apiRequest<unknown>('/vitality/current');
-  return normalizeVitality(payload);
+export function useNutritionToday() {
+  const q = useHomeSnapshot();
+  return useMemo(
+    () => ({
+      ...q,
+      data: q.data ? sliceNutrition(q.data) : undefined,
+    }),
+    [q],
+  );
 }
 
-async function fetchTodayWorkout(): Promise<WorkoutSummary | null> {
-  if (!hasApiConfig) {
-    return mockWorkout;
-  }
-
-  const workouts = await fetchTodaysPlan();
-  return workouts[0] ?? null;
+export function useVitalityCurrent() {
+  const q = useHomeSnapshot();
+  return useMemo(
+    () => ({
+      ...q,
+      data: q.data ? sliceVitality(q.data) : undefined,
+    }),
+    [q],
+  );
 }
+
+export function useTodayWorkout() {
+  const q = useHomeSnapshot();
+  return useMemo(
+    () => ({
+      ...q,
+      data: q.data ? sliceWorkout(q.data) : undefined,
+    }),
+    [q],
+  );
+}
+
+// ─── Steps: device-side via Pedometer ──────────────────────────────────────
 
 async function fetchTodaySteps(): Promise<StepsSummary> {
-  if (!hasApiConfig) {
-    return mockSteps;
-  }
-
   const target = 10_000;
   const available = await Pedometer.isAvailableAsync();
   if (!available) {
@@ -171,25 +168,20 @@ async function fetchTodaySteps(): Promise<StepsSummary> {
 
   const permission = await Pedometer.getPermissionsAsync();
   const granted = permission.granted ? permission : await Pedometer.requestPermissionsAsync();
-
   if (!granted.granted) {
     throw new Error('Motion permission is required to read today’s steps.');
   }
 
-  const fallback = getCachedJson<StepsSummary>('home.steps') ?? {
-    steps: 0,
-    target,
-    progress: 0,
-  };
+  const fallback = getCachedJson<StepsSummary>('home.steps') ?? { steps: 0, target, progress: 0 };
 
   if (Platform.OS === 'ios') {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
     const result = await Pedometer.getStepCountAsync(start, new Date());
-    const normalized = {
+    const normalized: StepsSummary = {
       steps: result.steps,
       target,
-      progress: clampPercentage((result.steps / target) * 100),
+      progress: Math.round(Math.min(100, (result.steps / target) * 100)),
     };
     setCachedJson('home.steps', normalized);
     return normalized;
@@ -198,32 +190,8 @@ async function fetchTodaySteps(): Promise<StepsSummary> {
   return fallback;
 }
 
-export function useNutritionToday() {
-  return useCachedQuery({
-    queryKey: ['home', 'nutrition-today'],
-    cacheKey: 'query.home.nutrition-today',
-    queryFn: fetchNutritionToday,
-  });
-}
-
-export function useVitalityCurrent() {
-  return useCachedQuery({
-    queryKey: ['home', 'vitality-current'],
-    cacheKey: 'query.home.vitality-current',
-    queryFn: fetchVitalityCurrent,
-  });
-}
-
-export function useTodayWorkout() {
-  return useCachedQuery({
-    queryKey: ['home', 'today-workout'],
-    cacheKey: 'query.home.today-workout',
-    queryFn: fetchTodayWorkout,
-  });
-}
-
 export function useTodaySteps() {
-  const query = useCachedQuery({
+  const query = useCachedQuery<StepsSummary>({
     queryKey: ['home', 'today-steps'],
     cacheKey: 'query.home.today-steps',
     queryFn: fetchTodaySteps,
@@ -231,41 +199,22 @@ export function useTodaySteps() {
 
   useEffect(() => {
     let subscription: { remove: () => void } | undefined;
-
-    if (Platform.OS !== 'android') {
-      return;
-    }
+    if (Platform.OS !== 'android') return;
 
     const existing = query.data ?? getCachedJson<StepsSummary>('home.steps');
     const baseSteps = existing?.steps ?? 0;
 
     subscription = Pedometer.watchStepCount((result) => {
-      const next = {
+      const next: StepsSummary = {
         steps: baseSteps + result.steps,
         target: 10_000,
-        progress: clampPercentage(((baseSteps + result.steps) / 10_000) * 100),
+        progress: Math.round(Math.min(100, ((baseSteps + result.steps) / 10_000) * 100)),
       };
       setCachedJson('home.steps', next);
-      setCachedJson('query.home.today-steps', {
-        data: next,
-        updatedAt: Date.now(),
-      });
     });
 
-    return () => {
-      subscription?.remove();
-    };
+    return () => subscription?.remove();
   }, [query.data]);
 
-  return useMemo(() => {
-    const cached = getCachedJson<{
-      data: StepsSummary;
-      updatedAt: number;
-    }>('query.home.today-steps');
-
-    return {
-      ...query,
-      data: query.data ?? cached?.data,
-    };
-  }, [query]);
+  return query;
 }

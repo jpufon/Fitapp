@@ -34,7 +34,7 @@ Do not redesign. Preserve all existing layout and styling.
 - All tokens from `apps/mobile/theme.ts` — NEVER hardcoded hex
 - Touch targets: min 44px, comfortable 48px, workout CTAs 56px
 - Steps: NEVER manually entered — Apple Health / Google Fit only
-- Dark text (#000000 = primaryFg) on primary (#10b981) — NEVER white on emerald
+- Dark text (#000000 = primaryFg) on primary (#0BBFBD teal) — NEVER white on primary
 - Every screen: loading/skeleton, success, empty, error states
 - MMKV encrypted wrapper only — never AsyncStorage, never raw MMKV
 - lucide-react-native icons only

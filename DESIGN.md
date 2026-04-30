@@ -9,7 +9,7 @@ waliFit is a Hybrid Athlete OS. The emotional core is the Vitality Tree — a li
 visual that grows when you take care of yourself. The app feels athletic, premium,
 and alive. Not sterile. Not generic.
 
-The tree IS the primary color. Emerald (#10b981) unifies the app shell and the tree.
+The tree IS the primary color. Teal (#0BBFBD) unifies the app shell and the tree.
 
 ---
 
@@ -18,23 +18,28 @@ The tree IS the primary color. Emerald (#10b981) unifies the app shell and the t
 | Role | Name | Hex | Used for |
 |------|------|-----|----------|
 | Background | Deep Charcoal | `#0a0f0f` | Main app canvas — every screen |
-| Surface | Card Dark | `#141818` | Cards, workout modules, list items |
+| Surface | Card Dark | `#181c1c` | Cards, workout modules, list items |
 | Surface High | Popover | `#1a1f1f` | Modals, bottom sheets, dropdowns |
 | Muted | Muted Surface | `#1f2525` | Disabled states, secondary surfaces |
 | Border | Default Border | `#2a2f2f` | All borders — 0.5px weight |
-| Primary | Vitality Emerald | `#10b981` | Buttons, active nav, tree, completion |
-| Primary Light | Emerald Light | `#34d399` | Hover states, progress fills |
-| Primary Dark | Emerald Dark | `#059669` | Pressed states |
-| Text on Primary | — | `#000000` | ALWAYS dark on emerald — never white |
-| Steps Pillar | Emerald | `#10b981` | Steps progress ring (matches primary) |
+| Primary | Vitality Teal | `#0BBFBD` | Buttons, active nav, tree, completion |
+| Primary Light | Teal Light | `#3FD9D7` | Hover states, progress fills |
+| Primary Dark | Teal Deep | `#0D6D6B` | Pressed states, points/status/header blocks |
+| Text on Primary | — | `#000000` | ALWAYS dark on teal — never white |
+| Steps Pillar | Teal | `#0BBFBD` | Steps progress ring (matches primary) |
 | Protein Pillar | Amber | `#f59e0b` | Protein progress ring |
 | Hydration Pillar | Blue | `#60a5fa` | Hydration progress ring |
 | Energy | Amber Gold | `#fbbf24` | Streaks, achievements, PRs |
 | Social | Purple | `#a78bfa` | Arena, squad, social features |
 | Data | Blue | `#60a5fa` | Analytics, charts, running stats |
 | Destructive | Crimson | `#ef4444` | Errors, stop actions, wilting tree |
-| Text Primary | Steel White | `#e5e7eb` | All body text |
+| Text Primary | Steel White | `#ececec` | All body text |
 | Text Secondary | Gray | `#9ca3af` | Timestamps, hints, labels |
+| Badge Iron | Gray | `#6b7280` | Iron tier — entry badges |
+| Badge Bronze | Bronze | `#b45309` | Bronze tier — consistency |
+| Badge Silver | Silver | `#9ca3af` | Silver tier — performance |
+| Badge Gold | Gold | `#fbbf24` | Gold tier — elite |
+| Badge Legendary | Purple | `#a78bfa` | Legendary tier — apex (most never see) |
 
 ---
 
@@ -98,22 +103,22 @@ Monospace: JetBrains Mono — for stats, data, metrics only
 ## Component Patterns
 
 ### Cards
-- Background: `#141818`
+- Background: `#181c1c`
 - Border: `0.5px solid #2a2f2f`
 - Radius: 16px (lg)
 - Padding: 16px (md)
 
 ### Primary Button
-- Background: `#10b981` (primary)
-- Text: `#000000` (NEVER white on emerald)
+- Background: `#0BBFBD` (primary teal)
+- Text: `#000000` (NEVER white on teal)
 - Radius: 999px (pill)
 - Height: 48px (comfortable touch target)
 - Font: 15px semibold
 
 ### Ghost Button
 - Background: transparent
-- Border: `0.5px solid rgba(229,231,235,0.25)` (foreground 25%)
-- Text: `#e5e7eb`
+- Border: `0.5px solid rgba(236,236,236,0.25)` (foreground 25%)
+- Text: `#ececec`
 - Same radius and height as primary
 
 ### Destructive Button
@@ -124,8 +129,8 @@ Monospace: JetBrains Mono — for stats, data, metrics only
 ### Input Field
 - Background: `#1a1f1f`
 - Border default: `0.5px solid #2a2f2f`
-- Border focus: `1px solid #10b981`
-- Text: `#e5e7eb`
+- Border focus: `1px solid #0BBFBD`
+- Text: `#ececec`
 - Placeholder: `#9ca3af`
 - Radius: 12px (md)
 - Height: 48px
@@ -137,9 +142,9 @@ Monospace: JetBrains Mono — for stats, data, metrics only
 - Rounded caps
 
 ### Bottom Navigation
-- Background: `#141818` + `border-top: 0.5px solid #2a2f2f`
+- Background: `#181c1c` + `border-top: 0.5px solid #2a2f2f`
 - Height: 70px
-- Active icon + label: `#10b981` (primary)
+- Active icon + label: `#0BBFBD` (primary)
 - Inactive icon + label: `#9ca3af`
 - Label: 11px, 600 weight, 0.3 letter spacing
 
@@ -169,14 +174,14 @@ accent color: PRs use primary, runs use blue, streaks use energy, badges use pur
 | Wilted | 0–15 | #ef4444 |
 | Recovering | 16–35 | #f59e0b |
 | Sprout | 36–55 | #84cc16 |
-| Growing | 56–75 | #34d399 |
-| Thriving | 76–90 | #10b981 |
-| Full Vitality | 91–100 | #059669 |
+| Growing | 56–75 | #3FD9D7 |
+| Thriving | 76–90 | #0BBFBD |
+| Full Vitality | 91–100 | #0D6D6B |
 
 ### Pillars
 | Pillar | Weight | Color | Source |
 |--------|--------|-------|--------|
-| Steps | 40% | #10b981 | Apple Health / Google Fit (automatic) |
+| Steps | 40% | #0BBFBD | Apple Health / Google Fit (automatic) |
 | Protein | 30% | #f59e0b | Manual log |
 | Hydration | 30% | #60a5fa | Manual log |
 

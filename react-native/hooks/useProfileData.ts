@@ -1,4 +1,5 @@
 import { apiRequest, hasApiConfig } from '../lib/api';
+import { colors } from '../theme';
 import { useCachedQuery } from './useCachedQuery';
 
 export type ProfileStat = {
@@ -8,9 +9,9 @@ export type ProfileStat = {
 };
 
 const mockStats: ProfileStat[] = [
-  { label: 'Total Workouts', value: '47', color: '#60a5fa' },
-  { label: 'Current Streak', value: '12', color: '#fbbf24' },
-  { label: 'PRs This Month', value: '8', color: '#10b981' },
+  { label: 'Total Workouts', value: '47', color: colors.blue },
+  { label: 'Current Streak', value: '12', color: colors.energy },
+  { label: 'PRs This Month', value: '8', color: colors.primary },
 ];
 
 function asNumber(value: unknown, fallback = 0): number {
@@ -32,17 +33,17 @@ function normalizeStats(payload: unknown): ProfileStat[] {
     {
       label: 'Total Workouts',
       value: String(asNumber(record.totalWorkouts ?? record.workouts)),
-      color: '#60a5fa',
+      color: colors.blue,
     },
     {
       label: 'Current Streak',
       value: String(asNumber(record.currentStreak ?? record.streak)),
-      color: '#fbbf24',
+      color: colors.energy,
     },
     {
       label: 'PRs This Month',
       value: String(asNumber(record.prsThisMonth ?? record.monthlyPrs ?? record.prs)),
-      color: '#10b981',
+      color: colors.primary,
     },
   ];
 }
