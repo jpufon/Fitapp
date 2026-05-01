@@ -1,0 +1,7 @@
+interface:
+  display_name: "waliFit Builder"
+  short_description: "Build waliFit features using repo patterns"
+  default_prompt: "Use $walifit-builder to implement this waliFit feature while following the repo architecture and validation checks."
+
+policy:
+  allow_implicit_invocation: true

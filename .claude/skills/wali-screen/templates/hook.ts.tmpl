@@ -1,0 +1,31 @@
+import { apiRequest, hasApiConfig } from '../lib/api';
+import { useCachedQuery } from './useCachedQuery';
+
+export type __NAME__Item = {
+  id: string;
+  label: string;
+};
+
+type __NAME__Response = {
+  items: __NAME__Item[];
+};
+
+const mock__NAME__: __NAME__Response = {
+  items: [
+    { id: '1', label: 'Sample row 1' },
+    { id: '2', label: 'Sample row 2' },
+  ],
+};
+
+export function use__NAME__Data() {
+  return useCachedQuery<__NAME__Response>({
+    queryKey: ['__name__'],
+    cacheKey: '__name__:v1',
+    queryFn: async () => {
+      if (!hasApiConfig) {
+        return mock__NAME__;
+      }
+      return apiRequest<__NAME__Response>('GET', '/__NAME_LOWER__');
+    },
+  });
+}

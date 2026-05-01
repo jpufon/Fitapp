@@ -1,0 +1,132 @@
+import React, { useMemo } from 'react';
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { AlertCircle, Inbox, RefreshCw } from 'lucide-react-native';
+import { colors, spacing, borderRadius, typography, touchTarget } from '../theme';
+import { use__NAME__Data } from '../hooks/use__NAME__Data';
+
+type ScreenState = 'loading' | 'success' | 'empty' | 'error';
+
+export default function __NAME__Screen() {
+  const query = use__NAME__Data();
+
+  const state = useMemo<ScreenState>(() => {
+    if (query.isLoading) return 'loading';
+    if (query.isError && !query.data) return 'error';
+    if (!query.data || query.data.items.length === 0) return 'empty';
+    return 'success';
+  }, [query.data, query.isError, query.isLoading]);
+
+  return (
+    <View style={styles.root}>
+      <View style={styles.header}>
+        <Text style={styles.title}>__NAME__</Text>
+      </View>
+
+      {state === 'loading' && (
+        <View style={styles.centered}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      )}
+
+      {state === 'error' && (
+        <View style={styles.centered}>
+          <AlertCircle color={colors.destructive} size={32} />
+          <Text style={styles.errorText}>Something went wrong loading __NAME__.</Text>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={() => query.refetch()}
+            accessibilityRole="button"
+          >
+            <RefreshCw color={colors.primaryFg} size={18} />
+            <Text style={styles.primaryButtonText}>Try again</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {state === 'empty' && (
+        <View style={styles.centered}>
+          <Inbox color={colors.foreground} size={32} />
+          <Text style={styles.emptyText}>Nothing here yet.</Text>
+        </View>
+      )}
+
+      {state === 'success' && query.data && (
+        <ScrollView contentContainerStyle={styles.list}>
+          {query.data.items.map((item) => (
+            <View key={item.id} style={styles.row}>
+              <Text style={styles.rowText}>{item.label}</Text>
+            </View>
+          ))}
+        </ScrollView>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  header: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.md,
+  },
+  title: {
+    color: colors.foreground,
+    fontSize: typography.fontSize['3xl'],
+    fontWeight: typography.fontWeight.bold,
+  },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  errorText: {
+    color: colors.foreground,
+    textAlign: 'center',
+  },
+  emptyText: {
+    color: colors.foreground,
+    opacity: 0.7,
+  },
+  primaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    minHeight: touchTarget.comfortable,
+  },
+  primaryButtonText: {
+    color: colors.primaryFg,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  list: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
+    gap: spacing.sm,
+  },
+  row: {
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    minHeight: touchTarget.min,
+    justifyContent: 'center',
+  },
+  rowText: {
+    color: colors.foreground,
+  },
+});

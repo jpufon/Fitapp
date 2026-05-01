@@ -16,6 +16,38 @@ const guestUser = {
 
 const USER_CACHE_KEY = 'profile.user';
 
+// Synthesize a user from EXPO_PUBLIC_DEV_JWT so that screens which gate on
+// `useUser().user` render the backend data the dev JWT authorises. Returns null
+// in production builds (DEV_JWT unset) or if the token is malformed.
+function devJwtUser(): AuthenticatedUser | null {
+  const token = process.env.EXPO_PUBLIC_DEV_JWT;
+  if (!token) return null;
+
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+
+  try {
+    const payloadJson = globalThis.atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+    const payload = JSON.parse(payloadJson) as {
+      sub?: string;
+      email?: string;
+      exp?: number;
+    };
+    if (!payload.sub) return null;
+
+    return {
+      id: payload.sub,
+      app_metadata: {},
+      user_metadata: { displayName: payload.email?.split('@')[0] ?? 'Dev User' },
+      aud: 'authenticated',
+      created_at: new Date(0).toISOString(),
+      email: payload.email ?? `${payload.sub}@dev.local`,
+    } as AuthenticatedUser;
+  } catch {
+    return null;
+  }
+}
+
 type UseUserState = {
   user: AuthenticatedUser | null;
   isLoading: boolean;
@@ -52,26 +84,27 @@ export function useUser(): UseUserState {
           return;
         }
 
+        const resolved = data.user ?? devJwtUser();
         setState({
-          user: data.user ?? null,
+          user: resolved,
           isLoading: false,
-          error: error ?? null,
+          error: data.user ? error ?? null : null,
           isOfflineFallback: false,
         });
-        if (data.user) {
-          setCachedJson(USER_CACHE_KEY, data.user);
+        if (resolved) {
+          setCachedJson(USER_CACHE_KEY, resolved);
         }
       } catch (error) {
         if (!active) {
           return;
         }
 
-        const cached = getCachedJson<AuthenticatedUser>(USER_CACHE_KEY);
+        const fallback = devJwtUser() ?? getCachedJson<AuthenticatedUser>(USER_CACHE_KEY);
         setState({
-          user: cached,
+          user: fallback,
           isLoading: false,
-          error: cached ? null : error instanceof Error ? error : new Error('Failed to load user.'),
-          isOfflineFallback: Boolean(cached),
+          error: fallback ? null : error instanceof Error ? error : new Error('Failed to load user.'),
+          isOfflineFallback: Boolean(fallback),
         });
       }
     };

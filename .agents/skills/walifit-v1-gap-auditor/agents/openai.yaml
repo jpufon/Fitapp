@@ -1,0 +1,7 @@
+interface:
+  display_name: "waliFit V1 Gap Auditor"
+  short_description: "Compare V1 spec against implemented app"
+  default_prompt: "Use $walifit-v1-gap-auditor to audit the whole app against docs/waliFit_V1_Features.md and produce a prioritized V1 gap matrix."
+
+policy:
+  allow_implicit_invocation: true
