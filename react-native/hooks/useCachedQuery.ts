@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   useQuery,
   type QueryKey,
@@ -24,21 +24,25 @@ export function useCachedQuery<TQueryFnData, TError = Error>({
 }: CachedQueryOptions<TQueryFnData, TError>): UseQueryResult<TQueryFnData, TError> & {
   isOfflineFallback: boolean;
 } {
-  const cached = getCachedJson<CachedPayload<TQueryFnData>>(cacheKey);
+  const initialPayload = useState(() =>
+    getCachedJson<CachedPayload<TQueryFnData>>(cacheKey),
+  )[0];
 
   const query = useQuery({
     ...options,
-    initialData: options.initialData ?? cached?.data,
-    initialDataUpdatedAt: options.initialDataUpdatedAt ?? cached?.updatedAt,
+    initialData: options.initialData ?? initialPayload?.data,
+    initialDataUpdatedAt: options.initialDataUpdatedAt ?? initialPayload?.updatedAt,
   });
 
+  const lastPersisted = useRef<TQueryFnData | undefined>(initialPayload?.data);
   useEffect(() => {
-    if (query.data !== undefined) {
-      setCachedJson<CachedPayload<TQueryFnData>>(cacheKey, {
-        data: query.data,
-        updatedAt: Date.now(),
-      });
-    }
+    if (query.data === undefined) return;
+    if (Object.is(query.data, lastPersisted.current)) return;
+    lastPersisted.current = query.data;
+    setCachedJson<CachedPayload<TQueryFnData>>(cacheKey, {
+      data: query.data,
+      updatedAt: Date.now(),
+    });
   }, [cacheKey, query.data]);
 
   return {

@@ -1,10 +1,19 @@
 import './global.css';
-import React, { useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useEffect } from 'react';
+import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import {
+  createNativeStackNavigator,
+  type NativeStackNavigationProp,
+} from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  Home as HomeIcon,
+  Dumbbell,
+  Calendar as CalendarIcon,
+  Trophy,
+  User as UserIcon,
+} from 'lucide-react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { colors } from './theme';
 import type { WorkoutSummary } from './lib/workouts';
@@ -56,11 +65,55 @@ export type RootStackParamList = {
   TreeDetail: undefined;
 };
 
+const TAB_ICONS: Record<string, React.ComponentType<{ size: number; color: string; strokeWidth?: number }>> = {
+  Home: HomeIcon,
+  Train: Dumbbell,
+  Calendar: CalendarIcon,
+  Arena: Trophy,
+  Profile: UserIcon,
+};
+
+type RootNav = NativeStackNavigationProp<RootStackParamList>;
+
+function AuthScreenWrapper() {
+  const navigation = useNavigation<RootNav>();
+  return <AuthScreen onAuthComplete={() => navigation.navigate('OnboardingFlow')} />;
+}
+
+function OnboardingFlowScreenWrapper() {
+  const navigation = useNavigation<RootNav>();
+  return (
+    <OnboardingFlowScreen
+      onComplete={() =>
+        navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] })
+      }
+    />
+  );
+}
+
+function FriendsScreenWrapper() {
+  const navigation = useNavigation<RootNav>();
+  return <FriendsScreen onBack={() => navigation.goBack()} />;
+}
+
+function BadgesScreenWrapper() {
+  const navigation = useNavigation<RootNav>();
+  return <BadgesScreen onBack={() => navigation.goBack()} />;
+}
+
+function TreeDetailScreenWrapper() {
+  const navigation = useNavigation<RootNav>();
+  return <TreeDetailScreen onClose={() => navigation.goBack()} />;
+}
+
 function MainTabs() {
   return (
     <Tab.Navigator
+      detachInactiveScreens
       screenOptions={({ route }) => ({
         headerShown: false,
+        lazy: true,
+        freezeOnBlur: true,
         tabBarStyle: {
           backgroundColor: colors.card + 'CC',
           borderTopColor: colors.border + '80',
@@ -78,23 +131,8 @@ function MainTabs() {
           letterSpacing: 0.5,
         },
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName: keyof typeof Ionicons.glyphMap;
-
-          if (route.name === 'Home') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Train') {
-            iconName = focused ? 'barbell' : 'barbell-outline';
-          } else if (route.name === 'Calendar') {
-            iconName = focused ? 'calendar' : 'calendar-outline';
-          } else if (route.name === 'Arena') {
-            iconName = focused ? 'trophy' : 'trophy-outline';
-          } else if (route.name === 'Profile') {
-            iconName = focused ? 'person' : 'person-outline';
-          } else {
-            iconName = 'home-outline';
-          }
-
-          return <Ionicons name={iconName} size={size} color={color} />;
+          const Icon = TAB_ICONS[route.name] ?? HomeIcon;
+          return <Icon size={size} color={color} strokeWidth={focused ? 2.25 : 1.75} />;
         },
       })}
     >
@@ -108,8 +146,6 @@ function MainTabs() {
 }
 
 export default function App() {
-  const [onboardingComplete, setOnboardingComplete] = useState(false);
-
   useEffect(() => {
     configureQueryClient();
   }, []);
@@ -121,71 +157,32 @@ export default function App() {
       <StatusBar style="light" />
       <QueryClientProvider client={queryClient}>
         <NavigationContainer>
-          <Stack.Navigator initialRouteName="Dev">
-            <Stack.Screen
-              name="Auth"
-              options={{ headerShown: false }}
-            >
-              {({ navigation }) => (
-                <AuthScreen
-                  onAuthComplete={() => navigation.navigate('OnboardingFlow')}
-                />
-              )}
-            </Stack.Screen>
-            <Stack.Screen
-              name="OnboardingFlow"
-              options={{ headerShown: false }}
-            >
-              {({ navigation }) => (
-                <OnboardingFlowScreen
-                  onComplete={() => {
-                    setOnboardingComplete(true);
-                    navigation.reset({
-                      index: 0,
-                      routes: [{ name: 'MainTabs' }],
-                    });
-                  }}
-                />
-              )}
-            </Stack.Screen>
-            <Stack.Screen
-              name="MainTabs"
-              component={MainTabs}
-              options={{ headerShown: false }}
-            />
+          <Stack.Navigator initialRouteName="Dev" screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="Auth" component={AuthScreenWrapper} />
+            <Stack.Screen name="OnboardingFlow" component={OnboardingFlowScreenWrapper} />
+            <Stack.Screen name="MainTabs" component={MainTabs} />
             <Stack.Screen
               name="ActiveWorkout"
               component={ActiveWorkoutScreen}
               options={{
-                headerShown: false,
                 presentation: 'fullScreenModal',
                 gestureEnabled: false,
               }}
             />
-            <Stack.Screen
-              name="Settings"
-              component={SettingsScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen name="WaliAI" component={ProfileDestinationScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Analytics" component={ProfileDestinationScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Notifications" component={ProfileDestinationScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="AccountSettings" component={ProfileDestinationScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="PrivacyLegal" component={ProfileDestinationScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Dev" component={DevScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="WorkoutComplete" component={WorkoutCompleteScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="NutritionLog" component={NutritionLogScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Coach" component={CoachScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="WaliRun" component={WaliRunScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Friends" options={{ headerShown: false }}>
-              {({ navigation }) => <FriendsScreen onBack={() => navigation.goBack()} />}
-            </Stack.Screen>
-            <Stack.Screen name="Badges" options={{ headerShown: false }}>
-              {({ navigation }) => <BadgesScreen onBack={() => navigation.goBack()} />}
-            </Stack.Screen>
-            <Stack.Screen name="TreeDetail" options={{ headerShown: false }}>
-              {({ navigation }) => <TreeDetailScreen onClose={() => navigation.goBack()} />}
-            </Stack.Screen>
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="WaliAI" component={ProfileDestinationScreen} />
+            <Stack.Screen name="Analytics" component={ProfileDestinationScreen} />
+            <Stack.Screen name="Notifications" component={ProfileDestinationScreen} />
+            <Stack.Screen name="AccountSettings" component={ProfileDestinationScreen} />
+            <Stack.Screen name="PrivacyLegal" component={ProfileDestinationScreen} />
+            <Stack.Screen name="Dev" component={DevScreen} />
+            <Stack.Screen name="WorkoutComplete" component={WorkoutCompleteScreen} />
+            <Stack.Screen name="NutritionLog" component={NutritionLogScreen} />
+            <Stack.Screen name="Coach" component={CoachScreen} />
+            <Stack.Screen name="WaliRun" component={WaliRunScreen} />
+            <Stack.Screen name="Friends" component={FriendsScreenWrapper} />
+            <Stack.Screen name="Badges" component={BadgesScreenWrapper} />
+            <Stack.Screen name="TreeDetail" component={TreeDetailScreenWrapper} />
           </Stack.Navigator>
         </NavigationContainer>
       </QueryClientProvider>

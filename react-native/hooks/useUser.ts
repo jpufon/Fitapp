@@ -24,13 +24,12 @@ type UseUserState = {
 };
 
 export function useUser(): UseUserState {
-  const cachedUser = getCachedJson<AuthenticatedUser>(USER_CACHE_KEY);
-  const [state, setState] = useState<UseUserState>({
-    user: cachedUser,
+  const [state, setState] = useState<UseUserState>(() => ({
+    user: getCachedJson<AuthenticatedUser>(USER_CACHE_KEY),
     isLoading: true,
     error: null,
     isOfflineFallback: false,
-  });
+  }));
 
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase) {

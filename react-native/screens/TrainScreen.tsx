@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -24,113 +24,64 @@ import {
   generateProgram,
   type WorkoutSummary,
 } from '../lib/workouts';
-import { getCachedJson, setCachedJson } from '../lib/storage';
+import { useCachedQuery } from '../hooks/useCachedQuery';
 
 type TrainTab = 'start' | 'history';
 type DataState = 'loading' | 'success' | 'empty' | 'error';
 
-type CachedWorkouts = {
-  savedAt: string;
-  items: WorkoutSummary[];
-};
-
-const TODAY_CACHE_KEY = 'train.today';
-const HISTORY_CACHE_KEY = 'train.history';
+function deriveState(
+  isLoading: boolean,
+  isError: boolean,
+  items: WorkoutSummary[] | undefined,
+): DataState {
+  if (isLoading && !items) return 'loading';
+  if (isError && !items) return 'error';
+  if (!items || items.length === 0) return 'empty';
+  return 'success';
+}
 
 export default function TrainScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [activeTab, setActiveTab] = useState<TrainTab>('start');
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const [todayState, setTodayState] = useState<DataState>('loading');
-  const [todayError, setTodayError] = useState<string | null>(null);
-  const [todayItems, setTodayItems] = useState<WorkoutSummary[]>([]);
-  const [todayCachedAt, setTodayCachedAt] = useState<string | null>(null);
+  const todayQuery = useCachedQuery<WorkoutSummary[]>({
+    queryKey: ['train', 'today'],
+    cacheKey: 'query.train.today',
+    queryFn: fetchTodaysPlan,
+  });
 
-  const [historyState, setHistoryState] = useState<DataState>('loading');
-  const [historyError, setHistoryError] = useState<string | null>(null);
-  const [historyItems, setHistoryItems] = useState<WorkoutSummary[]>([]);
-  const [historyCachedAt, setHistoryCachedAt] = useState<string | null>(null);
+  const historyQuery = useCachedQuery<WorkoutSummary[]>({
+    queryKey: ['train', 'history', 20],
+    cacheKey: 'query.train.history.20',
+    queryFn: () => fetchWorkoutHistory(20),
+  });
 
-  const loadToday = useCallback(async () => {
-    setTodayState('loading');
-    setTodayError(null);
+  const todayItems = todayQuery.data ?? [];
+  const historyItems = historyQuery.data ?? [];
 
-    try {
-      const items = await fetchTodaysPlan();
-      const savedAt = new Date().toISOString();
-      setTodayItems(items);
-      setTodayCachedAt(savedAt);
-      setCachedJson<CachedWorkouts>(TODAY_CACHE_KEY, { items, savedAt });
-      setTodayState(items.length > 0 ? 'success' : 'empty');
-    } catch (error) {
-      const cached = getCachedJson<CachedWorkouts>(TODAY_CACHE_KEY);
-      if (cached) {
-        setTodayItems(cached.items);
-        setTodayCachedAt(cached.savedAt);
-        setTodayState(cached.items.length > 0 ? 'success' : 'empty');
-        setTodayError(error instanceof Error ? error.message : 'Unable to load today\'s plan.');
-        return;
-      }
+  const todayState = deriveState(todayQuery.isLoading, todayQuery.isError, todayQuery.data);
+  const historyState = deriveState(
+    historyQuery.isLoading,
+    historyQuery.isError,
+    historyQuery.data,
+  );
 
-      setTodayItems([]);
-      setTodayState('error');
-      setTodayError(error instanceof Error ? error.message : 'Unable to load today\'s plan.');
-    }
-  }, []);
+  const todayError = todayQuery.error instanceof Error ? todayQuery.error.message : null;
+  const historyError = historyQuery.error instanceof Error ? historyQuery.error.message : null;
 
-  const loadHistory = useCallback(async () => {
-    setHistoryState('loading');
-    setHistoryError(null);
-
-    try {
-      const items = await fetchWorkoutHistory(20);
-      const savedAt = new Date().toISOString();
-      setHistoryItems(items);
-      setHistoryCachedAt(savedAt);
-      setCachedJson<CachedWorkouts>(HISTORY_CACHE_KEY, { items, savedAt });
-      setHistoryState(items.length > 0 ? 'success' : 'empty');
-    } catch (error) {
-      const cached = getCachedJson<CachedWorkouts>(HISTORY_CACHE_KEY);
-      if (cached) {
-        setHistoryItems(cached.items);
-        setHistoryCachedAt(cached.savedAt);
-        setHistoryState(cached.items.length > 0 ? 'success' : 'empty');
-        setHistoryError(error instanceof Error ? error.message : 'Unable to load workout history.');
-        return;
-      }
-
-      setHistoryItems([]);
-      setHistoryState('error');
-      setHistoryError(error instanceof Error ? error.message : 'Unable to load workout history.');
-    }
-  }, []);
-
-  const loadAll = useCallback(async () => {
-    await Promise.all([loadToday(), loadHistory()]);
-  }, [loadHistory, loadToday]);
-
-  useEffect(() => {
-    void loadAll();
-  }, [loadAll]);
+  const isRefreshing = todayQuery.isRefetching || historyQuery.isRefetching;
 
   const handleRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      await loadAll();
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [loadAll]);
+    await Promise.all([todayQuery.refetch(), historyQuery.refetch()]);
+  }, [historyQuery, todayQuery]);
 
   const handleGeneratePlan = useCallback(async () => {
     setIsGenerating(true);
-
     try {
       await generateProgram();
       Alert.alert('Plan generated', 'Your training plan has been refreshed.');
-      await loadToday();
+      await todayQuery.refetch();
     } catch (error) {
       Alert.alert(
         'Unable to generate plan',
@@ -139,19 +90,25 @@ export default function TrainScreen() {
     } finally {
       setIsGenerating(false);
     }
-  }, [loadToday]);
+  }, [todayQuery]);
 
   const offlineBanner = useMemo(() => {
-    if (activeTab === 'start' && todayError && todayCachedAt) {
-      return `Offline cache from ${formatCachedAt(todayCachedAt)}`;
+    if (activeTab === 'start' && todayQuery.isOfflineFallback && todayQuery.dataUpdatedAt) {
+      return `Offline cache from ${formatCachedAt(todayQuery.dataUpdatedAt)}`;
     }
 
-    if (activeTab === 'history' && historyError && historyCachedAt) {
-      return `Offline cache from ${formatCachedAt(historyCachedAt)}`;
+    if (activeTab === 'history' && historyQuery.isOfflineFallback && historyQuery.dataUpdatedAt) {
+      return `Offline cache from ${formatCachedAt(historyQuery.dataUpdatedAt)}`;
     }
 
     return null;
-  }, [activeTab, historyCachedAt, historyError, todayCachedAt, todayError]);
+  }, [
+    activeTab,
+    historyQuery.dataUpdatedAt,
+    historyQuery.isOfflineFallback,
+    todayQuery.dataUpdatedAt,
+    todayQuery.isOfflineFallback,
+  ]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -201,7 +158,7 @@ export default function TrainScreen() {
             items={todayItems}
             isGenerating={isGenerating}
             onGenerate={handleGeneratePlan}
-            onRetry={loadToday}
+            onRetry={() => { void todayQuery.refetch(); }}
             onStartWorkout={(workout) => navigation.navigate('ActiveWorkout', { workout })}
           />
         ) : (
@@ -209,7 +166,7 @@ export default function TrainScreen() {
             state={historyState}
             error={historyError}
             items={historyItems}
-            onRetry={loadHistory}
+            onRetry={() => { void historyQuery.refetch(); }}
           />
         )}
       </ScrollView>
@@ -467,7 +424,7 @@ function formatHistoryDate(value?: string | null): string {
   });
 }
 
-function formatCachedAt(value: string): string {
+function formatCachedAt(value: number): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return 'recently';

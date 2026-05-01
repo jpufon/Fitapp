@@ -1,8 +1,8 @@
-// Home data hooks — backed by a single GET /home call, sliced for each consumer.
-// useTodaySteps still drives off Pedometer for instant local feedback; server
+// Home data hooks — backed by a single GET /home call (HomeScreen derives slices
+// inline). useTodaySteps drives off Pedometer for instant local feedback; server
 // stepsCount syncing is wired in mutation hooks (useLogNutrition).
 
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { Pedometer } from 'expo-sensors';
 import { useCachedQuery } from './useCachedQuery';
@@ -84,91 +84,65 @@ export function useHomeSnapshot() {
   });
 }
 
-// ─── Sliced hooks — share the underlying /home query via queryKey ──────────
-
-function pct(value01: number): number {
-  return Math.round(Math.max(0, Math.min(1, value01)) * 100);
-}
-
-function sliceNutrition(snap: HomeSnapshot): NutritionSummary {
-  return {
-    protein: {
-      current: snap.pillars.protein.current,
-      target: snap.pillars.protein.target,
-      progress: pct(snap.pillars.protein.progress),
-    },
-    hydration: {
-      current: snap.pillars.hydration.current,
-      target: snap.pillars.hydration.target,
-      progress: pct(snap.pillars.hydration.progress),
-    },
-  };
-}
-
-function sliceVitality(snap: HomeSnapshot): VitalitySummary {
-  return {
-    streak: snap.vitality.streak,
-    score: pct(snap.vitality.score),
-  };
-}
-
-function sliceWorkout(snap: HomeSnapshot): WorkoutSummary | null {
-  if (!snap.workout) return null;
-  return {
-    id: snap.workout.id,
-    name: snap.workout.name,
-    type: snap.workout.type,
-    exerciseCount: 0, // /home doesn't include sets — caller can hit /workouts/:id for detail
-    durationMinutes: 0,
-    completedAt: snap.workout.finishedAt,
-  };
-}
-
-export function useNutritionToday() {
-  const q = useHomeSnapshot();
-  return useMemo(
-    () => ({
-      ...q,
-      data: q.data ? sliceNutrition(q.data) : undefined,
-    }),
-    [q],
-  );
-}
-
-export function useVitalityCurrent() {
-  const q = useHomeSnapshot();
-  return useMemo(
-    () => ({
-      ...q,
-      data: q.data ? sliceVitality(q.data) : undefined,
-    }),
-    [q],
-  );
-}
-
-export function useTodayWorkout() {
-  const q = useHomeSnapshot();
-  return useMemo(
-    () => ({
-      ...q,
-      data: q.data ? sliceWorkout(q.data) : undefined,
-    }),
-    [q],
-  );
-}
-
 // ─── Steps: device-side via Pedometer ──────────────────────────────────────
+
+const PED_GATE_KEY = 'pedometer.gate';
+const PED_GATE_TTL_MS = 24 * 60 * 60 * 1000;
+
+type PedometerGate = {
+  available: boolean;
+  granted: boolean;
+  checkedAt: number;
+};
+
+let inflightGate: Promise<PedometerGate> | null = null;
+
+async function ensurePedometerGate(): Promise<PedometerGate> {
+  const cached = getCachedJson<PedometerGate>(PED_GATE_KEY);
+  if (
+    cached &&
+    cached.available &&
+    cached.granted &&
+    Date.now() - cached.checkedAt < PED_GATE_TTL_MS
+  ) {
+    return cached;
+  }
+
+  if (inflightGate) return inflightGate;
+
+  inflightGate = (async () => {
+    const available = await Pedometer.isAvailableAsync();
+    if (!available) {
+      const gate: PedometerGate = { available: false, granted: false, checkedAt: Date.now() };
+      setCachedJson(PED_GATE_KEY, gate);
+      return gate;
+    }
+
+    const existing = await Pedometer.getPermissionsAsync();
+    const result = existing.granted ? existing : await Pedometer.requestPermissionsAsync();
+    const gate: PedometerGate = {
+      available: true,
+      granted: result.granted,
+      checkedAt: Date.now(),
+    };
+    setCachedJson(PED_GATE_KEY, gate);
+    return gate;
+  })();
+
+  try {
+    return await inflightGate;
+  } finally {
+    inflightGate = null;
+  }
+}
 
 async function fetchTodaySteps(): Promise<StepsSummary> {
   const target = 10_000;
-  const available = await Pedometer.isAvailableAsync();
-  if (!available) {
+  const gate = await ensurePedometerGate();
+  if (!gate.available) {
     throw new Error('Step tracking is not available on this device.');
   }
-
-  const permission = await Pedometer.getPermissionsAsync();
-  const granted = permission.granted ? permission : await Pedometer.requestPermissionsAsync();
-  if (!granted.granted) {
+  if (!gate.granted) {
     throw new Error('Motion permission is required to read today’s steps.');
   }
 

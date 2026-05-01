@@ -20,31 +20,61 @@ import { colors, spacing, borderRadius, typography } from '../theme';
 import VitalityTree from '../components/VitalityTree';
 import type { RootStackParamList } from '../App';
 import { useUser } from '../hooks/useUser';
-import {
-  useNutritionToday,
-  useTodaySteps,
-  useTodayWorkout,
-  useVitalityCurrent,
-} from '../hooks/useHomeData';
+import { useHomeSnapshot, useTodaySteps } from '../hooks/useHomeData';
 
 type ScreenState = 'loading' | 'success' | 'empty' | 'error';
 
 export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const userQuery = useUser();
-  const nutritionQuery = useNutritionToday();
+  const homeQuery = useHomeSnapshot();
   const stepsQuery = useTodaySteps();
-  const workoutQuery = useTodayWorkout();
-  const vitalityQuery = useVitalityCurrent();
+
+  const snap = homeQuery.data;
+  const nutrition = useMemo(() => {
+    if (!snap) {
+      return {
+        protein: { current: 0, target: 150, progress: 0 },
+        hydration: { current: 0, target: 3000, progress: 0 },
+      };
+    }
+    const pct = (v: number) => Math.round(Math.max(0, Math.min(1, v)) * 100);
+    return {
+      protein: {
+        current: snap.pillars.protein.current,
+        target: snap.pillars.protein.target,
+        progress: pct(snap.pillars.protein.progress),
+      },
+      hydration: {
+        current: snap.pillars.hydration.current,
+        target: snap.pillars.hydration.target,
+        progress: pct(snap.pillars.hydration.progress),
+      },
+    };
+  }, [snap]);
+
+  const vitality = useMemo(() => {
+    if (!snap) return { streak: 0, score: 0 };
+    return {
+      streak: snap.vitality.streak,
+      score: Math.round(Math.max(0, Math.min(1, snap.vitality.score)) * 100),
+    };
+  }, [snap]);
+
+  const workout = useMemo(() => {
+    if (!snap?.workout) return null;
+    return {
+      id: snap.workout.id,
+      name: snap.workout.name,
+      type: snap.workout.type,
+      exerciseCount: 0,
+      durationMinutes: 0,
+      completedAt: snap.workout.finishedAt,
+    };
+  }, [snap]);
 
   const state = useMemo<ScreenState>(() => {
-    if (
-      userQuery.isLoading ||
-      nutritionQuery.isLoading ||
-      stepsQuery.isLoading ||
-      workoutQuery.isLoading ||
-      vitalityQuery.isLoading
-    ) {
+    if (userQuery.isLoading || homeQuery.isLoading || stepsQuery.isLoading) {
       return 'loading';
     }
 
@@ -53,10 +83,8 @@ export default function HomeScreen() {
     }
 
     const hasCriticalError =
-      (nutritionQuery.isError && !nutritionQuery.data) ||
-      (stepsQuery.isError && !stepsQuery.data) ||
-      (workoutQuery.isError && !workoutQuery.data) ||
-      (vitalityQuery.isError && !vitalityQuery.data);
+      (homeQuery.isError && !homeQuery.data) ||
+      (stepsQuery.isError && !stepsQuery.data);
 
     if (hasCriticalError) {
       return 'error';
@@ -64,37 +92,21 @@ export default function HomeScreen() {
 
     return 'success';
   }, [
-    nutritionQuery.data,
-    nutritionQuery.isError,
-    nutritionQuery.isLoading,
+    homeQuery.data,
+    homeQuery.isError,
+    homeQuery.isLoading,
     stepsQuery.data,
     stepsQuery.isError,
     stepsQuery.isLoading,
     userQuery.error,
     userQuery.isLoading,
     userQuery.user,
-    vitalityQuery.data,
-    vitalityQuery.isError,
-    vitalityQuery.isLoading,
-    workoutQuery.data,
-    workoutQuery.isError,
-    workoutQuery.isLoading,
   ]);
 
   const offlineBanner = useMemo(() => {
-    const usingCache =
-      nutritionQuery.isOfflineFallback ||
-      stepsQuery.isOfflineFallback ||
-      workoutQuery.isOfflineFallback ||
-      vitalityQuery.isOfflineFallback;
-
+    const usingCache = homeQuery.isOfflineFallback || stepsQuery.isOfflineFallback;
     return usingCache ? 'Showing cached data while the app reconnects.' : null;
-  }, [
-    nutritionQuery.isOfflineFallback,
-    stepsQuery.isOfflineFallback,
-    vitalityQuery.isOfflineFallback,
-    workoutQuery.isOfflineFallback,
-  ]);
+  }, [homeQuery.isOfflineFallback, stepsQuery.isOfflineFallback]);
 
   const displayName = useMemo(() => {
     const user = userQuery.user;
@@ -115,13 +127,7 @@ export default function HomeScreen() {
     return 'Athlete';
   }, [userQuery.user]);
 
-  const nutrition = nutritionQuery.data ?? {
-    protein: { current: 0, target: 150, progress: 0 },
-    hydration: { current: 0, target: 3000, progress: 0 },
-  };
   const steps = stepsQuery.data ?? { steps: 0, target: 10000, progress: 0 };
-  const workout = workoutQuery.data;
-  const vitality = vitalityQuery.data ?? { streak: 0, score: 0 };
 
   const vitalityScore = vitality.score > 0
     ? vitality.score
@@ -132,12 +138,7 @@ export default function HomeScreen() {
       );
 
   const handleRefresh = async () => {
-    await Promise.all([
-      nutritionQuery.refetch(),
-      stepsQuery.refetch(),
-      workoutQuery.refetch(),
-      vitalityQuery.refetch(),
-    ]);
+    await Promise.all([homeQuery.refetch(), stepsQuery.refetch()]);
   };
 
   const handleRetry = () => {
@@ -176,12 +177,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={
-              nutritionQuery.isRefetching ||
-              stepsQuery.isRefetching ||
-              workoutQuery.isRefetching ||
-              vitalityQuery.isRefetching
-            }
+            refreshing={homeQuery.isRefetching || stepsQuery.isRefetching}
             onRefresh={handleRefresh}
             tintColor={colors.primary}
           />
@@ -211,10 +207,8 @@ export default function HomeScreen() {
             title="Couldn’t load your dashboard"
             message={
               userQuery.error?.message ??
-              nutritionQuery.error?.message ??
+              homeQuery.error?.message ??
               stepsQuery.error?.message ??
-              workoutQuery.error?.message ??
-              vitalityQuery.error?.message ??
               'Please try again.'
             }
             actionLabel="Retry"
