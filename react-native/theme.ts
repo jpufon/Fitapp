@@ -1,10 +1,10 @@
 // waliFit theme tokens — spacing, radius, typography, touch targets.
 // Color palette is sourced from theme.colors.js so Tailwind and TS share one truth.
-// Spec: docs/waliFit_Design_Tokens.md (v2.1 teal palette)
+// Spec: docs/waliFit_Design_Tokens.md (v3.0 production fitness palette)
 
-import { colors, pillarColors } from './theme.colors';
+import { colors, gradients, pillarColors } from './theme.colors';
 
-export { colors, pillarColors };
+export { colors, gradients, pillarColors };
 
 export const spacing = {
   xs: 4,
