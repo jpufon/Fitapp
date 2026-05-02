@@ -7,6 +7,7 @@ import {
 import { requireAuth } from '../lib/auth.js';
 import { prisma } from '../lib/prisma.js';
 import { detectPRs } from '../lib/pr.js';
+import { recordWorkoutFeedItems } from '../lib/feed.js';
 
 export async function workoutRoutes(app: FastifyInstance) {
   // ── POST /workouts — start a session ────────────────────────────────────
@@ -107,6 +108,28 @@ export async function workoutRoutes(app: FastifyInstance) {
         return { workout, newPRs };
       });
 
+      const totalVolumeKg = result.workout.sets.reduce((sum, set) => {
+        if (set.weightKg == null) return sum;
+        return sum + set.weightKg * set.reps;
+      }, 0);
+
+      await recordWorkoutFeedItems(
+        {
+          userId: request.user!.id,
+          workoutId: result.workout.id,
+          workoutName: result.workout.name,
+          workoutType: result.workout.type,
+          isRun: result.workout.type === 'run',
+          runDistanceM: result.workout.runDistanceM,
+          runDurationS: result.workout.runDurationS,
+          startedAt: result.workout.startedAt,
+          finishedAt: result.workout.finishedAt,
+          setCount: result.workout.sets.length,
+          totalVolumeKg,
+        },
+        result.newPRs,
+      );
+
       return reply.send(result);
     },
   );
@@ -127,4 +150,37 @@ export async function workoutRoutes(app: FastifyInstance) {
 
     return reply.send({ workout });
   });
+
+  // ── GET /workouts?limit=N — recent finished sessions for history view ───
+  app.get<{ Querystring: { limit?: string } }>(
+    '/workouts',
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      const raw = Number(request.query.limit ?? 20);
+      const limit = Number.isFinite(raw) ? Math.max(1, Math.min(100, Math.floor(raw))) : 20;
+
+      const rows = await prisma.workoutLog.findMany({
+        where: { userId: request.user!.id, finishedAt: { not: null } },
+        orderBy: { finishedAt: 'desc' },
+        take: limit,
+        include: { _count: { select: { sets: true } } },
+      });
+
+      const workouts = rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        type: row.type,
+        startedAt: row.startedAt.toISOString(),
+        finishedAt: row.finishedAt?.toISOString() ?? null,
+        completedAt: row.finishedAt?.toISOString() ?? null,
+        durationSec:
+          row.finishedAt
+            ? Math.max(0, Math.round((row.finishedAt.getTime() - row.startedAt.getTime()) / 1000))
+            : 0,
+        exerciseCount: row._count.sets,
+      }));
+
+      return reply.send({ workouts });
+    },
+  );
 }

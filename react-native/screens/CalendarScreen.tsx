@@ -11,6 +11,7 @@ import {
   ChevronLeft, ChevronRight, CloudOff, Calendar,
   AlertCircle, CheckCircle, Circle, X,
 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import {
   addDaysLocal,
@@ -27,6 +28,7 @@ type ViewMode = 'day' | 'week' | 'month';
 type ScreenState = 'loading' | 'success' | 'empty' | 'error';
 
 export default function CalendarScreen() {
+  const insets = useSafeAreaInsets();
   const [view, setView] = useState<ViewMode>('week');
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(() => formatLocalDate(new Date()));
@@ -120,7 +122,7 @@ export default function CalendarScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <View style={styles.headerTop}>
           <Text style={styles.title}>Calendar</Text>
         </View>

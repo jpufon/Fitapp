@@ -13,6 +13,7 @@ import {
   Trophy, Users, TrendingUp, Flame, MessageCircle, Sparkles,
   AlertCircle, Plus, Medal, CloudOff, Award, Dumbbell,
 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import {
   useArenaFeed,
@@ -28,6 +29,7 @@ type ArenaTab = 'feed' | 'squads' | 'leaderboard';
 type TabState = 'loading' | 'success' | 'empty' | 'error';
 
 export default function ArenaScreen() {
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<ArenaTab>('feed');
 
   const feedQuery = useArenaFeed();
@@ -88,7 +90,7 @@ export default function ArenaScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <Text style={styles.title}>The Arena</Text>
         <Text style={styles.subtitle}>Compete and connect</Text>
       </View>

@@ -14,6 +14,7 @@ import {
   Sparkles, TrendingUp, Bell, User, Shield,
   Settings, CloudOff, ChevronRight, LogOut, AlertCircle,
 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import type { RootStackParamList } from '../App';
 import { useUser } from '../hooks/useUser';
@@ -71,6 +72,7 @@ const SETTINGS_ITEMS: Array<{
 
 export default function ProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const insets = useSafeAreaInsets();
   const userQuery = useUser();
   const statsQuery = useProfileStats();
 
@@ -161,7 +163,7 @@ export default function ProfileScreen() {
     <View style={styles.container}>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + spacing.md }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl

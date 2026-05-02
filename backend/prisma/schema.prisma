@@ -95,13 +95,17 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  vitalityState VitalityState?
-  userMemory    UserMemory?
-  workouts      WorkoutLog[]
-  dailyScores   DailyScore[]
-  prs           PRRecord[]
-  nutritionLogs SimpleNutritionLog[]
-  userBadges    UserBadge[]
+  vitalityState     VitalityState?
+  userMemory        UserMemory?
+  workouts          WorkoutLog[]
+  dailyScores       DailyScore[]
+  prs               PRRecord[]
+  nutritionLogs     SimpleNutritionLog[]
+  userBadges        UserBadge[]
+  squadsOwned       Squad[]              @relation("SquadOwner")
+  squadMemberships  SquadMember[]
+  feedItems         FeedItem[]
+  feedReactions     FeedReaction[]
 
   @@map("users")
 }
@@ -353,4 +357,77 @@ model UserBadge {
   @@unique([userId, badgeId])
   @@index([userId])
   @@map("user_badges")
+}
+
+// ─── Arena (V1.x scaffold) ─────────────────────────────────────────────────
+// Squad = small group (≤30) competing on a shared leaderboard. FeedItem =
+// activity event surfaced in The Arena. Reactions are one-per-user-per-type.
+// Owner-only delete; members can leave any time. Invite by code.
+
+model Squad {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String
+  type       String   @default("workout") // "workout" | "run"
+  ownerId    String   @db.Uuid
+  inviteCode String   @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  owner     User          @relation("SquadOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members   SquadMember[]
+  feedItems FeedItem[]
+
+  @@map("squads")
+}
+
+model SquadMember {
+  id       String   @id @default(uuid()) @db.Uuid
+  squadId  String   @db.Uuid
+  userId   String   @db.Uuid
+  joinedAt DateTime @default(now())
+
+  squad Squad @relation(fields: [squadId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([squadId, userId])
+  @@index([userId])
+  @@map("squad_members")
+}
+
+model FeedItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  squadId   String?  @db.Uuid
+
+  // "strength_pr" | "run_pr" | "workout_complete" | "streak_milestone"
+  eventType String
+  exercise  String?
+  value     String?
+  delta     String?
+  isRun     Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  squad     Squad?         @relation(fields: [squadId], references: [id], onDelete: SetNull)
+  reactions FeedReaction[]
+
+  @@index([squadId, createdAt])
+  @@index([userId, createdAt])
+  @@map("feed_items")
+}
+
+model FeedReaction {
+  id         String   @id @default(uuid()) @db.Uuid
+  feedItemId String   @db.Uuid
+  userId     String   @db.Uuid
+  type       String   @default("flame")
+  createdAt  DateTime @default(now())
+
+  feedItem FeedItem @relation(fields: [feedItemId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([feedItemId, userId, type])
+  @@index([userId])
+  @@map("feed_reactions")
 }

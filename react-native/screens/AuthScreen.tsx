@@ -3,15 +3,17 @@
 // Auth via Supabase: Email + Apple Sign In + Google Sign In
 // Apple Sign In is MANDATORY when Google is offered (App Store rule)
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity,
-  ScrollView, KeyboardAvoidingView, Platform, StyleSheet,
+  ScrollView, KeyboardAvoidingView, Platform, StyleSheet, Linking,
 } from 'react-native'
 import { Eye, EyeOff, Apple, Mail, ArrowLeft, ChevronRight } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
+import { hasSupabaseConfig, supabase } from '../utils/supabase'
 
 type AuthView = 'welcome' | 'signup' | 'login' | 'forgot'
+type OAuthProvider = 'apple' | 'google'
 
 interface AuthScreenProps {
   onAuthComplete: () => void
@@ -19,15 +21,148 @@ interface AuthScreenProps {
 
 export default function AuthScreen({ onAuthComplete }: AuthScreenProps) {
   const [view, setView] = useState<AuthView>('welcome')
+  const [loading, setLoading] = useState<string | null>(null)
+  const [authError, setAuthError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const handleUrl = async ({ url }: { url: string }) => {
+      const code = readParam(url, 'code')
+      if (!code || !supabase) return
+
+      setLoading('oauth')
+      setAuthError(null)
+      const { error } = await supabase.auth.exchangeCodeForSession(code)
+      setLoading(null)
+      if (error) {
+        setAuthError(error.message)
+        return
+      }
+      onAuthComplete()
+    }
+
+    const sub = Linking.addEventListener('url', handleUrl)
+    void Linking.getInitialURL().then((url) => {
+      if (url) void handleUrl({ url })
+    })
+
+    return () => sub.remove()
+  }, [onAuthComplete])
+
+  const requireClient = () => {
+    if (!hasSupabaseConfig || !supabase) {
+      setAuthError('Supabase is not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY.')
+      return null
+    }
+    return supabase
+  }
+
+  const signUp = async (email: string, password: string, username: string) => {
+    const client = requireClient()
+    if (!client) return
+
+    setLoading('signup')
+    setAuthError(null)
+    const { error } = await client.auth.signUp({
+      email: email.trim(),
+      password,
+      options: {
+        data: { username: username.trim() },
+      },
+    })
+    setLoading(null)
+    if (error) {
+      setAuthError(error.message)
+      return
+    }
+    onAuthComplete()
+  }
+
+  const signIn = async (email: string, password: string) => {
+    const client = requireClient()
+    if (!client) return
+
+    setLoading('login')
+    setAuthError(null)
+    const { error } = await client.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    })
+    setLoading(null)
+    if (error) {
+      setAuthError(error.message)
+      return
+    }
+    onAuthComplete()
+  }
+
+  const sendPasswordReset = async (email: string): Promise<boolean> => {
+    const client = requireClient()
+    if (!client) return false
+
+    setLoading('forgot')
+    setAuthError(null)
+    const { error } = await client.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: 'walifit://auth/callback',
+    })
+    setLoading(null)
+    if (error) {
+      setAuthError(error.message)
+      return false
+    }
+    setAuthError('Password reset email sent.')
+    return true
+  }
+
+  const startOAuth = async (provider: OAuthProvider) => {
+    const client = requireClient()
+    if (!client) return
+
+    setLoading(provider)
+    setAuthError(null)
+    const { data, error } = await client.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: 'walifit://auth/callback',
+        skipBrowserRedirect: true,
+      },
+    })
+    if (error || !data.url) {
+      setLoading(null)
+      setAuthError(error?.message ?? `Unable to start ${provider} sign-in.`)
+      return
+    }
+
+    try {
+      await Linking.openURL(data.url)
+    } catch {
+      setLoading(null)
+      setAuthError(`Unable to open ${provider} sign-in.`)
+    }
+  }
 
   return (
     <View style={styles.container}>
       {view === 'welcome'  && <WelcomeView onGetStarted={() => setView('signup')} onLogin={() => setView('login')} />}
-      {view === 'signup'   && <SignUpView onBack={() => setView('welcome')} onSuccess={onAuthComplete} onLogin={() => setView('login')} />}
-      {view === 'login'    && <LoginView onBack={() => setView('welcome')} onSuccess={onAuthComplete} onForgot={() => setView('forgot')} onSignUp={() => setView('signup')} />}
-      {view === 'forgot'   && <ForgotView onBack={() => setView('login')} />}
+      {view === 'signup'   && <SignUpView onBack={() => setView('welcome')} onSubmit={signUp} onOAuth={startOAuth} onLogin={() => setView('login')} loading={loading} error={authError} />}
+      {view === 'login'    && <LoginView onBack={() => setView('welcome')} onSubmit={signIn} onOAuth={startOAuth} onForgot={() => setView('forgot')} onSignUp={() => setView('signup')} loading={loading} error={authError} />}
+      {view === 'forgot'   && <ForgotView onBack={() => setView('login')} onSubmit={sendPasswordReset} loading={loading} message={authError} />}
     </View>
   )
+}
+
+function readParam(url: string, name: string): string | null {
+  const [, queryAndHash = ''] = url.split('?')
+  const [query = '', hashFromQuery = ''] = queryAndHash.split('#')
+  const hash = hashFromQuery || url.split('#')[1] || ''
+  const search = [query, hash].filter(Boolean).join('&')
+
+  for (const part of search.split('&')) {
+    const [key, value] = part.split('=')
+    if (decodeURIComponent(key ?? '') === name) {
+      return decodeURIComponent(value ?? '')
+    }
+  }
+  return null
 }
 
 // ─── Welcome ──────────────────────────────────────────────────────────────────
@@ -59,14 +194,13 @@ function WelcomeView({ onGetStarted, onLogin }: { onGetStarted: () => void; onLo
 
 // ─── Sign Up ──────────────────────────────────────────────────────────────────
 
-function SignUpView({ onBack, onSuccess, onLogin }: {
-  onBack: () => void; onSuccess: () => void; onLogin: () => void
+function SignUpView({ onBack, onSubmit, onOAuth, onLogin, loading, error }: {
+  onBack: () => void; onSubmit: (email: string, password: string, username: string) => Promise<void>; onOAuth: (provider: OAuthProvider) => Promise<void>; onLogin: () => void; loading: string | null; error: string | null
 }) {
   const [email, setEmail]       = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw]     = useState(false)
-  const [loading, setLoading]   = useState(false)
   const [usernameOk, setUsernameOk] = useState<boolean | null>(null)
 
   // Debounce username check — wire to GET /auth/check-username in production
@@ -90,13 +224,13 @@ function SignUpView({ onBack, onSuccess, onLogin }: {
         <Text style={styles.formSubtitle}>Join the squad</Text>
 
         {/* Social auth */}
-        <TouchableOpacity style={styles.socialBtn}>
+        <TouchableOpacity style={styles.socialBtn} onPress={() => { void onOAuth('apple') }} disabled={Boolean(loading)}>
           <Apple color={colors.foreground} size={20} strokeWidth={1.75} />
-          <Text style={styles.socialBtnText}>Continue with Apple</Text>
+          <Text style={styles.socialBtnText}>{loading === 'apple' ? 'Opening Apple...' : 'Continue with Apple'}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.socialBtn, { marginTop: spacing.sm }]}>
+        <TouchableOpacity style={[styles.socialBtn, { marginTop: spacing.sm }]} onPress={() => { void onOAuth('google') }} disabled={Boolean(loading)}>
           <View style={styles.googleIcon}><Text style={{ fontSize: 14, fontWeight: '700', color: colors.googleBrand }}>G</Text></View>
-          <Text style={styles.socialBtnText}>Continue with Google</Text>
+          <Text style={styles.socialBtnText}>{loading === 'google' ? 'Opening Google...' : 'Continue with Google'}</Text>
         </TouchableOpacity>
 
         <View style={styles.dividerRow}>
@@ -134,8 +268,14 @@ function SignUpView({ onBack, onSuccess, onLogin }: {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={[styles.primaryBtn, { marginTop: spacing.lg }]} onPress={onSuccess}>
-          <Text style={styles.primaryBtnText}>{loading ? 'Creating account...' : 'Create account'}</Text>
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        <TouchableOpacity
+          style={[styles.primaryBtn, { marginTop: spacing.lg }, loading && styles.disabledBtn]}
+          onPress={() => { void onSubmit(email, password, username) }}
+          disabled={Boolean(loading)}
+        >
+          <Text style={styles.primaryBtnText}>{loading === 'signup' ? 'Creating account...' : 'Create account'}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.switchAuthRow} onPress={onLogin}>
@@ -154,8 +294,8 @@ function SignUpView({ onBack, onSuccess, onLogin }: {
 
 // ─── Login ────────────────────────────────────────────────────────────────────
 
-function LoginView({ onBack, onSuccess, onForgot, onSignUp }: {
-  onBack: () => void; onSuccess: () => void; onForgot: () => void; onSignUp: () => void
+function LoginView({ onBack, onSubmit, onOAuth, onForgot, onSignUp, loading, error }: {
+  onBack: () => void; onSubmit: (email: string, password: string) => Promise<void>; onOAuth: (provider: OAuthProvider) => Promise<void>; onForgot: () => void; onSignUp: () => void; loading: string | null; error: string | null
 }) {
   const [email, setEmail]     = useState('')
   const [password, setPassword] = useState('')
@@ -171,13 +311,13 @@ function LoginView({ onBack, onSuccess, onForgot, onSignUp }: {
         <Text style={styles.formTitle}>Welcome back</Text>
         <Text style={styles.formSubtitle}>Your tree missed you</Text>
 
-        <TouchableOpacity style={styles.socialBtn}>
+        <TouchableOpacity style={styles.socialBtn} onPress={() => { void onOAuth('apple') }} disabled={Boolean(loading)}>
           <Apple color={colors.foreground} size={20} strokeWidth={1.75} />
-          <Text style={styles.socialBtnText}>Continue with Apple</Text>
+          <Text style={styles.socialBtnText}>{loading === 'apple' ? 'Opening Apple...' : 'Continue with Apple'}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.socialBtn, { marginTop: spacing.sm }]}>
+        <TouchableOpacity style={[styles.socialBtn, { marginTop: spacing.sm }]} onPress={() => { void onOAuth('google') }} disabled={Boolean(loading)}>
           <View style={styles.googleIcon}><Text style={{ fontSize: 14, fontWeight: '700', color: colors.googleBrand }}>G</Text></View>
-          <Text style={styles.socialBtnText}>Continue with Google</Text>
+          <Text style={styles.socialBtnText}>{loading === 'google' ? 'Opening Google...' : 'Continue with Google'}</Text>
         </TouchableOpacity>
 
         <View style={styles.dividerRow}>
@@ -208,8 +348,14 @@ function LoginView({ onBack, onSuccess, onForgot, onSignUp }: {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={[styles.primaryBtn, { marginTop: spacing.lg }]} onPress={onSuccess}>
-          <Text style={styles.primaryBtnText}>Log in</Text>
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        <TouchableOpacity
+          style={[styles.primaryBtn, { marginTop: spacing.lg }, loading && styles.disabledBtn]}
+          onPress={() => { void onSubmit(email, password) }}
+          disabled={Boolean(loading)}
+        >
+          <Text style={styles.primaryBtnText}>{loading === 'login' ? 'Logging in...' : 'Log in'}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.switchAuthRow} onPress={onSignUp}>
@@ -223,9 +369,16 @@ function LoginView({ onBack, onSuccess, onForgot, onSignUp }: {
 
 // ─── Forgot Password ──────────────────────────────────────────────────────────
 
-function ForgotView({ onBack }: { onBack: () => void }) {
+function ForgotView({ onBack, onSubmit, loading, message }: {
+  onBack: () => void; onSubmit: (email: string) => Promise<boolean>; loading: string | null; message: string | null
+}) {
   const [email, setEmail] = useState('')
   const [sent, setSent]   = useState(false)
+
+  const handleSubmit = async () => {
+    const ok = await onSubmit(email)
+    if (ok) setSent(true)
+  }
 
   return (
     <View style={styles.formContainer}>
@@ -241,8 +394,13 @@ function ForgotView({ onBack }: { onBack: () => void }) {
           <TextInput style={styles.input} value={email} onChangeText={setEmail}
             placeholder="you@example.com" placeholderTextColor={colors.mutedForeground}
             keyboardType="email-address" autoCapitalize="none" />
-          <TouchableOpacity style={[styles.primaryBtn, { marginTop: spacing.lg }]} onPress={() => setSent(true)}>
-            <Text style={styles.primaryBtnText}>Send reset link</Text>
+          {message ? <Text style={styles.errorText}>{message}</Text> : null}
+          <TouchableOpacity
+            style={[styles.primaryBtn, { marginTop: spacing.lg }, loading && styles.disabledBtn]}
+            onPress={() => { void handleSubmit() }}
+            disabled={Boolean(loading)}
+          >
+            <Text style={styles.primaryBtnText}>{loading === 'forgot' ? 'Sending...' : 'Send reset link'}</Text>
           </TouchableOpacity>
         </>
       ) : (
@@ -289,6 +447,8 @@ const styles = StyleSheet.create({
   passwordHeader:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   primaryBtn:       { height: touchTarget.comfortable, backgroundColor: colors.primary, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
   primaryBtnText:   { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.primaryFg },
+  disabledBtn:      { opacity: 0.6 },
+  errorText:        { fontSize: typography.size.sm, color: colors.destructive, lineHeight: 20 },
   ghostBtn:         { height: touchTarget.comfortable, borderRadius: radius.full, borderWidth: 0.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   ghostBtnText:     { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: colors.foreground },
   switchAuthRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },

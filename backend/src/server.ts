@@ -7,6 +7,8 @@ import { workoutRoutes } from './routes/workouts.js';
 import { nutritionRoutes } from './routes/nutrition.js';
 import { vitalityRoutes } from './routes/vitality.js';
 import { homeRoutes } from './routes/home.js';
+import { calendarRoutes } from './routes/calendar.js';
+import { arenaRoutes } from './routes/arena.js';
 
 async function buildServer() {
   const app = Fastify({
@@ -39,6 +41,8 @@ async function buildServer() {
   await app.register(nutritionRoutes);
   await app.register(vitalityRoutes);
   await app.register(homeRoutes);
+  await app.register(calendarRoutes);
+  await app.register(arenaRoutes);
 
   return app;
 }

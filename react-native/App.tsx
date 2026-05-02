@@ -1,5 +1,6 @@
 import './global.css';
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
@@ -15,10 +16,13 @@ import {
   User as UserIcon,
 } from 'lucide-react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { colors } from './theme';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { colors, spacing, typography } from './theme';
 import type { WorkoutSummary } from './lib/workouts';
+import { apiQuery, hasApiConfig } from './lib/api';
 import { configureQueryClient, queryClient } from './lib/queryClient';
 import { useSyncBootstrap } from './hooks/useSyncBootstrap';
+import { hasSupabaseConfig, supabase } from './utils/supabase';
 
 // Screens
 import AuthScreen from './screens/AuthScreen';
@@ -43,6 +47,7 @@ const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export type RootStackParamList = {
+  Boot: undefined;
   Auth: undefined;
   OnboardingFlow: undefined;
   MainTabs: undefined;
@@ -75,9 +80,67 @@ const TAB_ICONS: Record<string, React.ComponentType<{ size: number; color: strin
 
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
 
+type MeResponse = {
+  user?: {
+    onboardingComplete?: boolean;
+    onboardingStep?: string | null;
+  };
+};
+
+function BootScreen() {
+  const navigation = useNavigation<RootNav>();
+  const [error, setError] = useState<string | null>(null);
+
+  const routeFromAuthState = useCallback(async () => {
+    setError(null);
+
+    const hasDevToken = Boolean(process.env.EXPO_PUBLIC_DEV_JWT);
+    const session = supabase ? (await supabase.auth.getSession()).data.session : null;
+
+    if (!session && !hasDevToken) {
+      navigation.reset({ index: 0, routes: [{ name: 'Auth' }] });
+      return;
+    }
+
+    if (!hasApiConfig) {
+      setError('Missing EXPO_PUBLIC_API_URL.');
+      return;
+    }
+
+    try {
+      const me = await apiQuery<MeResponse>('/me');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: me.user?.onboardingComplete ? 'MainTabs' : 'OnboardingFlow' }],
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to load your profile.');
+    }
+  }, [navigation]);
+
+  useEffect(() => {
+    void routeFromAuthState();
+  }, [routeFromAuthState]);
+
+  return (
+    <View style={bootStyles.container}>
+      <ActivityIndicator color={colors.primary} />
+      <Text style={bootStyles.title}>Loading waliFit</Text>
+      {error ? (
+        <Text style={bootStyles.error} onPress={() => void routeFromAuthState()}>
+          {error} Tap to retry.
+        </Text>
+      ) : null}
+      {!hasSupabaseConfig ? (
+        <Text style={bootStyles.note}>Supabase config missing. Sign-in is disabled until .env is configured.</Text>
+      ) : null}
+    </View>
+  );
+}
+
 function AuthScreenWrapper() {
   const navigation = useNavigation<RootNav>();
-  return <AuthScreen onAuthComplete={() => navigation.navigate('OnboardingFlow')} />;
+  return <AuthScreen onAuthComplete={() => navigation.replace('Boot')} />;
 }
 
 function OnboardingFlowScreenWrapper() {
@@ -153,11 +216,12 @@ export default function App() {
   useSyncBootstrap();
 
   return (
-    <>
+    <SafeAreaProvider>
       <StatusBar style="light" />
       <QueryClientProvider client={queryClient}>
         <NavigationContainer>
-          <Stack.Navigator initialRouteName="Dev" screenOptions={{ headerShown: false }}>
+          <Stack.Navigator initialRouteName="Boot" screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="Boot" component={BootScreen} />
             <Stack.Screen name="Auth" component={AuthScreenWrapper} />
             <Stack.Screen name="OnboardingFlow" component={OnboardingFlowScreenWrapper} />
             <Stack.Screen name="MainTabs" component={MainTabs} />
@@ -186,6 +250,32 @@ export default function App() {
           </Stack.Navigator>
         </NavigationContainer>
       </QueryClientProvider>
-    </>
+    </SafeAreaProvider>
   );
 }
+
+const bootStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.background,
+  },
+  title: {
+    color: colors.foreground,
+    fontSize: typography.fontSize.base,
+    fontWeight: '700',
+  },
+  error: {
+    color: colors.destructive,
+    fontSize: typography.fontSize.sm,
+    textAlign: 'center',
+  },
+  note: {
+    color: colors.mutedForeground,
+    fontSize: typography.fontSize.xs,
+    textAlign: 'center',
+  },
+});
