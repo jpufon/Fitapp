@@ -5,7 +5,7 @@
 
 import { supabase } from '../utils/supabase';
 
-const DEV_JWT = process.env.EXPO_PUBLIC_DEV_JWT;
+const DEV_JWT = process.env.EXPO_PUBLIC_DEV_JWT?.trim().replace(/^Bearer\s+/i, '');
 
 export async function getAccessToken(): Promise<string | null> {
   if (supabase) {
@@ -15,7 +15,9 @@ export async function getAccessToken(): Promise<string | null> {
     }
   }
 
-  if (DEV_JWT) return DEV_JWT;
+  if (DEV_JWT) {
+    return DEV_JWT;
+  }
 
   return null;
 }

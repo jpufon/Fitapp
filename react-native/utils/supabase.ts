@@ -2,8 +2,8 @@ import * as SecureStore from 'expo-secure-store';
 import { createClient, type User } from '@supabase/supabase-js';
 import { MMKV } from '../lib/mmkv-shim';
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim();
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
 export const hasSupabaseConfig = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
