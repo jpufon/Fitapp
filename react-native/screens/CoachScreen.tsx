@@ -6,13 +6,14 @@
 import React, { useState, useRef } from 'react'
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
-  StyleSheet, KeyboardAvoidingView, Platform,
+  StyleSheet, KeyboardAvoidingView, Platform, Image,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Bot, Send, Paperclip, ChevronRight, RefreshCw, Check, Zap } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
 
 type CoachView = 'home' | 'chat' | 'program'
+const coachIcon = require('../assets/coach-icon.png')
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -73,8 +74,10 @@ function CoachHome({ onStartChat, onGenerate }: { onStartChat: () => void; onGen
     <ScrollView contentContainerStyle={styles.homeContent} showsVerticalScrollIndicator={false}>
       {/* Header */}
       <View style={styles.homeHeader}>
-        <View style={[styles.aiAvatar, { backgroundColor: colors.primary + '20' }]}>
-          <Bot color={colors.primary} size={28} strokeWidth={1.75} />
+        <View style={styles.coachAvatar}>
+          <View style={styles.coachAvatarHalo} />
+          <Image source={coachIcon} style={styles.coachAvatarImage} resizeMode="contain" />
+          <View style={styles.coachAvatarSpark} />
         </View>
         <View>
           <Text style={styles.homeTitle}>Wali AI</Text>
@@ -191,8 +194,9 @@ function CoachChat({ onBack }: { onBack: () => void }) {
         {messages.map((msg) => (
           <View key={msg.id} style={[styles.msgRow, msg.role === 'user' && styles.msgRowUser]}>
             {msg.role === 'ai' && (
-              <View style={[styles.msgAvatar, { backgroundColor: colors.primary + '20' }]}>
-                <Bot color={colors.primary} size={14} strokeWidth={1.75} />
+              <View style={styles.msgCoachAvatar}>
+                <Image source={coachIcon} style={styles.msgCoachAvatarImage} resizeMode="contain" />
+                <View style={styles.msgCoachAvatarSpark} />
               </View>
             )}
             <View style={[
@@ -214,8 +218,9 @@ function CoachChat({ onBack }: { onBack: () => void }) {
         {/* Typing indicator */}
         {typing && (
           <View style={[styles.msgRow]}>
-            <View style={[styles.msgAvatar, { backgroundColor: colors.primary + '20' }]}>
-              <Bot color={colors.primary} size={14} strokeWidth={1.75} />
+            <View style={styles.msgCoachAvatar}>
+              <Image source={coachIcon} style={styles.msgCoachAvatarImage} resizeMode="contain" />
+              <View style={styles.msgCoachAvatarSpark} />
             </View>
             <View style={[styles.msgBubble, { backgroundColor: colors.card }]}>
               <Text style={[styles.msgText, { color: colors.mutedForeground }]}>Wali is thinking...</Text>
@@ -385,6 +390,10 @@ const styles = StyleSheet.create({
   homeContent:        { paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: spacing.xxl, gap: spacing.md },
   homeHeader:         { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   aiAvatar:           { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  coachAvatar:        { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary + '18', borderWidth: 0.5, borderColor: colors.primary + '50', shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 10, shadowOffset: { width: 0, height: 0 }, elevation: 4, overflow: 'visible' },
+  coachAvatarHalo:    { position: 'absolute', width: 62, height: 62, borderRadius: 31, backgroundColor: colors.primary + '10', borderWidth: 1, borderColor: colors.primary + '30' },
+  coachAvatarImage:   { width: 38, height: 38, tintColor: colors.primary, transform: [{ rotate: '-6deg' }] },
+  coachAvatarSpark:   { position: 'absolute', right: 2, top: 4, width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primaryLight, borderWidth: 2, borderColor: colors.background },
   homeTitle:          { fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: colors.foreground },
   homeSubtitle:       { fontSize: typography.size.sm, color: colors.mutedForeground },
   disclaimerBanner:   { backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, borderLeftWidth: 3, borderLeftColor: colors.energy, padding: spacing.sm },
@@ -414,6 +423,9 @@ const styles = StyleSheet.create({
   msgRow:             { flexDirection: 'row', gap: spacing.sm, maxWidth: '90%' },
   msgRowUser:         { alignSelf: 'flex-end', flexDirection: 'row-reverse' },
   msgAvatar:          { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 },
+  msgCoachAvatar:     { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2, backgroundColor: colors.primary + '18', borderWidth: 0.5, borderColor: colors.primary + '50', shadowColor: colors.primary, shadowOpacity: 0.25, shadowRadius: 6, shadowOffset: { width: 0, height: 0 }, elevation: 2, overflow: 'visible' },
+  msgCoachAvatarImage:{ width: 20, height: 20, tintColor: colors.primary, transform: [{ rotate: '-6deg' }] },
+  msgCoachAvatarSpark:{ position: 'absolute', right: -1, top: 1, width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.background },
   msgBubble:          { flex: 1, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.sm, gap: 3 },
   msgText:            { fontSize: typography.size.sm, color: colors.foreground, lineHeight: 20 },
   msgTime:            { fontSize: typography.size.xs, color: colors.mutedForeground },

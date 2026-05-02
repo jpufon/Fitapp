@@ -30,13 +30,14 @@ export function useCachedQuery<TQueryFnData, TError = Error>({
 
   const query = useQuery({
     ...options,
-    initialData: options.initialData ?? initialPayload?.data,
-    initialDataUpdatedAt: options.initialDataUpdatedAt ?? initialPayload?.updatedAt,
+    initialData: initialPayload?.data ?? options.initialData,
+    initialDataUpdatedAt: initialPayload?.updatedAt ?? options.initialDataUpdatedAt,
   });
 
   const lastPersisted = useRef<TQueryFnData | undefined>(initialPayload?.data);
   useEffect(() => {
     if (query.data === undefined) return;
+    if (query.isPlaceholderData) return;
     if (Object.is(query.data, lastPersisted.current)) return;
     lastPersisted.current = query.data;
     setCachedJson<CachedPayload<TQueryFnData>>(cacheKey, {

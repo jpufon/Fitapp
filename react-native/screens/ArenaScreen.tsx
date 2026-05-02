@@ -33,8 +33,8 @@ export default function ArenaScreen() {
   const [activeTab, setActiveTab] = useState<ArenaTab>('feed');
 
   const feedQuery = useArenaFeed();
-  const squadsQuery = useMySquads();
-  const leaderboardQuery = useSquadLeaderboard();
+  const squadsQuery = useMySquads(activeTab === 'squads');
+  const leaderboardQuery = useSquadLeaderboard(activeTab === 'leaderboard');
   const reactMutation = useReactToFeed();
 
   const feedState = useMemo<TabState>(() => {

@@ -21,6 +21,7 @@ import { colors, spacing, typography } from './theme';
 import type { WorkoutSummary } from './lib/workouts';
 import { apiQuery, hasApiConfig } from './lib/api';
 import { configureQueryClient, queryClient } from './lib/queryClient';
+import { getCachedJson, setCachedJson } from './lib/storage';
 import { useSyncBootstrap } from './hooks/useSyncBootstrap';
 import { hasSupabaseConfig, supabase } from './utils/supabase';
 
@@ -90,6 +91,10 @@ type MeResponse = {
   };
 };
 
+type BootRoute = 'MainTabs' | 'OnboardingFlow';
+
+const BOOT_ROUTE_CACHE_KEY = 'boot.last-route';
+
 function BootScreen() {
   const navigation = useNavigation<RootNav>();
   const [error, setError] = useState<string | null>(null);
@@ -110,14 +115,23 @@ function BootScreen() {
       return;
     }
 
+    const cachedRoute = getCachedJson<BootRoute>(BOOT_ROUTE_CACHE_KEY);
+    if (cachedRoute) {
+      navigation.reset({ index: 0, routes: [{ name: cachedRoute }] });
+    }
+
     try {
       const me = await apiQuery<MeResponse>('/me');
+      const route: BootRoute = me.user?.onboardingComplete ? 'MainTabs' : 'OnboardingFlow';
+      setCachedJson(BOOT_ROUTE_CACHE_KEY, route);
       navigation.reset({
         index: 0,
-        routes: [{ name: me.user?.onboardingComplete ? 'MainTabs' : 'OnboardingFlow' }],
+        routes: [{ name: route }],
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to load your profile.');
+      if (!cachedRoute) {
+        setError(err instanceof Error ? err.message : 'Unable to load your profile.');
+      }
     }
   }, [navigation]);
 
@@ -150,9 +164,10 @@ function OnboardingFlowScreenWrapper() {
   const navigation = useNavigation<RootNav>();
   return (
     <OnboardingFlowScreen
-      onComplete={() =>
-        navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] })
-      }
+      onComplete={() => {
+        setCachedJson<BootRoute>(BOOT_ROUTE_CACHE_KEY, 'MainTabs');
+        navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+      }}
     />
   );
 }

@@ -47,7 +47,7 @@ export default function CalendarScreen() {
   const [selectedDate, setSelectedDate] = useState(() => formatLocalDate(new Date()));
 
   const rangeQuery = useCalendarRange(currentDate);
-  const dayQuery = useCalendarDay(selectedDate);
+  const dayQuery = useCalendarDay(selectedDate, view === 'day');
 
   const days = rangeQuery.data?.days ?? [];
   const daysByDate = useMemo(() => new Map(days.map((day) => [day.date, day])), [days]);

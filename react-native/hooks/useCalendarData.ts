@@ -32,6 +32,11 @@ type CalendarRangeResponse = {
   stats: CalendarStats;
 };
 
+export type CalendarWindow = {
+  start: string;
+  end: string;
+};
+
 const mockDays: CalendarDayItem[] = Array.from({ length: 30 }, (_, index) => {
   const today = new Date();
   const date = new Date(today.getFullYear(), today.getMonth(), index + 1);
@@ -161,6 +166,42 @@ function normalizeDayPayload(payload: unknown, date: string): CalendarDayDetail 
   };
 }
 
+function emptyCalendarDay(date: string): CalendarDayItem {
+  return {
+    date,
+    hasActivity: false,
+    completed: false,
+    type: 'rest',
+    score: 0,
+    workoutName: null,
+    exerciseCount: 0,
+    durationMinutes: 0,
+    hydrationMl: 0,
+    proteinG: 0,
+    stepsCount: 0,
+    notes: null,
+  };
+}
+
+function buildEmptyRange(start: string, end: string): CalendarRangeResponse {
+  const startDate = parseLocalDate(start);
+  const endDate = parseLocalDate(end);
+  const days: CalendarDayItem[] = [];
+
+  for (
+    let cursor = startDate;
+    cursor <= endDate;
+    cursor = addDaysLocal(cursor, 1)
+  ) {
+    days.push(emptyCalendarDay(formatLocalDate(cursor)));
+  }
+
+  return {
+    days,
+    stats: { workouts: 0, streak: 0, avgScore: 0 },
+  };
+}
+
 async function fetchCalendarRange(start: string, end: string): Promise<CalendarRangeResponse> {
   if (!hasApiConfig) {
     const days = mockDays.filter((day) => day.date >= start && day.date <= end);
@@ -192,6 +233,10 @@ export function formatLocalDate(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function parseLocalDate(value: string): Date {
+  return new Date(`${value}T12:00:00`);
 }
 
 export function startOfWeekLocal(date: Date): Date {
@@ -238,24 +283,33 @@ export function buildMonthGrid(currentDate: Date, days: CalendarDayItem[]): Arra
   return [...leading, ...cells];
 }
 
+export function getCalendarWindow(currentDate: Date): CalendarWindow {
+  const start = formatLocalDate(startOfWeekLocal(addDaysLocal(currentDate, -7)));
+  const endOfWindow = addDaysLocal(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0), 7);
+  const end = formatLocalDate(endOfWindow);
+
+  return { start, end };
+}
+
 export function useCalendarRange(currentDate: Date) {
-  const start = useMemo(() => formatLocalDate(startOfWeekLocal(addDaysLocal(currentDate, -7))), [currentDate]);
-  const end = useMemo(() => {
-    const endOfWindow = addDaysLocal(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0), 7);
-    return formatLocalDate(endOfWindow);
-  }, [currentDate]);
+  const { start, end } = useMemo(() => getCalendarWindow(currentDate), [currentDate]);
 
   return useCachedQuery({
     queryKey: ['calendar', 'range', start, end],
     cacheKey: `query.calendar.range.${start}.${end}`,
     queryFn: () => fetchCalendarRange(start, end),
+    placeholderData: buildEmptyRange(start, end),
+    staleTime: 30_000,
   });
 }
 
-export function useCalendarDay(selectedDate: string) {
+export function useCalendarDay(selectedDate: string, enabled = true) {
   return useCachedQuery({
     queryKey: ['calendar', 'day', selectedDate],
     cacheKey: `query.calendar.day.${selectedDate}`,
     queryFn: () => fetchCalendarDay(selectedDate),
+    enabled,
+    placeholderData: enabled ? { ...emptyCalendarDay(selectedDate), vitalityScore: 0 } : undefined,
+    staleTime: 30_000,
   });
 }

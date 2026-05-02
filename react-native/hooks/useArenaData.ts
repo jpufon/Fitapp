@@ -219,15 +219,14 @@ export function useArenaFeed() {
 
     const client = supabase;
 
-    const channel = client
-      .channel('arena-feed')
-      .on('broadcast', { event: 'new_feed_item' }, () => {
-        void queryClient.invalidateQueries({ queryKey: FEED_QUERY_KEY });
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feed' }, () => {
-        void queryClient.invalidateQueries({ queryKey: FEED_QUERY_KEY });
-      })
-      .subscribe();
+    const invalidateFeed = () => {
+      void queryClient.invalidateQueries({ queryKey: FEED_QUERY_KEY });
+    };
+    const channel = client.channel(`arena-feed-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+
+    channel.on('broadcast', { event: 'new_feed_item' }, invalidateFeed);
+    channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feed' }, invalidateFeed);
+    channel.subscribe();
 
     return () => {
       void client.removeChannel(channel);
@@ -295,16 +294,18 @@ export function useReactToFeed() {
   });
 }
 
-export function useMySquads() {
+export function useMySquads(enabled = true) {
   return useQuery({
     queryKey: ['arena', 'squads'],
     queryFn: fetchMySquads,
+    enabled,
   });
 }
 
-export function useSquadLeaderboard() {
+export function useSquadLeaderboard(enabled = true) {
   return useQuery({
     queryKey: ['arena', 'leaderboard'],
     queryFn: fetchLeaderboard,
+    enabled,
   });
 }
