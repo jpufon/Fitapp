@@ -10,7 +10,7 @@ Target user: hybrid athletes who train strength AND run (Hyrox, CrossFit, tactic
 Train → Log → Progress → Compete → Repeat
 
 ## Stack
-- Mobile: React Native + Expo SDK 54 · TypeScript strict · NativeWind · gluestack-ui v3
+- Mobile: React Native + Expo SDK 54 · TypeScript strict · NativeWind
 - Navigation: React Navigation — bottom tabs + native stack. NO expo-router.
 - Backend: Fastify + TypeScript · Prisma ORM · Railway hosting
 - Database: Supabase PostgreSQL (cloud — NO Docker)
@@ -22,7 +22,7 @@ Train → Log → Progress → Compete → Repeat
 - Local storage: MMKV via encrypted wrapper in react-native/utils/supabase.ts
 - State: Zustand (client) + TanStack Query (server)
 - Icons: lucide-react-native (standardized — no Ionicons, no @expo/vector-icons)
-- Animations: react-native-reanimated v3 + Lottie
+- Animations: react-native-reanimated v4 + Lottie
 - Forms: React Hook Form + Zod (mobile zod v4 · backend + shared zod v3 — types only on mobile)
 - Package manager: npm everywhere (react-native/, backend/, packages/shared/). No root workspace.
 
@@ -30,11 +30,12 @@ Train → Log → Progress → Compete → Repeat
 1. Home     — Vitality Tree hero, pillar cards, today's workout
 2. Train    — Workout logging, builder, exercise library, WaliRun entry
 3. Calendar — Daily / weekly / monthly activity views
-4. Arena    — Social hub: feed, sessions, leaderboards, friends, challenges, badges
-5. Profile  — Profile, stats, settings, badges, account management
+4. Coach    — Wali coaching, guidance, and AI chat
+5. Arena    — Social hub: feed, sessions, leaderboards, friends, challenges, badges
 
-Stack-only screens (not tabs): Coach, WaliRun, ActiveWorkout, NutritionLog,
+Stack-only screens (not tabs): WaliRun, ActiveWorkout, NutritionLog,
 WorkoutComplete, Settings, Auth, OnboardingFlow, Friends, Badges, TreeDetail, Dev.
+(Coach is both a tab and reachable via stack push.)
 
 ## Key paths — ACTUAL current paths
 - Mobile app root:    react-native/
@@ -43,7 +44,8 @@ WorkoutComplete, Settings, Auth, OnboardingFlow, Friends, Badges, TreeDetail, De
 - Mobile hooks:       react-native/hooks/
 - Mobile lib:         react-native/lib/
 - Mobile utils:       react-native/utils/
-- Design tokens:      react-native/theme.ts        ← SOURCE OF TRUTH for all colors
+- Color values:       react-native/theme.colors.js ← SOURCE OF TRUTH for palette values
+- Design tokens:      react-native/theme.ts        ← TS exports for colors, spacing, type
 - Tailwind config:    react-native/tailwind.config.js
 - Supabase + storage: react-native/utils/supabase.ts
 - API layer:          react-native/lib/api.ts
@@ -51,16 +53,20 @@ WorkoutComplete, Settings, Auth, OnboardingFlow, Friends, Badges, TreeDetail, De
 - MMKV storage:       react-native/lib/storage.ts
 - Workout utils:      react-native/lib/workouts.ts
 - Design system:      DESIGN.md                    ← at project root
-- Backend root:       backend/                      ← Fastify + Prisma · Phase 1+2 done, Phase 3 partial
+- Backend root:       backend/                      ← Fastify + Prisma · Phases 1–4 done; Phase 5 (Railway deploy) and 6+ (waliAI) pending
 - Backend entry:      backend/src/server.ts
 - Backend env config: backend/src/config.ts (Zod-validated)
 - Prisma schema:      backend/prisma/schema.prisma  ← V1 schema applied (3 migrations in backend/prisma/migrations)
 - Prisma client:      backend/src/lib/prisma.ts
+- Backend lib/:       backend/src/lib/              ← auth, dailyScore, feed, pr, prisma, score
 - Backend routes:     backend/src/routes/           ← me, workouts, calendar, nutrition, vitality, home, arena
-- AI service:         backend/src/waliAI/           ← Phase 6+
+- AI service:         backend/src/waliAI/           ← NOT YET SCAFFOLDED (Phase 6+)
 - Shared types:       packages/shared/src/         ← walifit-shared package, Zod schemas
 - API contract:       docs/API_CONTRACT.md          ← every route, request, response, mobile hook
 - Sync queue:         docs/SYNC_QUEUE.md            ← offline mutation queue API
+- Sync queue impl:    react-native/lib/syncQueue.ts ← every mutation routes through this
+- Zustand store:      react-native/lib/onboardingStore.ts
+- Auth helpers:       react-native/lib/auth.ts
 
 ## Screens already built (DO NOT recreate these)
 - react-native/screens/HomeScreen.tsx
@@ -97,20 +103,26 @@ WorkoutComplete, Settings, Auth, OnboardingFlow, Friends, Badges, TreeDetail, De
 - react-native/hooks/useMutations.ts        ← all write paths (workouts, sets, nutrition, vitality)
 - react-native/hooks/useSyncBootstrap.ts    ← mounts offline queue NetInfo subscriber once
 
-## Design tokens (SOURCE OF TRUTH: react-native/theme.ts · spec: docs/waliFit_Design_Tokens.md v2.0)
+## Design tokens (SOURCE OF TRUTH: react-native/theme.ts · spec: docs/waliFit_Design_Tokens.md v3.0)
 - Background:        #0a0f0f  (deep charcoal)
-- Card surface:      #181c1c
+- Background alt:    #050A0A  (immersive run/focus mode)
+- Card surface:      #161b1b
+- Popover surface:   #1a1f1f
+- Border:            #2f3636
 - Primary/Teal:      #0BBFBD  (CTA, tree, progress rings, active tabs)
 - Primary dark:      #0D6D6B  (points/status/header blocks)
-- Primary text on:   #000000  (ALWAYS dark text on teal — NEVER white)
+- Primary light:     #3FD9D7
+- Primary text on:   #002f2f  (ALWAYS dark text on teal — NEVER white)
 - Steps pillar:      #0BBFBD  (teal — matches primary, 40% tree weight)
 - Protein pillar:    #f59e0b  (amber — 30% tree weight)
 - Hydration pillar:  #60a5fa  (blue — 30% tree weight)
-- Energy/Amber:      #fbbf24  (streaks, achievements, Gold badge)
-- Social/Purple:     #a78bfa  (Legendary badge, locked features)
+- Growth:            #84cc16  (recovery/health)
+- Accent Blue:       #3b82f6
+- Accent Purple:     #8b5cf6
+- Energy/Amber:      #f59e0b  (effort, warnings, protein)
 - Destructive:       #ef4444  (errors, stop, wilting)
 - Foreground text:   #ececec
-- Badge tiers:       Iron #6b7280 · Bronze #b45309 · Silver #9ca3af · Gold #fbbf24 · Legendary #a78bfa
+- Badge tiers:       Iron #6b7280 · Bronze #c2410c · Silver #94a3b8 · Gold #fbbf24 · Legendary #a78bfa
 
 ## Vitality Tree — 6 health states
 Wilted (0–15) → Recovering (16–35) → Sprout (36–55) →
@@ -133,12 +145,12 @@ Single tree visual in V1. No species/biomes until V2.
 - ALL weights stored in kg in DB — UI converts via displayWeight()
 - ALL durations stored in seconds in DB — UI formats on display
 - Steps data from native health APIs only — NEVER ask user to enter steps manually
-- Dark text (#000000) on primary (#0BBFBD teal) backgrounds — NEVER white text on primary
+- Dark text (#002f2f) on primary (#0BBFBD teal) backgrounds — NEVER white text on primary
 - Touch targets: minHeight 44 minimum, 48 for primary actions, 56 for workout CTAs
 - Every screen must implement 4 states: loading (skeleton), success, empty, error
 - Every mutation goes through the offline sync queue — no direct writes that bypass it
 - MMKV always encrypted via getEncryptionKey() in react-native/utils/supabase.ts
-- Run test:ai before every commit that touches backend/src/waliAI/
+- Once waliAI is scaffolded, run its compliance script before every commit that touches backend/src/waliAI/
 
 ## What NOT to build in V1
 - No tree biomes / species selection (V2)
@@ -155,7 +167,7 @@ Single tree visual in V1. No species/biomes until V2.
 - Start backend:      cd backend && npx tsx watch src/server.ts
 - Prisma migrate:     cd backend && npx prisma migrate dev
 - Prisma studio:      cd backend && npx prisma studio
-- AI compliance:      cd backend && npx tsx src/scripts/testAICompliance.ts
+- AI compliance:      (script will be added when waliAI is scaffolded — Phase 6+)
 
 ## When building new features — always do this first
 1. Read the relevant existing screen/hook/component before writing anything

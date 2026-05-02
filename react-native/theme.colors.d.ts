@@ -13,6 +13,11 @@ export declare const colors: {
   foreground: string;
   mutedForeground: string;
   inverseText: string;
+  cream: string;
+  creamMuted: string;
+  greyLight: string;
+  greySoft: string;
+  greyDim: string;
   primary: string;
   primaryDark: string;
   primaryLight: string;
@@ -28,7 +33,6 @@ export declare const colors: {
     sage: string;
     amber: string;
   };
-  earthBrown: string;
   earthAmber: string;
   earthSage: string;
   accent: {
@@ -36,11 +40,8 @@ export declare const colors: {
     purple: string;
   };
   blue: string;
-  blueGlow: string;
   blueFg: string;
   purple: string;
-  purpleGlow: string;
-  pink: string;
   badge: {
     iron: string;
     bronze: string;
@@ -48,11 +49,6 @@ export declare const colors: {
     gold: string;
     legendary: string;
   };
-  badgeIron: string;
-  badgeBronze: string;
-  badgeSilver: string;
-  badgeGold: string;
-  badgeLegendary: string;
   success: string;
   warning: string;
   destructive: string;
@@ -64,6 +60,9 @@ export declare const colors: {
   silverMedal: string;
   bronzeMedal: string;
   googleBrand: string;
+  premiumText: string;
+  secondaryText: string;
+  disabledText: string;
 };
 
 export declare const pillarColors: {

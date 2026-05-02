@@ -42,6 +42,7 @@ import CoachScreen from './screens/CoachScreen';
 import WaliRunScreen from './screens/WaliRunScreen';
 import { FriendsScreen, BadgesScreen } from './screens/ArenaExtendedScreens';
 import { TreeDetailScreen } from './screens/RemainingScreens';
+import WorkoutBuilderScreen from './screens/WorkoutBuilderScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -69,6 +70,7 @@ export type RootStackParamList = {
   Friends: undefined;
   Badges: undefined;
   TreeDetail: undefined;
+  WorkoutBuilder: undefined;
 };
 
 const TAB_ICONS: Record<string, React.ComponentType<{ size: number; color: string; strokeWidth?: number }>> = {
@@ -249,6 +251,7 @@ export default function App() {
             <Stack.Screen name="Friends" component={FriendsScreenWrapper} />
             <Stack.Screen name="Badges" component={BadgesScreenWrapper} />
             <Stack.Screen name="TreeDetail" component={TreeDetailScreenWrapper} />
+            <Stack.Screen name="WorkoutBuilder" component={WorkoutBuilderScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </QueryClientProvider>

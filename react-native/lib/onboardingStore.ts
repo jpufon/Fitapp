@@ -121,6 +121,16 @@ function persist(data: OnboardingData): void {
   storage.set(STORAGE_KEY, JSON.stringify(data));
 }
 
+// Best-effort device timezone — falls back to UTC if Intl can't resolve it
+// (e.g. on certain Android emulators with locked locales).
+function getDeviceTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
 async function saveToServer(data: OnboardingData): Promise<void> {
   // Fire-and-forget — apiMutate auto-queues if offline or backend route missing.
   await apiMutate({
@@ -137,6 +147,7 @@ async function saveToServer(data: OnboardingData): Promise<void> {
       proteinTargetG: data.proteinTargetG,
       waterTargetMl: data.waterTargetMl,
       onboardingStep: data.currentStep,
+      timezone: getDeviceTimezone(),
     },
   });
 }

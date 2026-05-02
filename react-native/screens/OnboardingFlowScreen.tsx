@@ -143,6 +143,7 @@ function ContinueButton({
       onPress={disabled ? undefined : onPress}
       activeOpacity={disabled ? 1 : 0.7}
       accessibilityState={{ disabled }}
+      testID="onboarding-continue"
     >
       <Text style={styles.nextBtnText}>{label}</Text>
       <ChevronRight color={colors.primaryFg} size={18} strokeWidth={2.5} />
@@ -171,6 +172,7 @@ function GoalStep() {
               style={[styles.optionCard, active && styles.optionCardActive]}
               onPress={() => update({ goal: g.id })}
               activeOpacity={0.7}
+              testID={`onboarding-goal-${g.id}`}
             >
               <View
                 style={[

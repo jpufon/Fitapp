@@ -58,9 +58,9 @@ react-native/
 
 ## Navigation map
 
-5 bottom tabs: **Home → Train → Calendar → Arena → Profile**.
+5 bottom tabs: **Home → Train → Calendar → Coach → Arena**.
 
-The other screens are stack-only and pushed on top: `Coach`, `WaliRun`, `ActiveWorkout`, `NutritionLog`, `WorkoutComplete`, `Settings`, `Auth`, `OnboardingFlow`, `Friends`, `Badges`, `TreeDetail`, `Dev`.
+The other screens are stack-only and pushed on top: `Profile`, `WaliRun`, `ActiveWorkout`, `NutritionLog`, `WorkoutComplete`, `Settings`, `Auth`, `OnboardingFlow`, `Friends`, `Badges`, `TreeDetail`, `Dev`.
 
 `App.tsx` is the entry — read it before adding a screen. The full map (params, deep links) is `RootStackParamList` in `App.tsx`.
 
@@ -117,10 +117,19 @@ All colors, spacing, type scale, and touch-target sizes come from **`theme.ts`**
 |---|---|---|
 | `colors.primary` | `#0BBFBD` | CTAs, Vitality Tree, progress rings |
 | `colors.primaryDark` | `#0D6D6B` | Header blocks, points cards |
-| `colors.primaryFg` | `#000000` | **Always** dark text on primary — never white |
+| `colors.primaryFg` | `#002f2f` | **Always** dark text on primary — never white |
 | `colors.background` | `#0a0f0f` | App shell |
-| `colors.card` | `#181c1c` | Cards |
+| `colors.backgroundAlt` | `#050A0A` | Immersive run/focus mode |
+| `colors.card` | `#161b1b` | Cards |
+| `colors.popover` | `#1a1f1f` | Sheets, modals, menus |
+| `colors.border` | `#2f3636` | Borders |
+| `colors.energy` | `#f59e0b` | Protein, effort, warnings |
+| `colors.hydration` | `#60a5fa` | Water, run data |
+| `colors.growth` | `#84cc16` | Recovery, health |
 | `colors.foreground` | `#ececec` | Body text |
+| `pillarColors.steps` | `#0BBFBD` | Steps ring |
+| `pillarColors.protein` | `#f59e0b` | Protein ring |
+| `pillarColors.hydration` | `#60a5fa` | Hydration ring |
 | `touchTarget.min` | 44 | Every tappable element |
 | `touchTarget.comfortable` | 48 | Primary actions |
 | `touchTarget.large` | 56 | Workout CTAs |

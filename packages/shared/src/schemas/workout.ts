@@ -28,6 +28,12 @@ export const LogSetSchema = z.object({
   weightKg: z.number().min(0).max(1000).optional(),
   rpe: z.number().int().min(1).max(10).optional(),
   notes: z.string().max(500).optional(),
+
+  // Conditioning fields (WF-013). All nullable — strength sets leave them off.
+  durationS: z.number().int().min(0).max(7200).optional(),
+  roundNumber: z.number().int().min(1).max(100).optional(),
+  intervalWorkS: z.number().int().min(0).max(3600).optional(),
+  intervalRestS: z.number().int().min(0).max(3600).optional(),
 });
 export type LogSetBody = z.infer<typeof LogSetSchema>;
 

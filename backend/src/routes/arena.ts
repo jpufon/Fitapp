@@ -12,7 +12,8 @@ import { dateAtMidnight } from '../lib/dailyScore.js';
 
 const CreateSquadSchema = z.object({
   name: z.string().trim().min(1).max(60),
-  type: z.enum(['workout', 'run']).optional(),
+  squadType: z.enum(['hybrid', 'run_club']).optional(),
+  runFocusDistance: z.enum(['1mi', '2mi', '3mi', '2K', '5K', 'all']).optional(),
 });
 
 const JoinSquadSchema = z.object({
@@ -94,10 +95,12 @@ export async function arenaRoutes(app: FastifyInstance) {
     const userId = request.user!.id;
     const inviteCode = generateInviteCode();
 
+    const squadType = parsed.data.squadType ?? 'hybrid';
     const squad = await prisma.squad.create({
       data: {
         name: parsed.data.name,
-        type: parsed.data.type ?? 'workout',
+        squadType,
+        runFocusDistance: squadType === 'run_club' ? parsed.data.runFocusDistance ?? 'all' : null,
         ownerId: userId,
         inviteCode,
         members: { create: { userId } },
@@ -195,7 +198,7 @@ export async function arenaRoutes(app: FastifyInstance) {
       return {
         id: membership.squad.id,
         name: membership.squad.name,
-        type: membership.squad.type === 'run' ? 'Run Club' : 'Workout Squad',
+        type: membership.squad.squadType === 'run_club' ? 'Run Club' : 'Workout Squad',
         members: membership.squad._count.members,
         activeToday,
         forestHealth,

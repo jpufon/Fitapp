@@ -4,7 +4,7 @@ Human- and LLM-readable reference for where things actually live in this repo.
 Use this when CLAUDE.md, DECISIONS.md, or a prompt references a path that
 doesn't resolve — the canonical path is probably here.
 
-Last updated: 2026-04-20 (docs/ reorg).
+Last updated: 2026-05-02 (backend/shared + v3.0 tokens).
 
 ---
 
@@ -15,16 +15,24 @@ Last updated: 2026-04-20 (docs/ reorg).
 ├── CLAUDE.md                          ← project memory for Claude Code
 ├── DESIGN.md                          ← canonical design system
 ├── README.md
-├── react-native/                      ← mobile app (the only code today)
+├── react-native/                      ← mobile app
 │   ├── App.tsx
-│   ├── theme.ts                       ← SOURCE OF TRUTH for colors/spacing/typography
+│   ├── theme.colors.js                ← SOURCE OF TRUTH for color values
+│   ├── theme.ts                       ← TS exports for colors/spacing/typography
 │   ├── tailwind.config.js
 │   ├── package.json
 │   ├── screens/                       ← all screens live here
 │   ├── components/
 │   ├── hooks/
 │   ├── lib/                           ← api.ts, queryClient.ts, storage.ts, workouts.ts
-│   └── utils/                         ← supabase.ts + MMKV encrypted wrapper
+│   └── utils/                         ← supabase.ts + auth/storage setup
+├── backend/                           ← Fastify API + Prisma
+│   ├── src/server.ts
+│   ├── src/routes/
+│   ├── src/lib/
+│   └── prisma/schema.prisma
+├── packages/shared/                   ← shared Zod schemas + TypeScript types
+│   └── src/
 ├── docs/
 │   ├── MEMORY.md                      ← this file
 │   ├── DECISIONS.md                   ← product & technical decisions log
@@ -36,7 +44,7 @@ Last updated: 2026-04-20 (docs/ reorg).
 │       ├── APP.md, APP_JSON.md, PACKAGE.md, TAILWIND.md, THEME.md, ATTRIBUTIONS.md
 │       ├── SETUP_GUIDE_CORRECTIONS.md, VITALITY_TREE.md
 │       └── HOME_SCREEN.md, TrainScreen.md, ArenaScreen.md, CalendarScreen.md, ProfileScreen.md
-└── (root now contains only: CLAUDE.md, DESIGN.md, README.md, config dotfiles, react-native/, docs/)
+└── (root contains app packages, docs, design memory, and config dotfiles)
 ```
 
 **About `docs/legacy/`:** These 13 `.md` files came in with the original zip import
@@ -57,9 +65,9 @@ When a doc or prompt says …           | The real path is …
 `apps/mobile/components/<X>.tsx`      | `react-native/components/<X>.tsx`
 `apps/mobile/hooks/<X>.ts`            | `react-native/hooks/<X>.ts`
 `apps/mobile/lib/<X>.ts`              | `react-native/lib/<X>.ts`
-`apps/backend/src/waliAI/`            | does not exist yet — backend unscaffolded
-`apps/backend/prisma/schema.prisma`   | does not exist yet
-`packages/shared/src/types/`          | does not exist yet
+`apps/backend/src/<X>`                | `backend/src/<X>`
+`apps/backend/prisma/schema.prisma`   | `backend/prisma/schema.prisma`
+`packages/shared/src/types/`          | `packages/shared/src/types/`
 `.stitch/DESIGN.md`                   | `DESIGN.md` (repo root)
 `docs/DECISIONS.md`                   | `docs/DECISIONS.md` ✓
 `docs/walifit-PROMPTS.md`             | `docs/walifit-PROMPTS.md` ✓
@@ -67,14 +75,16 @@ When a doc or prompt says …           | The real path is …
 
 ---
 
-## What exists vs what's in CLAUDE.md
+## What Exists Now
 
-CLAUDE.md's "Key paths" section references an `apps/` + `packages/` monorepo
-that is **not yet scaffolded**. Only the mobile app exists today, as a flat
-`react-native/` directory at the repo root. When the backend is built, the
-monorepo restructure will need to happen as its own step (either flatten
-CLAUDE.md to match reality, or do the `apps/mobile/` + `apps/backend/` +
-`packages/shared/` rename at that time).
+The repo now has three active packages:
+
+- `react-native/` — Expo mobile app.
+- `backend/` — Fastify API, Prisma schema, migrations, and route handlers.
+- `packages/shared/` — shared Zod contracts and types consumed by mobile/backend.
+
+Docs that still mention `apps/mobile` or `apps/backend` should be translated to
+the canonical paths above unless they are explicitly historical/legacy docs.
 
 ---
 

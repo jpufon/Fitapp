@@ -12,6 +12,7 @@ import {
   Wifi, WifiOff, RefreshCw, X, Play, Info,
 } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
+import { useExerciseLibrary, useMuscleGroups, filterExercises, type Exercise } from '../hooks/useExerciseLibrary'
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -25,21 +26,6 @@ const MOCK_TREE = {
   steps:        { score: 82, pct: 0.40, goal: 8000, current: 6240 },
   history:      [72, 68, 75, 80, 85, 81, 85],
 }
-
-const EXERCISES = [
-  { id: '1', name: 'Bench Press',         muscle: 'Chest',      equipment: 'Barbell', force: 'Push', mechanic: 'Compound' },
-  { id: '2', name: 'Overhead Press',      muscle: 'Shoulders',  equipment: 'Barbell', force: 'Push', mechanic: 'Compound' },
-  { id: '3', name: 'Incline DB Press',    muscle: 'Upper Chest',equipment: 'Dumbbell',force: 'Push', mechanic: 'Compound' },
-  { id: '4', name: 'Pull-Up',             muscle: 'Back',       equipment: 'Bodyweight',force:'Pull',mechanic: 'Compound' },
-  { id: '5', name: 'Barbell Row',         muscle: 'Back',       equipment: 'Barbell', force: 'Pull', mechanic: 'Compound' },
-  { id: '6', name: 'Deadlift',            muscle: 'Hamstrings', equipment: 'Barbell', force: 'Pull', mechanic: 'Compound' },
-  { id: '7', name: 'Squat',              muscle: 'Quads',      equipment: 'Barbell', force: 'Push', mechanic: 'Compound' },
-  { id: '8', name: 'Romanian DL',        muscle: 'Hamstrings', equipment: 'Barbell', force: 'Hinge',mechanic: 'Compound' },
-  { id: '9', name: 'Dumbbell Curl',      muscle: 'Biceps',     equipment: 'Dumbbell',force: 'Pull', mechanic: 'Isolation'},
-  { id: '10',name: 'Tricep Pushdown',    muscle: 'Triceps',    equipment: 'Cable',   force: 'Push', mechanic: 'Isolation'},
-]
-
-const MUSCLE_GROUPS = ['All', 'Chest', 'Back', 'Shoulders', 'Legs', 'Arms', 'Core']
 
 // ─── Tree Detail Screen ───────────────────────────────────────────────────────
 
@@ -225,13 +211,13 @@ export function ExerciseLibraryScreen({
 }: {
   onBack: () => void; onSelect?: (id: string) => void; mode?: 'browse' | 'pick'
 }) {
-  const [query, setQuery]       = useState('')
-  const [muscle, setMuscle]     = useState('All')
+  const [query, setQuery]   = useState('')
+  const [muscle, setMuscle] = useState('All')
 
-  const filtered = EXERCISES.filter(e =>
-    (muscle === 'All' || e.muscle === muscle) &&
-    (!query || e.name.toLowerCase().includes(query.toLowerCase()))
-  )
+  const { data, isLoading, error, refetch } = useExerciseLibrary()
+  const exercises  = data ?? []
+  const groups     = useMuscleGroups(data)
+  const filtered   = filterExercises(exercises, { query, muscle })
 
   return (
     <View style={styles.container}>
@@ -250,7 +236,7 @@ export function ExerciseLibraryScreen({
             placeholder="Search exercises" placeholderTextColor={colors.mutedForeground} />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.muscleFilter}>
-          {MUSCLE_GROUPS.map(m => (
+          {groups.map(m => (
             <TouchableOpacity
               key={m}
               style={[styles.muscleChip, muscle === m && styles.muscleChipActive]}
@@ -262,32 +248,61 @@ export function ExerciseLibraryScreen({
         </ScrollView>
       </View>
 
-      <ScrollView contentContainerStyle={styles.exerciseList}>
-        {filtered.map((ex) => (
-          <TouchableOpacity
-            key={ex.id}
-            style={styles.exerciseRow}
-            onPress={() => onSelect?.(ex.id)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.exerciseInfo}>
-              <Text style={styles.exerciseName}>{ex.name}</Text>
-              <View style={styles.exerciseTags}>
-                <View style={styles.exerciseTag}><Text style={styles.exerciseTagText}>{ex.muscle}</Text></View>
-                <View style={styles.exerciseTag}><Text style={styles.exerciseTagText}>{ex.equipment}</Text></View>
-                <View style={styles.exerciseTag}><Text style={styles.exerciseTagText}>{ex.mechanic}</Text></View>
-              </View>
-            </View>
-            {mode === 'pick'
-              ? <TouchableOpacity style={styles.addExBtn} onPress={() => onSelect?.(ex.id)}>
-                  <Text style={styles.addExBtnText}>Add</Text>
-                </TouchableOpacity>
-              : <ChevronRight color={colors.mutedForeground} size={16} strokeWidth={1.75} />
-            }
+      {isLoading && exercises.length === 0 ? (
+        <View style={styles.libraryStateBox}>
+          <Text style={styles.libraryStateText}>Loading exercise library...</Text>
+        </View>
+      ) : error && exercises.length === 0 ? (
+        <View style={styles.libraryStateBox}>
+          <Text style={styles.libraryStateText}>Couldn't load exercises.</Text>
+          <TouchableOpacity onPress={() => refetch()} style={styles.libraryStateBtn}>
+            <Text style={styles.libraryStateBtnText}>Retry</Text>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+        </View>
+      ) : filtered.length === 0 ? (
+        <View style={styles.libraryStateBox}>
+          <Text style={styles.libraryStateText}>No exercises match your filters.</Text>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.exerciseList}>
+          {filtered.map((ex) => (
+            <ExerciseRow
+              key={ex.id}
+              exercise={ex}
+              mode={mode}
+              onSelect={() => onSelect?.(ex.id)}
+            />
+          ))}
+        </ScrollView>
+      )}
     </View>
+  )
+}
+
+function ExerciseRow({ exercise, mode, onSelect }: {
+  exercise: Exercise; mode: 'browse' | 'pick'; onSelect: () => void
+}) {
+  const primaryMuscle = exercise.primaryMuscles[0] ?? exercise.category
+  const equipmentLabel = exercise.equipment[0] ?? 'Bodyweight'
+  return (
+    <TouchableOpacity style={styles.exerciseRow} onPress={onSelect} activeOpacity={0.7}>
+      <View style={styles.exerciseInfo}>
+        <Text style={styles.exerciseName}>{exercise.name}</Text>
+        <View style={styles.exerciseTags}>
+          <View style={styles.exerciseTag}><Text style={styles.exerciseTagText}>{primaryMuscle}</Text></View>
+          <View style={styles.exerciseTag}><Text style={styles.exerciseTagText}>{equipmentLabel}</Text></View>
+          {exercise.movementType && (
+            <View style={styles.exerciseTag}><Text style={styles.exerciseTagText}>{exercise.movementType}</Text></View>
+          )}
+        </View>
+      </View>
+      {mode === 'pick'
+        ? <TouchableOpacity style={styles.addExBtn} onPress={onSelect}>
+            <Text style={styles.addExBtnText}>Add</Text>
+          </TouchableOpacity>
+        : <ChevronRight color={colors.mutedForeground} size={16} strokeWidth={1.75} />
+      }
+    </TouchableOpacity>
   )
 }
 
@@ -396,6 +411,10 @@ const styles = StyleSheet.create({
   muscleChip:       { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, backgroundColor: colors.card, borderRadius: radius.full, borderWidth: 0.5, borderColor: colors.border, marginRight: spacing.xs, minHeight: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
   muscleChipActive: { borderColor: colors.primary, backgroundColor: colors.primary + '10' },
   muscleChipText:   { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: colors.mutedForeground },
+  libraryStateBox:  { paddingHorizontal: spacing.screen, paddingTop: spacing.xl, alignItems: 'center', gap: spacing.md },
+  libraryStateText: { fontSize: typography.size.base, color: colors.mutedForeground, textAlign: 'center' },
+  libraryStateBtn:  { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.primary, borderRadius: radius.full, minHeight: touchTarget.comfortable, alignItems: 'center', justifyContent: 'center' },
+  libraryStateBtnText: { fontSize: typography.size.sm, fontWeight: typography.weight.bold, color: colors.primaryFg },
   exerciseList:     { paddingHorizontal: spacing.screen, paddingTop: spacing.sm, paddingBottom: spacing.xxl },
   exerciseRow:      { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: 0.5, borderBottomColor: colors.border, gap: spacing.md },
   exerciseInfo:     { flex: 1, gap: spacing.xs },

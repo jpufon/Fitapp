@@ -1,6 +1,8 @@
-// walifit-shared — Zod schemas + types shared between backend and mobile.
+// walifit-shared — Zod schemas + types + pure utils shared between backend and mobile.
 
-export * from './types/health.js';
-export * from './schemas/workout.js';
-export * from './schemas/nutrition.js';
-export * from './schemas/vitality.js';
+export * from './types/health';
+export * from './schemas/workout';
+export * from './schemas/nutrition';
+export * from './schemas/vitality';
+export * from './utils/units';
+export * from './utils/plates';

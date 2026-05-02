@@ -186,6 +186,13 @@ model WorkoutSet {
   rpe       Int?
   notes     String?
 
+  // Conditioning fields (only populated when set logs a timed/rounds segment).
+  // Strength sets keep these null; one row = one unit of work regardless of mode.
+  durationS       Int?    // total time of the segment (timed work, AMRAP)
+  roundNumber     Int?    // 1-based round index for rounds-based sessions
+  intervalWorkS   Int?    // work interval (e.g. 30s on)
+  intervalRestS   Int?    // rest interval (e.g. 30s off)
+
   completedAt DateTime @default(now())
 
   workout WorkoutLog @relation(fields: [workoutLogId], references: [id], onDelete: Cascade)
@@ -359,19 +366,92 @@ model UserBadge {
   @@map("user_badges")
 }
 
+// ─── WorkoutTemplate ───────────────────────────────────────────────────────
+// User-saved reusable session structure. Concrete sessions still log against
+// WorkoutLog at runtime; templates are pre-fill state, never history.
+
+model WorkoutTemplate {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  name        String
+  description String?
+  type        WorkoutType @default(strength)
+  archived    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  exercises WorkoutTemplateExercise[]
+
+  @@index([userId, archived])
+  @@map("workout_templates")
+}
+
+model WorkoutTemplateExercise {
+  id         String @id @default(uuid()) @db.Uuid
+  templateId String @db.Uuid
+
+  exerciseName String
+  exerciseId   String?
+
+  position    Int     // 0-based ordering within the template
+  defaultSets Int     @default(3)
+  defaultReps Int?    // null for time-based or rounds-based segments
+  restS       Int?    // recommended rest between sets (seconds)
+
+  // Conditioning preset values. UI flips between strength rows / interval rows
+  // / rounds rows based on which of these are set.
+  durationS     Int?  // timed segment duration
+  rounds        Int?  // total rounds for rounds-based
+  intervalWorkS Int?
+  intervalRestS Int?
+
+  notes String?
+
+  template WorkoutTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId, position])
+  @@map("workout_template_exercises")
+}
+
+// ─── Exercise ──────────────────────────────────────────────────────────────
+// Reference library — read-only catalogue seeded from wger API.
+// One source of truth for the exercise library across V1 + Sprint 4 RAG.
+// Embedding column added in Sprint 4 once pgvector extension is enabled.
+
+model Exercise {
+  id              String   @id @default(uuid()) @db.Uuid
+  wgerId          Int?     @unique
+  name            String
+  category        String   // "strength" | "conditioning" | "mobility" | "cardio"
+  primaryMuscles  String[] @default([])
+  secondaryMuscles String[] @default([])
+  equipment       String[] @default([])
+  instructions    String?
+  movementType    String?  // "compound" | "isolation" | "olympic" | "bodyweight"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([name])
+  @@map("exercises")
+}
+
 // ─── Arena (V1.x scaffold) ─────────────────────────────────────────────────
 // Squad = small group (≤30) competing on a shared leaderboard. FeedItem =
 // activity event surfaced in The Arena. Reactions are one-per-user-per-type.
 // Owner-only delete; members can leave any time. Invite by code.
 
 model Squad {
-  id         String   @id @default(uuid()) @db.Uuid
-  name       String
-  type       String   @default("workout") // "workout" | "run"
-  ownerId    String   @db.Uuid
-  inviteCode String   @unique
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id                String   @id @default(uuid()) @db.Uuid
+  name              String
+  squadType         String   @default("hybrid") // "hybrid" | "run_club"
+  runFocusDistance  String?                     // "1mi" | "2mi" | "3mi" | "2K" | "5K" | "all" (run_club only)
+  maxMembers        Int      @default(30)
+  ownerId           String   @db.Uuid
+  inviteCode        String   @unique
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   owner     User          @relation("SquadOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members   SquadMember[]

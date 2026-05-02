@@ -9,7 +9,9 @@ waliFit is a Hybrid Athlete OS. The emotional core is the Vitality Tree — a li
 visual that grows when you take care of yourself. The app feels athletic, premium,
 and alive. Not sterile. Not generic.
 
-The tree IS the primary color. Teal (#0BBFBD) unifies the app shell and the tree.
+The tree IS the primary color. Teal (`#0BBFBD`) unifies the app shell and the tree.
+The current production palette is v3.0, with structured token groups in
+`react-native/theme.colors.js`.
 
 ---
 
@@ -18,26 +20,27 @@ The tree IS the primary color. Teal (#0BBFBD) unifies the app shell and the tree
 | Role | Name | Hex | Used for |
 |------|------|-----|----------|
 | Background | Deep Charcoal | `#0a0f0f` | Main app canvas — every screen |
-| Surface | Card Dark | `#181c1c` | Cards, workout modules, list items |
+| Surface | Card Dark | `#161b1b` | Cards, workout modules, list items |
 | Surface High | Popover | `#1a1f1f` | Modals, bottom sheets, dropdowns |
 | Muted | Muted Surface | `#1f2525` | Disabled states, secondary surfaces |
-| Border | Default Border | `#2a2f2f` | All borders — 0.5px weight |
+| Border | Default Border | `#2f3636` | All borders — 0.5px weight |
 | Primary | Vitality Teal | `#0BBFBD` | Buttons, active nav, tree, completion |
 | Primary Light | Teal Light | `#3FD9D7` | Hover states, progress fills |
 | Primary Dark | Teal Deep | `#0D6D6B` | Pressed states, points/status/header blocks |
-| Text on Primary | — | `#000000` | ALWAYS dark on teal — never white |
+| Text on Primary | — | `#002f2f` | ALWAYS dark on teal — never white |
 | Steps Pillar | Teal | `#0BBFBD` | Steps progress ring (matches primary) |
 | Protein Pillar | Amber | `#f59e0b` | Protein progress ring |
 | Hydration Pillar | Blue | `#60a5fa` | Hydration progress ring |
-| Energy | Amber Gold | `#fbbf24` | Streaks, achievements, PRs |
-| Social | Purple | `#a78bfa` | Arena, squad, social features |
+| Growth | Recovery Green | `#84cc16` | Recovery, health, growth states |
+| Energy | Amber | `#f59e0b` | Streaks, effort, warnings |
+| Accent Purple | Purple | `#8b5cf6` | Arena, squad, social features |
 | Data | Blue | `#60a5fa` | Analytics, charts, running stats |
 | Destructive | Crimson | `#ef4444` | Errors, stop actions, wilting tree |
 | Text Primary | Steel White | `#ececec` | All body text |
 | Text Secondary | Gray | `#9ca3af` | Timestamps, hints, labels |
 | Badge Iron | Gray | `#6b7280` | Iron tier — entry badges |
-| Badge Bronze | Bronze | `#b45309` | Bronze tier — consistency |
-| Badge Silver | Silver | `#9ca3af` | Silver tier — performance |
+| Badge Bronze | Bronze | `#c2410c` | Bronze tier — consistency |
+| Badge Silver | Silver | `#94a3b8` | Silver tier — performance |
 | Badge Gold | Gold | `#fbbf24` | Gold tier — elite |
 | Badge Legendary | Purple | `#a78bfa` | Legendary tier — apex (most never see) |
 
@@ -61,13 +64,12 @@ The tree IS the primary color. Teal (#0BBFBD) unifies the app shell and the tree
 
 | Token | Value | Use |
 |-------|-------|-----|
-| xs | 4px | Checkboxes, micro tags |
 | sm | 8px | Chips, exercise tags |
 | md | 12px | Buttons, inputs |
 | lg | 16px | Cards, modules |
 | xl | 20px | Bottom sheets |
 | xxl | 24px | Hero sections |
-| full | 999px | Pill buttons, streak tags |
+| full | 9999px | Pill buttons, streak tags |
 
 ---
 
@@ -84,15 +86,14 @@ Every tappable element must have `minHeight: 44`.
 
 | Size | px | Use |
 |------|----|-----|
-| xs | 11 | Timestamps, legal |
-| sm | 13 | Secondary labels |
-| base | 15 | Body text |
-| lg | 17 | Card titles |
+| xs | 12 | Timestamps, legal |
+| sm | 14 | Secondary labels |
+| base | 16 | Body text |
+| lg | 18 | Card titles |
 | xl | 20 | Screen titles |
 | 2xl | 24 | Feature headings |
 | 3xl | 30 | Stat numbers (streak, score) |
-| 4xl | 36 | Hero numbers (PR weight) |
-| hero | 56 | WaliRun distance, Vitality score |
+| 4xl | 36 | Hero numbers (PR weight, WaliRun distance, Vitality score) |
 
 Headings: Outfit Bold (web) / System Bold (mobile until fonts configured)
 Body: Plus Jakarta Sans (web) / System (mobile)
@@ -103,14 +104,14 @@ Monospace: JetBrains Mono — for stats, data, metrics only
 ## Component Patterns
 
 ### Cards
-- Background: `#181c1c`
-- Border: `0.5px solid #2a2f2f`
+- Background: `#161b1b`
+- Border: `0.5px solid #2f3636`
 - Radius: 16px (lg)
 - Padding: 16px (md)
 
 ### Primary Button
 - Background: `#0BBFBD` (primary teal)
-- Text: `#000000` (NEVER white on teal)
+- Text: `#002f2f` (NEVER white on teal)
 - Radius: 999px (pill)
 - Height: 48px (comfortable touch target)
 - Font: 15px semibold
@@ -128,7 +129,7 @@ Monospace: JetBrains Mono — for stats, data, metrics only
 
 ### Input Field
 - Background: `#1a1f1f`
-- Border default: `0.5px solid #2a2f2f`
+- Border default: `0.5px solid #2f3636`
 - Border focus: `1px solid #0BBFBD`
 - Text: `#ececec`
 - Placeholder: `#9ca3af`
@@ -142,7 +143,7 @@ Monospace: JetBrains Mono — for stats, data, metrics only
 - Rounded caps
 
 ### Bottom Navigation
-- Background: `#181c1c` + `border-top: 0.5px solid #2a2f2f`
+- Background: `#161b1b` + `border-top: 0.5px solid #2f3636`
 - Height: 70px
 - Active icon + label: `#0BBFBD` (primary)
 - Inactive icon + label: `#9ca3af`

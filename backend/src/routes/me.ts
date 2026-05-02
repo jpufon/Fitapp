@@ -24,6 +24,7 @@ const ProfileUpdateSchema = z.object({
   aiTrainingOptOut: z.boolean().optional(),
   privacyAcceptedAt: z.string().datetime().optional(),
   termsAcceptedAt: z.string().datetime().optional(),
+  timezone: z.string().trim().min(1).max(80).optional(),
 });
 
 const OnboardingUpdateSchema = z.object({
@@ -41,6 +42,7 @@ const OnboardingUpdateSchema = z.object({
   waterTargetMl: z.number().int().min(0).max(20000).optional(),
   onboardingStep: z.string().trim().max(80).optional(),
   onboardingComplete: z.boolean().optional(),
+  timezone: z.string().trim().min(1).max(80).optional(),
 });
 
 function toUnitSystem(input: z.infer<typeof UnitInputSchema> | undefined) {
@@ -116,6 +118,13 @@ export async function meRoutes(app: FastifyInstance) {
       },
     });
 
+    if (input.timezone) {
+      await prisma.vitalityState.update({
+        where: { userId: request.user!.id },
+        data: { timezone: input.timezone },
+      });
+    }
+
     return reply.send({ user });
   });
 
@@ -147,6 +156,13 @@ export async function meRoutes(app: FastifyInstance) {
         onboardingComplete: input.onboardingComplete,
       },
     });
+
+    if (input.timezone) {
+      await prisma.vitalityState.update({
+        where: { userId: request.user!.id },
+        data: { timezone: input.timezone },
+      });
+    }
 
     return reply.send({ user });
   });

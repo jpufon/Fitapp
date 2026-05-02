@@ -9,24 +9,30 @@ re-opening closed questions. Add new decisions at the top.
 
 **All four documents compared and conflicts resolved:**
 
-### Colors — zip file is the truth (v1) → superseded by Teal v2.0 (2026-04-28)
+### Colors — zip file is the truth (v1) → superseded by production palette v3.0
 Originally emerald `#10b981`. Replaced by teal `#0BBFBD` per
-`docs/waliFit_Design_Tokens.md` v2.0 (April 2026 founder decision).
+`docs/waliFit_Design_Tokens.md`, then refined into the v3.0 production
+fitness palette with structured token groups.
 
-Final palette (v2.0 teal):
-- Background:    `#0a0f0f`
-- Surface:       `#181c1c`
-- Primary:       `#0BBFBD` (teal)
-- Primary dark:  `#0D6D6B` (points/status/header blocks)
-- Text on primary: `#000000` (never white on teal)
-- Steps:         `#0BBFBD`
-- Protein:       `#f59e0b`
-- Hydration:     `#60a5fa`
-- Energy:        `#fbbf24`
-- Social:        `#a78bfa`
-- Destructive:   `#ef4444`
-- Foreground:    `#ececec`
-- Badge tiers:   Iron `#6b7280` · Bronze `#b45309` · Silver `#9ca3af` · Gold `#fbbf24` · Legendary `#a78bfa`
+Final palette (v3.0):
+- Background:      `#0a0f0f`
+- Background alt:  `#050A0A`
+- Surface:         `#161b1b`
+- Popover:         `#1a1f1f`
+- Border:          `#2f3636`
+- Primary:         `#0BBFBD` (teal)
+- Primary dark:    `#0D6D6B`
+- Primary light:   `#3FD9D7`
+- Text on primary: `#002f2f` (never white on teal)
+- Steps:           `#0BBFBD`
+- Protein/Energy:  `#f59e0b`
+- Hydration:       `#60a5fa`
+- Growth:          `#84cc16`
+- Accent blue:     `#3b82f6`
+- Accent purple:   `#8b5cf6`
+- Destructive:     `#ef4444`
+- Foreground:      `#ececec`
+- Badge tiers:     Iron `#6b7280` · Bronze `#c2410c` · Silver `#94a3b8` · Gold `#fbbf24` · Legendary `#a78bfa`
 
 ### Bottom navigation tabs — V1 Brief wins
 Tabs: **Home · Train · Calendar · Coach · Arena** (in this order)

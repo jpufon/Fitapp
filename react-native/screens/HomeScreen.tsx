@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   Alert,
   RefreshControl,
@@ -17,11 +17,13 @@ import {
   Droplets, Utensils, Footprints, MessageCircle, Users,
   TrendingUp, PlusCircle, Leaf, AlertCircle,
 } from 'lucide-react-native';
-import { colors, spacing, borderRadius, typography } from '../theme';
+import { colors, pillarColors, spacing, borderRadius, typography } from '../theme';
 import VitalityTree from '../components/VitalityTree';
 import type { RootStackParamList } from '../App';
 import { useUser } from '../hooks/useUser';
 import { useHomeSnapshot, useTodaySteps } from '../hooks/useHomeData';
+import { useLogNutrition } from '../hooks/useMutations';
+import { formatLocalDate } from '../hooks/useCalendarData';
 
 type ScreenState = 'loading' | 'success' | 'empty' | 'error';
 
@@ -30,9 +32,12 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const userQuery = useUser();
   const homeQuery = useHomeSnapshot();
-  const stepsQuery = useTodaySteps();
-
   const snap = homeQuery.data;
+  const stepsTarget = snap?.pillars.steps.target ?? 10_000;
+  const stepsQuery = useTodaySteps(stepsTarget);
+  const todayKey = formatLocalDate(new Date());
+  const logNutrition = useLogNutrition(todayKey);
+  const lastSyncedSteps = useRef<{ date: string; steps: number } | null>(null);
   const nutrition = useMemo(() => {
     if (!snap) {
       return {
@@ -124,15 +129,37 @@ export default function HomeScreen() {
     return 'Athlete';
   }, [userQuery.user]);
 
-  const steps = stepsQuery.data ?? { steps: 0, target: 10000, progress: 0 };
+  const steps = useMemo(() => {
+    const backendSteps = snap?.pillars.steps;
+    const deviceSteps = stepsQuery.data;
+    const current = deviceSteps?.steps ?? backendSteps?.current ?? 0;
+    const target = backendSteps?.target ?? deviceSteps?.target ?? 10_000;
+    const progress = Math.round(Math.min(100, Math.max(0, (current / Math.max(1, target)) * 100)));
 
-  const vitalityScore = vitality.score > 0
-    ? vitality.score
-    : Math.round(
-        nutrition.hydration.progress * 0.3 +
-          nutrition.protein.progress * 0.3 +
-          steps.progress * 0.4
-      );
+    return {
+      steps: current,
+      target,
+      progress,
+    };
+  }, [snap?.pillars.steps, stepsQuery.data]);
+
+  useEffect(() => {
+    const deviceSteps = stepsQuery.data?.steps;
+    if (!deviceSteps || deviceSteps <= 0) return;
+    if (deviceSteps === snap?.pillars.steps.current) return;
+    const last = lastSyncedSteps.current;
+    if (last && last.date === todayKey && last.steps === deviceSteps) return;
+
+    lastSyncedSteps.current = { date: todayKey, steps: deviceSteps };
+    logNutrition.mutate({ stepsCount: deviceSteps });
+  }, [logNutrition, snap?.pillars.steps.current, stepsQuery.data?.steps, todayKey]);
+
+  const computedVitalityScore = Math.round(
+    nutrition.hydration.progress * 0.3 +
+      nutrition.protein.progress * 0.3 +
+      steps.progress * 0.4
+  );
+  const vitalityScore = vitality.score > 0 ? vitality.score : computedVitalityScore;
 
   const handleRefresh = async () => {
     await Promise.all([homeQuery.refetch(), stepsQuery.refetch()]);
@@ -262,7 +289,7 @@ export default function HomeScreen() {
                   value={`${Math.round(nutrition.hydration.current)}/${Math.round(nutrition.hydration.target)}`}
                   unit="ml"
                   progress={nutrition.hydration.progress}
-                  color={colors.blue}
+                  color={pillarColors.hydration}
                 />
                 <StatCard
                   icon={Utensils}
@@ -270,7 +297,7 @@ export default function HomeScreen() {
                   value={`${Math.round(nutrition.protein.current)}/${Math.round(nutrition.protein.target)}`}
                   unit="grams"
                   progress={nutrition.protein.progress}
-                  color={colors.energy}
+                  color={pillarColors.protein}
                 />
                 <StatCard
                   icon={Footprints}
@@ -278,7 +305,7 @@ export default function HomeScreen() {
                   value={formatNumber(steps.steps)}
                   unit={`of ${formatNumber(steps.target)}`}
                   progress={steps.progress}
-                  color={colors.primary}
+                  color={pillarColors.steps}
                 />
               </View>
             </View>
@@ -507,14 +534,14 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     fontSize: typography.fontSize.sm,
-    color: colors.mutedForeground,
+    color: colors.creamMuted,
     fontWeight: typography.fontWeight.medium,
     letterSpacing: 1,
     marginBottom: 4,
   },
   nameText: {
     fontSize: typography.fontSize['3xl'],
-    color: colors.foreground,
+    color: colors.cream,
     fontWeight: typography.fontWeight.bold,
   },
   notificationButton: {
@@ -552,7 +579,7 @@ const styles = StyleSheet.create({
   },
   streakLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.mutedForeground,
+    color: colors.greySoft,
     fontWeight: typography.fontWeight.medium,
   },
   treeContainer: {
@@ -569,13 +596,13 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: typography.fontSize.xl,
-    color: colors.foreground,
+    color: colors.cream,
     fontWeight: typography.fontWeight.bold,
     marginBottom: spacing.md,
   },
   sectionSubtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.mutedForeground,
+    color: colors.greySoft,
     fontWeight: typography.fontWeight.medium,
     letterSpacing: 1,
   },
@@ -600,7 +627,7 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.mutedForeground,
+    color: colors.greySoft,
     fontWeight: typography.fontWeight.medium,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -614,7 +641,7 @@ const styles = StyleSheet.create({
   },
   statUnit: {
     fontSize: typography.fontSize.xs,
-    color: colors.mutedForeground,
+    color: colors.greySoft,
     marginBottom: spacing.sm,
   },
   progressBar: {
@@ -664,7 +691,7 @@ const styles = StyleSheet.create({
   },
   workoutMetaText: {
     fontSize: typography.fontSize.sm,
-    color: colors.mutedForeground,
+    color: colors.greySoft,
     fontWeight: typography.fontWeight.medium,
   },
   workoutBadge: {
@@ -716,7 +743,7 @@ const styles = StyleSheet.create({
   },
   quickActionLabel: {
     fontSize: typography.fontSize.base,
-    color: colors.foreground,
+    color: colors.cream,
     fontWeight: typography.fontWeight.bold,
   },
   feedbackCard: {
@@ -731,13 +758,13 @@ const styles = StyleSheet.create({
   },
   feedbackTitle: {
     fontSize: typography.fontSize.xl,
-    color: colors.foreground,
+    color: colors.cream,
     fontWeight: typography.fontWeight.bold,
     textAlign: 'center',
   },
   feedbackMessage: {
     fontSize: typography.fontSize.base,
-    color: colors.mutedForeground,
+    color: colors.greySoft,
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -765,13 +792,13 @@ const styles = StyleSheet.create({
   },
   feedbackPanelTitle: {
     fontSize: typography.fontSize.lg,
-    color: colors.foreground,
+    color: colors.cream,
     fontWeight: typography.fontWeight.bold,
     marginBottom: spacing.xs,
   },
   feedbackPanelMessage: {
     fontSize: typography.fontSize.base,
-    color: colors.mutedForeground,
+    color: colors.greySoft,
     lineHeight: 22,
   },
   skeletonBar: {

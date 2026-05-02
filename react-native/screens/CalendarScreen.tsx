@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -35,6 +35,7 @@ import {
 
 type DataState = 'loading' | 'success' | 'empty' | 'error';
 type CalendarView = 'day' | 'week' | 'month';
+type CalendarDayWithVitality = CalendarDayItem & { vitalityScore: number };
 
 const PROTEIN_GOAL_G = 160;
 const HYDRATION_GOAL_ML = 3000;
@@ -49,6 +50,7 @@ export default function CalendarScreen() {
   const dayQuery = useCalendarDay(selectedDate);
 
   const days = rangeQuery.data?.days ?? [];
+  const daysByDate = useMemo(() => new Map(days.map((day) => [day.date, day])), [days]);
 
   const state = useMemo<DataState>(() => {
     if (rangeQuery.isLoading && !rangeQuery.data) return 'loading';
@@ -73,18 +75,25 @@ export default function CalendarScreen() {
 
   const weekDays = useMemo(() => {
     const start = startOfMondayWeekLocal(parseLocalDate(selectedDate));
-    const byDate = new Map(days.map((day) => [day.date, day]));
     return Array.from({ length: 7 }, (_, index) => {
       const date = addDaysLocal(start, index);
       const key = formatLocalDate(date);
-      return byDate.get(key) ?? emptyCalendarDay(key);
+      return daysByDate.get(key) ?? emptyCalendarDay(key);
     });
-  }, [days, selectedDate]);
+  }, [daysByDate, selectedDate]);
 
-  const selectedDay = dayQuery.data;
+  const selectedDayPreview = useMemo<CalendarDayWithVitality>(() => {
+    const day = daysByDate.get(selectedDate) ?? emptyCalendarDay(selectedDate);
+    return { ...day, vitalityScore: day.score };
+  }, [daysByDate, selectedDate]);
+  const selectedDay = dayQuery.data ?? selectedDayPreview;
   const todayString = formatLocalDate(new Date());
   const stats = rangeQuery.data?.stats ?? getCalendarStats(days);
   const selectedScore = Math.round(selectedDay?.vitalityScore ?? selectedDay?.score ?? 0);
+
+  const handleSelectDate = useCallback((date: string) => {
+    setSelectedDate((current) => (current === date ? current : date));
+  }, []);
 
   const navigateMonth = (direction: number) => {
     setCurrentDate((date) => addMonthsLocal(date, direction));
@@ -158,6 +167,7 @@ export default function CalendarScreen() {
                 key={item}
                 onPress={() => setView(item)}
                 style={[styles.tab, isActive && styles.tabActive]}
+                testID={`calendar-tab-${item}`}
               >
                 <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
                   {capitalize(item)}
@@ -218,7 +228,7 @@ export default function CalendarScreen() {
               <WeekView
                 weekDays={weekDays}
                 selectedDate={selectedDate}
-                onSelectDate={setSelectedDate}
+                onSelectDate={handleSelectDate}
               />
             ) : null}
 
@@ -228,7 +238,7 @@ export default function CalendarScreen() {
                 selectedDate={selectedDate}
                 todayString={todayString}
                 stats={stats}
-                onSelectDate={setSelectedDate}
+                onSelectDate={handleSelectDate}
               />
             ) : null}
           </>
@@ -286,15 +296,35 @@ function DayView({
               <Dumbbell size={20} color={colors.primary} strokeWidth={1.75} />
               <Text style={styles.feedTitle}>Workout</Text>
               <Text style={styles.muted}>· {selectedDay.durationMinutes} min</Text>
+              <View style={styles.dayBadge}>
+                <Text style={styles.dayBadgeText}>Training day</Text>
+              </View>
             </View>
             <Text style={[styles.foregroundText, { marginTop: spacing.sm }]}>
               {selectedDay.workoutName}
             </Text>
             <Text style={styles.muted}>{selectedDay.exerciseCount} exercises</Text>
           </View>
+        ) : selectedDay?.type === 'rest' ? (
+          <View style={styles.feedCard}>
+            <View style={styles.row8}>
+              <Text style={styles.feedTitle}>Rest day</Text>
+              <View style={[styles.dayBadge, { backgroundColor: colors.growth + '20' }]}>
+                <Text style={[styles.dayBadgeText, { color: colors.growth }]} testID="calendar-rest-recovery-badge">Recovery</Text>
+              </View>
+            </View>
+            <Text style={[styles.muted, { marginTop: spacing.xs }]}>
+              Recovery counts — your streak is protected and hydration + protein still score.
+            </Text>
+          </View>
         ) : (
           <View style={styles.feedCard}>
-            <Text style={styles.feedTitle}>No workout logged</Text>
+            <View style={styles.row8}>
+              <Text style={styles.feedTitle}>No workout logged</Text>
+              <View style={[styles.dayBadge, { backgroundColor: colors.energy + '20' }]}>
+                <Text style={[styles.dayBadgeText, { color: colors.energy }]}>Training day</Text>
+              </View>
+            </View>
             <Text style={[styles.muted, { marginTop: spacing.xs }]}>
               Activity for this day will appear here after logging.
             </Text>
@@ -355,6 +385,7 @@ function WeekView({
             <TouchableOpacity
               key={day.date}
               onPress={() => onSelectDate(day.date)}
+              delayPressIn={0}
               style={[
                 styles.weekGridCell,
                 day.completed && styles.weekGridCellCompleted,
@@ -468,6 +499,7 @@ function MonthView({
               <Pressable
                 key={cell.date}
                 onPress={() => onSelectDate(cell.date)}
+                unstable_pressDelay={0}
                 style={[
                   styles.dayCell,
                   cell.hasActivity && !isSelected && {
@@ -1087,6 +1119,18 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.base,
     color: colors.foreground,
     fontWeight: typography.fontWeight.semibold,
+  },
+  dayBadge: {
+    marginLeft: 'auto',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    backgroundColor: colors.primary + '18',
+    borderRadius: borderRadius.full,
+  },
+  dayBadgeText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.primary,
   },
   feedbackCard: {
     alignItems: 'center',

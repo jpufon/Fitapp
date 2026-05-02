@@ -68,6 +68,10 @@ export async function workoutRoutes(app: FastifyInstance) {
           weightKg: parsed.data.weightKg,
           rpe: parsed.data.rpe,
           notes: parsed.data.notes,
+          durationS: parsed.data.durationS,
+          roundNumber: parsed.data.roundNumber,
+          intervalWorkS: parsed.data.intervalWorkS,
+          intervalRestS: parsed.data.intervalRestS,
         },
       });
 

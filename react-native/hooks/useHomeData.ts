@@ -1,6 +1,5 @@
 // Home data hooks — backed by a single GET /home call (HomeScreen derives slices
-// inline). useTodaySteps drives off Pedometer for instant local feedback; server
-// stepsCount syncing is wired in mutation hooks (useLogNutrition).
+// inline). useTodaySteps drives off Pedometer for instant local feedback.
 
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
@@ -136,8 +135,7 @@ async function ensurePedometerGate(): Promise<PedometerGate> {
   }
 }
 
-async function fetchTodaySteps(): Promise<StepsSummary> {
-  const target = 10_000;
+async function fetchTodaySteps(target: number): Promise<StepsSummary> {
   const gate = await ensurePedometerGate();
   if (!gate.available) {
     throw new Error('Step tracking is not available on this device.');
@@ -164,11 +162,12 @@ async function fetchTodaySteps(): Promise<StepsSummary> {
   return fallback;
 }
 
-export function useTodaySteps() {
+export function useTodaySteps(target = 10_000) {
+  const normalizedTarget = Number.isFinite(target) && target > 0 ? Math.round(target) : 10_000;
   const query = useCachedQuery<StepsSummary>({
-    queryKey: ['home', 'today-steps'],
+    queryKey: ['home', 'today-steps', normalizedTarget],
     cacheKey: 'query.home.today-steps',
-    queryFn: fetchTodaySteps,
+    queryFn: () => fetchTodaySteps(normalizedTarget),
   });
 
   useEffect(() => {
@@ -181,14 +180,14 @@ export function useTodaySteps() {
     subscription = Pedometer.watchStepCount((result) => {
       const next: StepsSummary = {
         steps: baseSteps + result.steps,
-        target: 10_000,
-        progress: Math.round(Math.min(100, ((baseSteps + result.steps) / 10_000) * 100)),
+        target: normalizedTarget,
+        progress: Math.round(Math.min(100, ((baseSteps + result.steps) / normalizedTarget) * 100)),
       };
       setCachedJson('home.steps', next);
     });
 
     return () => subscription?.remove();
-  }, [query.data]);
+  }, [normalizedTarget, query.data]);
 
   return query;
 }

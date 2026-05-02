@@ -22,6 +22,7 @@ export const borderRadius = {
   lg: 16,
   xl: 20,
   xxl: 24,
+  full: 9999,
 };
 
 // Alias for scaffold specs that import `radius`; adds `full` for pill buttons.
@@ -36,6 +37,20 @@ export const touchTarget = {
   comfortable: 48,
   workout: 56,
   large: 56, // alias of workout — v2.0 token doc naming
+};
+
+// Bespoke component dimensions. Use these rather than raw numbers so
+// VitalityTree (and friends) stay rule-compliant: no magic numbers in components.
+export const componentSizes = {
+  vitalityTree: {
+    artFrameHeight: 236,
+    glow: 220,
+    scoreBadgeMinWidth: 78,
+    scoreBadgeMinHeight: 72,
+    pillarIcon: 30,
+    pillarCopyMinHeight: 42,
+    pillarBarHeight: 4,
+  },
 };
 
 export const typography = {

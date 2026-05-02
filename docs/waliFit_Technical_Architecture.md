@@ -13,7 +13,7 @@
 - Never hardcode hex or spacing. Always import from `react-native/theme.ts`.
 - All weights stored in kg in DB. All durations in seconds in DB. UI converts on display.
 - Steps are NEVER manually entered. Apple Health / Google Fit only.
-- Dark text (#000000 = colors.primaryFg) on primary (#0BBFBD). Never white on teal.
+- Dark text (`#002f2f` = `colors.primaryFg`) on primary (`#0BBFBD`). Never white on teal.
 - Every mutation goes through offline sync queue.
 - UserMemory table ships in V1 schema (empty). Memory update job ships in V1.5.
 
@@ -582,36 +582,40 @@ CORS_ORIGIN=https://walifit.app
 ## 13. Design Tokens (react-native/theme.ts)
 
 ```typescript
-// ─── Primary palette (updated — teal replacing emerald) ───────
+// ─── Primary palette (v3.0 production fitness palette) ────────
 colors.primary        = '#0BBFBD'  // bright teal — primary CTA, Vitality Tree, progress rings
 colors.primaryDark    = '#0D6D6B'  // deep teal — points card, header accent blocks, special cards
-colors.primaryFg      = '#000000'  // ALWAYS dark on teal. Never white.
+colors.primaryLight   = '#3FD9D7'  // highlights, progress fills
+colors.primaryFg      = '#002f2f'  // ALWAYS dark on teal. Never white.
 
 // ─── App shell ────────────────────────────────────────────────
-colors.background     = '#0a0f0f'  // app shell — near black, unchanged
-colors.card           = '#141818'  // card surfaces, inputs — unchanged
+colors.background     = '#0a0f0f'  // app shell
+colors.backgroundAlt  = '#050A0A'  // immersive run/focus mode
+colors.card           = '#161b1b'  // card surfaces, inputs
+colors.popover        = '#1a1f1f'  // modals, sheets, menus
+colors.muted          = '#1f2525'  // disabled/secondary surfaces
+colors.border         = '#2f3636'  // borders
 
 // ─── Semantic colours ─────────────────────────────────────────
-colors.energy         = '#fbbf24'  // amber — streak, warnings, legendary badges
-colors.blue           = '#60a5fa'  // run data, pace, WaliRun screens
+colors.energy         = '#f59e0b'  // effort, protein/nutrition, warnings
+colors.hydration      = '#60a5fa'  // water, run data, pace
+colors.growth         = '#84cc16'  // recovery / health
+colors.blue           = '#60a5fa'  // compatibility alias for hydration
 colors.blueFg         = '#0B0E14'  // dark text on blue
-colors.purple         = '#a78bfa'  // future unlocks, Legendary badge tier
+colors.purple         = '#8b5cf6'  // compatibility alias for accent.purple
 colors.destructive    = '#ef4444'  // delete, error states, discard
 
 // ─── Text ─────────────────────────────────────────────────────
-colors.foreground     = '#e5e7eb'  // primary text on dark bg
+colors.foreground     = '#ececec'  // primary text on dark bg
 colors.mutedForeground= '#9ca3af'  // secondary text, labels
 
 // ─── Utility ──────────────────────────────────────────────────
 colors.overlay        = 'rgba(0,0,0,0.7)'  // modal scrims
-colors.googleBrand    = '#4285F4'  // Google Sign In — brand requirement, never change
+colors.google         = '#4285F4'  // Google Sign In — brand requirement, never change
 
 // ─── Palette origin ───────────────────────────────────────────
-// Primary teal derived from Sixty app design system.
-// #0BBFBD — bright teal, replaces #10b981 emerald across all screens.
-// #0D6D6B — deep teal, new token for card-header backgrounds (points, credits, status).
-// Both validated on #0a0f0f dark background. primaryFg (#000000) confirmed
-// readable on both teal values at all standard text sizes.
+// v3.0 keeps the vitality teal identity and adds structured token groups:
+// earth.*, accent.*, badge.*, pillarColors, and gradients.
 
 touchTarget.min         = 44  // every tappable element
 touchTarget.comfortable = 48  // primary actions

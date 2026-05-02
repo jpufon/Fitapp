@@ -2,7 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { RecomputeVitalitySchema } from 'walifit-shared';
 import { requireAuth } from '../lib/auth.js';
 import { prisma } from '../lib/prisma.js';
-import { upsertDailyScore, dateAtMidnight } from '../lib/dailyScore.js';
+import { upsertDailyScore, dateAtMidnightForUser } from '../lib/dailyScore.js';
+import { persistStreak, currentDayKeyWithGrace, dayKeyToDbDate } from '../lib/streakEngine.js';
 
 export async function vitalityRoutes(app: FastifyInstance) {
   // ── POST /vitality/recompute ───────────────────────────────────────────
@@ -12,40 +13,40 @@ export async function vitalityRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.flatten() });
     }
 
+    const userId = request.user!.id;
     const dailyScore = await upsertDailyScore(
-      request.user!.id,
-      dateAtMidnight(parsed.data.date),
+      userId,
+      await dateAtMidnightForUser(userId, parsed.data.date),
       { isRestDay: parsed.data.isRestDay },
     );
 
-    return reply.send({ dailyScore });
+    const streakResult = await persistStreak(userId);
+
+    return reply.send({ dailyScore, streak: streakResult.streak });
   });
 
-  // ── GET /vitality/current — today's score + 30-day streak ──────────────
+  // ── GET /vitality/current — today's score + streak ─────────────────────
   app.get('/vitality/current', { preHandler: requireAuth }, async (request, reply) => {
-    const today = dateAtMidnight();
+    const userId = request.user!.id;
+
+    const vitalityState = await prisma.vitalityState.findUnique({
+      where: { userId },
+      select: { timezone: true, freezeTokens: true, longestStreak: true },
+    });
+    const tz = vitalityState?.timezone || 'UTC';
+    const todayKey = currentDayKeyWithGrace(tz);
+
     const dailyScore = await prisma.dailyScore.findUnique({
-      where: { userId_date: { userId: request.user!.id, date: today } },
+      where: { userId_date: { userId, date: dayKeyToDbDate(todayKey) } },
     });
 
-    // Streak = consecutive days backward from today with totalScore >= 0.5.
-    // Naive linear scan over recent rows; fine for V1 scale.
-    const recent = await prisma.dailyScore.findMany({
-      where: { userId: request.user!.id, date: { lte: today } },
-      orderBy: { date: 'desc' },
-      take: 365,
+    const streakResult = await persistStreak(userId);
+
+    return reply.send({
+      dailyScore,
+      streak: streakResult.streak,
+      longestStreak: streakResult.longestStreak,
+      freezeTokens: streakResult.freezeTokens,
     });
-
-    let streak = 0;
-    let cursor = today.getTime();
-    const oneDayMs = 24 * 60 * 60 * 1000;
-    for (const row of recent) {
-      if (row.date.getTime() !== cursor) break;
-      if (row.totalScore < 0.5) break;
-      streak += 1;
-      cursor -= oneDayMs;
-    }
-
-    return reply.send({ dailyScore, streak });
   });
 }

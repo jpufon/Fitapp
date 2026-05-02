@@ -9,21 +9,30 @@ import {
   TextInput, StyleSheet, Modal,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { X, Plus, ChevronDown, Calculator, Check, MoreHorizontal, Zap } from 'lucide-react-native'
+import { X, Plus, ChevronDown, Calculator, Check, MoreHorizontal, Zap, Dumbbell, Timer, Repeat } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { RootStackParamList } from '../App'
 import { useFinishWorkout, useLogSet, useStartWorkout } from '../hooks/useMutations'
-import type { WorkoutType } from 'walifit-shared'
+import { useUnitSystem } from '../hooks/useUnitSystem'
+import type { UnitSystem, WorkoutType } from 'walifit-shared'
+import { calculatePlates } from 'walifit-shared'
 import { RestTimerSheet } from '../components/RestTimerSheet'
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
+type SetMode = 'strength' | 'interval' | 'rounds'
 interface ExerciseSet {
   id: string; previous: string; weight: string; reps: string; completed: boolean; rpe?: string
+  // Conditioning fields — populated when the parent exercise's mode != 'strength'.
+  durationS?: string
+  intervalWorkS?: string
+  intervalRestS?: string
+  roundNumber?: number
 }
 interface Exercise {
   id: string; name: string; muscle: string; sets: ExerciseSet[]
+  mode?: SetMode  // defaults to 'strength' if unset (back-compat with MOCK_WORKOUT)
 }
 
 const MOCK_WORKOUT: Exercise[] = [
@@ -53,9 +62,6 @@ const MOCK_WORKOUT: Exercise[] = [
   },
 ]
 
-const PLATE_SIZES_KG = [25, 20, 15, 10, 5, 2.5, 1.25, 0.25]
-const BAR_WEIGHT_KG  = 20
-
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ActiveWorkout'>
@@ -65,10 +71,12 @@ export default function ActiveWorkoutScreen({ navigation, route }: Props) {
   const workout = route.params.workout
   const onDiscard = () => navigation.goBack()
 
+  const unitSystem = useUnitSystem()
   const [exercises, setExercises]   = useState<Exercise[]>(MOCK_WORKOUT)
   const [elapsed, setElapsed]       = useState('00:43:12')
   const [showPlates, setShowPlates] = useState(false)
-  const [plateTarget, setPlateTarget] = useState('100')
+  // Default plate-calc target depends on unit system (~100kg or ~225lb).
+  const [plateTarget, setPlateTarget] = useState(unitSystem === 'imperial' ? '225' : '100')
   const [serverWorkoutId, setServerWorkoutId] = useState<string | null>(() =>
     isPersistedWorkoutId(workout.id) ? workout.id : createClientUuid()
   )
@@ -128,7 +136,11 @@ export default function ActiveWorkoutScreen({ navigation, route }: Props) {
     ))
   }
 
-  const logSet = async (exId: string, setId: string, weightValue: string, repsValue: string) => {
+  const logSet = async (
+    exId: string,
+    setId: string,
+    payload: { weight?: string; reps?: string; durationS?: string; intervalWorkS?: string; intervalRestS?: string },
+  ) => {
     const exercise = exercises.find(e => e.id === exId)
     const set = exercise?.sets.find(s => s.id === setId)
     if (!exercise || !set) return
@@ -141,11 +153,19 @@ export default function ActiveWorkoutScreen({ navigation, route }: Props) {
       return
     }
 
-    const reps = Number.parseInt(repsValue, 10)
-    const weightKg = Number.parseFloat(weightValue)
+    const mode: SetMode = exercise.mode ?? 'strength'
+    const reps = Number.parseInt(payload.reps ?? '0', 10) || 0
+    const weightKg = Number.parseFloat(payload.weight ?? '')
+    const durationS = Number.parseInt(payload.durationS ?? '', 10)
+    const intervalWorkS = Number.parseInt(payload.intervalWorkS ?? '', 10)
+    const intervalRestS = Number.parseInt(payload.intervalRestS ?? '', 10)
 
-    if (!Number.isFinite(reps) || reps < 0) {
+    if (mode === 'strength' && (!Number.isFinite(reps) || reps < 0)) {
       Alert.alert('Reps required', 'Enter a valid rep count before saving this set.')
+      return
+    }
+    if (mode === 'interval' && !Number.isFinite(durationS)) {
+      Alert.alert('Duration required', 'Enter how long the interval lasts.')
       return
     }
 
@@ -157,7 +177,11 @@ export default function ActiveWorkoutScreen({ navigation, route }: Props) {
         exerciseId: exercise.id,
         setNumber,
         reps,
-        weightKg: Number.isFinite(weightKg) ? weightKg : undefined,
+        weightKg: mode === 'strength' && Number.isFinite(weightKg) ? weightKg : undefined,
+        durationS: mode !== 'strength' && Number.isFinite(durationS) ? durationS : undefined,
+        roundNumber: mode === 'rounds' ? setNumber : undefined,
+        intervalWorkS: mode === 'interval' && Number.isFinite(intervalWorkS) ? intervalWorkS : undefined,
+        intervalRestS: mode === 'interval' && Number.isFinite(intervalRestS) ? intervalRestS : undefined,
       })
       markSetCompleted(exId, setId)
       setSaveState(result.kind === 'queued' ? 'queued' : 'ready')
@@ -226,7 +250,10 @@ export default function ActiveWorkoutScreen({ navigation, route }: Props) {
           <ExerciseCard
             key={exercise.id}
             exercise={exercise}
-            onLogSet={(setId, weight, reps) => logSet(exercise.id, setId, weight, reps)}
+            onLogSet={(setId, payload) => logSet(exercise.id, setId, payload)}
+            onChangeMode={(mode) =>
+              setExercises((curr) => curr.map((e) => (e.id === exercise.id ? { ...e, mode } : e)))
+            }
             pendingSetIds={pendingSetIds}
             onOpenPlates={() => setShowPlates(true)}
           />
@@ -266,6 +293,7 @@ export default function ActiveWorkoutScreen({ navigation, route }: Props) {
         visible={showPlates}
         targetWeight={plateTarget}
         onChangeTarget={setPlateTarget}
+        unitSystem={unitSystem}
         onClose={() => setShowPlates(false)}
       />
     </SafeAreaView>
@@ -274,12 +302,20 @@ export default function ActiveWorkoutScreen({ navigation, route }: Props) {
 
 // ─── Exercise card ────────────────────────────────────────────────────────────
 
-function ExerciseCard({ exercise, onLogSet, pendingSetIds, onOpenPlates }: {
+type LogPayload = {
+  weight?: string; reps?: string; durationS?: string; intervalWorkS?: string; intervalRestS?: string
+}
+
+function ExerciseCard({ exercise, onLogSet, onChangeMode, pendingSetIds, onOpenPlates }: {
   exercise: Exercise;
-  onLogSet: (setId: string, weight: string, reps: string) => void;
+  onLogSet: (setId: string, payload: LogPayload) => void;
+  onChangeMode: (mode: SetMode) => void;
   pendingSetIds: Set<string>;
   onOpenPlates: () => void
 }) {
+  const mode: SetMode = exercise.mode ?? 'strength'
+  const isStrength = mode === 'strength'
+
   return (
     <View style={styles.exerciseCard}>
       {/* Exercise header */}
@@ -290,36 +326,83 @@ function ExerciseCard({ exercise, onLogSet, pendingSetIds, onOpenPlates }: {
             <Text style={styles.muscleTagText}>{exercise.muscle}</Text>
           </View>
         </View>
-        <TouchableOpacity onPress={onOpenPlates} style={styles.calcBtn}>
-          <Calculator color={colors.blue} size={16} strokeWidth={1.75} />
-          <Text style={[styles.calcBtnText, { color: colors.blue }]}>Plates</Text>
-        </TouchableOpacity>
+        {isStrength ? (
+          <TouchableOpacity onPress={onOpenPlates} style={styles.calcBtn} testID={`active-open-plates-${exercise.id}`}>
+            <Calculator color={colors.blue} size={16} strokeWidth={1.75} />
+            <Text style={[styles.calcBtnText, { color: colors.blue }]}>Plates</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+
+      {/* Mode toggle — strength / interval / rounds */}
+      <View style={styles.modeToggle}>
+        <ModeToggleChip
+          icon={<Dumbbell size={12} color={mode === 'strength' ? colors.primaryFg : colors.foreground} strokeWidth={1.75} />}
+          label="Sets"
+          active={mode === 'strength'}
+          onPress={() => onChangeMode('strength')}
+          testID={`active-mode-${exercise.id}-strength`}
+        />
+        <ModeToggleChip
+          icon={<Timer size={12} color={mode === 'interval' ? colors.primaryFg : colors.foreground} strokeWidth={1.75} />}
+          label="Interval"
+          active={mode === 'interval'}
+          onPress={() => onChangeMode('interval')}
+          testID={`active-mode-${exercise.id}-interval`}
+        />
+        <ModeToggleChip
+          icon={<Repeat size={12} color={mode === 'rounds' ? colors.primaryFg : colors.foreground} strokeWidth={1.75} />}
+          label="Rounds"
+          active={mode === 'rounds'}
+          onPress={() => onChangeMode('rounds')}
+          testID={`active-mode-${exercise.id}-rounds`}
+        />
       </View>
 
       {/* Column headers */}
-      <View style={styles.setHeader}>
-        <Text style={[styles.setCol, styles.setColNum]}>Set</Text>
-        <Text style={[styles.setCol, styles.setColPrev]}>Previous</Text>
-        <Text style={[styles.setCol, styles.setColInput]}>kg</Text>
-        <Text style={[styles.setCol, styles.setColInput]}>Reps</Text>
-        <View style={{ width: 44 }} />
-      </View>
+      {isStrength ? (
+        <View style={styles.setHeader}>
+          <Text style={[styles.setCol, styles.setColNum]}>Set</Text>
+          <Text style={[styles.setCol, styles.setColPrev]}>Previous</Text>
+          <Text style={[styles.setCol, styles.setColInput]}>kg</Text>
+          <Text style={[styles.setCol, styles.setColInput]}>Reps</Text>
+          <View style={{ width: 44 }} />
+        </View>
+      ) : (
+        <View style={styles.setHeader}>
+          <Text style={[styles.setCol, styles.setColNum]}>{mode === 'rounds' ? 'Round' : '#'}</Text>
+          <Text style={[styles.setCol, styles.setColPrev]}>{mode === 'rounds' ? 'Reps' : 'Work / Rest'}</Text>
+          <Text style={[styles.setCol, styles.setColInput, { flex: 1.2 }]}>Time (s)</Text>
+          <View style={{ width: 44 }} />
+        </View>
+      )}
 
       {/* Set rows */}
       {exercise.sets.map((set, i) => (
-        <SetRow
-          key={set.id}
-          set={set}
-          index={i + 1}
-          pending={pendingSetIds.has(set.id)}
-          onLog={(weight, reps) => onLogSet(set.id, weight, reps)}
-        />
+        isStrength ? (
+          <SetRow
+            key={set.id}
+            set={set}
+            index={i + 1}
+            pending={pendingSetIds.has(set.id)}
+            onLog={(weight, reps) => onLogSet(set.id, { weight, reps })}
+          />
+        ) : (
+          <ConditioningSetRow
+            key={set.id}
+            set={set}
+            index={i + 1}
+            mode={mode}
+            pending={pendingSetIds.has(set.id)}
+            onLog={(payload) => onLogSet(set.id, payload)}
+          />
+        )
       ))}
 
       {/* Add set */}
       <TouchableOpacity style={styles.addSetBtn}>
         <Plus color={colors.mutedForeground} size={14} strokeWidth={2} />
-        <Text style={styles.addSetBtnText}>Add set</Text>
+        <Text style={styles.addSetBtnText}>{mode === 'rounds' ? 'Add round' : 'Add set'}</Text>
       </TouchableOpacity>
     </View>
   )
@@ -353,6 +436,7 @@ function SetRow({
         placeholder="—"
         placeholderTextColor={colors.mutedForeground}
         editable={!set.completed}
+        testID={`active-set-${set.id}-weight`}
       />
       <TextInput
         style={[styles.setCol, styles.setColInput, styles.setInput]}
@@ -362,11 +446,119 @@ function SetRow({
         placeholder="—"
         placeholderTextColor={colors.mutedForeground}
         editable={!set.completed}
+        testID={`active-set-${set.id}-reps`}
       />
       <TouchableOpacity
         style={[styles.logBtn, set.completed && styles.logBtnDone]}
         onPress={set.completed || pending ? undefined : () => onLog(weight, reps)}
         activeOpacity={set.completed || pending ? 1 : 0.7}
+        testID={`active-set-${set.id}-log`}
+      >
+        <Check
+          color={set.completed ? colors.primaryFg : pending ? colors.primary : colors.mutedForeground}
+          size={16} strokeWidth={2.5}
+        />
+      </TouchableOpacity>
+    </View>
+  )
+}
+
+function ModeToggleChip({ icon, label, active, onPress, testID }: {
+  icon: React.ReactNode; label: string; active: boolean; onPress: () => void; testID?: string
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={[styles.modeToggleChip, active && styles.modeToggleChipActive]}
+      activeOpacity={0.7}
+      testID={testID}
+    >
+      {icon}
+      <Text style={[styles.modeToggleChipText, active && { color: colors.primaryFg }]}>{label}</Text>
+    </TouchableOpacity>
+  )
+}
+
+function ConditioningSetRow({
+  set,
+  index,
+  mode,
+  pending,
+  onLog,
+}: {
+  set: ExerciseSet;
+  index: number;
+  mode: SetMode;
+  pending: boolean;
+  onLog: (payload: LogPayload) => void;
+}) {
+  const [duration, setDuration] = useState(set.durationS ?? '')
+  const [workS, setWorkS] = useState(set.intervalWorkS ?? '')
+  const [restS, setRestS] = useState(set.intervalRestS ?? '')
+  const [reps, setReps] = useState(set.reps ?? '')
+
+  const handleLog = () => {
+    if (mode === 'interval') {
+      onLog({ durationS: duration, intervalWorkS: workS, intervalRestS: restS })
+    } else {
+      onLog({ durationS: duration, reps })
+    }
+  }
+
+  return (
+    <View style={[styles.setRow, set.completed && styles.setRowDone]}>
+      <Text style={[styles.setCol, styles.setColNum, styles.setNumText]}>{index}</Text>
+      {mode === 'interval' ? (
+        <View style={[styles.setColPrev, { flexDirection: 'row', gap: 4 }]}>
+          <TextInput
+            style={[styles.setInput, { flex: 1, textAlign: 'center' }]}
+            value={workS}
+            onChangeText={setWorkS}
+            keyboardType="number-pad"
+            placeholder="work"
+            placeholderTextColor={colors.mutedForeground}
+            editable={!set.completed}
+            testID={`active-set-${set.id}-work`}
+          />
+          <Text style={styles.setPrevText}>/</Text>
+          <TextInput
+            style={[styles.setInput, { flex: 1, textAlign: 'center' }]}
+            value={restS}
+            onChangeText={setRestS}
+            keyboardType="number-pad"
+            placeholder="rest"
+            placeholderTextColor={colors.mutedForeground}
+            editable={!set.completed}
+            testID={`active-set-${set.id}-rest`}
+          />
+        </View>
+      ) : (
+        <TextInput
+          style={[styles.setCol, styles.setColPrev, styles.setInput]}
+          value={reps}
+          onChangeText={setReps}
+          keyboardType="number-pad"
+          placeholder="reps"
+          placeholderTextColor={colors.mutedForeground}
+          editable={!set.completed}
+          testID={`active-set-${set.id}-reps`}
+        />
+      )}
+      <TextInput
+        style={[styles.setCol, styles.setColInput, styles.setInput, { flex: 1.2 }]}
+        value={duration}
+        onChangeText={setDuration}
+        keyboardType="number-pad"
+        placeholder="seconds"
+        placeholderTextColor={colors.mutedForeground}
+        editable={!set.completed}
+        testID={`active-set-${set.id}-duration`}
+      />
+      <TouchableOpacity
+        style={[styles.logBtn, set.completed && styles.logBtnDone]}
+        onPress={set.completed || pending ? undefined : handleLog}
+        activeOpacity={set.completed || pending ? 1 : 0.7}
+        testID={`active-set-${set.id}-log`}
       >
         <Check
           color={set.completed ? colors.primaryFg : pending ? colors.primary : colors.mutedForeground}
@@ -398,21 +590,16 @@ function normalizeWorkoutType(type: string): WorkoutType {
 
 // ─── Plate Calculator ─────────────────────────────────────────────────────────
 
-function PlateCalculatorModal({ visible, targetWeight, onChangeTarget, onClose }: {
-  visible: boolean; targetWeight: string; onChangeTarget: (v: string) => void; onClose: () => void
+function PlateCalculatorModal({ visible, targetWeight, onChangeTarget, unitSystem, onClose }: {
+  visible: boolean
+  targetWeight: string
+  onChangeTarget: (v: string) => void
+  unitSystem: UnitSystem
+  onClose: () => void
 }) {
-  const target   = parseFloat(targetWeight) || 0
-  const perSide  = Math.max(0, (target - BAR_WEIGHT_KG) / 2)
-
-  // Calculate plates per side
-  const plates: number[] = []
-  let remaining = perSide
-  PLATE_SIZES_KG.forEach(size => {
-    while (remaining >= size - 0.001) {
-      plates.push(size)
-      remaining -= size
-    }
-  })
+  const target = parseFloat(targetWeight) || 0
+  const breakdown = calculatePlates(target, { system: unitSystem })
+  const totalLoaded = breakdown.barWeight + breakdown.totalPlateWeight
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -434,24 +621,28 @@ function PlateCalculatorModal({ visible, targetWeight, onChangeTarget, onClose }
                 value={targetWeight}
                 onChangeText={onChangeTarget}
                 keyboardType="decimal-pad"
+                testID="plate-target-input"
               />
-              <Text style={styles.targetUnit}>kg</Text>
+              <Text style={styles.targetUnit}>{breakdown.unit}</Text>
             </View>
           </View>
 
           <View style={styles.plateResult}>
-            <Text style={styles.plateResultLabel}>Bar: {BAR_WEIGHT_KG}kg + each side:</Text>
+            <Text style={styles.plateResultLabel}>
+              Bar: {breakdown.barWeight}{breakdown.unit} + each side:
+            </Text>
             <View style={styles.platesRow}>
-              {plates.length > 0 ? plates.map((p, i) => (
+              {breakdown.perSide.length > 0 ? breakdown.perSide.map((p, i) => (
                 <View key={i} style={[styles.plateBadge, { backgroundColor: colors.primary + '20' }]}>
-                  <Text style={[styles.plateBadgeText, { color: colors.primary }]}>{p}</Text>
+                  <Text style={[styles.plateBadgeText, { color: colors.primary }]} testID={`plate-badge-${p}`}>{p}</Text>
                 </View>
               )) : (
                 <Text style={styles.noPlatesText}>Just the bar</Text>
               )}
             </View>
             <Text style={styles.plateTotal}>
-              Total: {BAR_WEIGHT_KG + (plates.reduce((a, b) => a + b, 0) * 2)}kg
+              Total: {totalLoaded}{breakdown.unit}
+              {breakdown.remainder > 0 ? ` (short by ${breakdown.remainder}${breakdown.unit})` : ''}
             </Text>
           </View>
         </View>
@@ -486,6 +677,10 @@ const styles = StyleSheet.create({
   muscleTagText:    { fontSize: typography.size.xs, color: colors.blue, fontWeight: typography.weight.semibold },
   calcBtn:          { flexDirection: 'row', alignItems: 'center', gap: 4 },
   calcBtnText:      { fontSize: typography.size.sm, fontWeight: typography.weight.semibold },
+  modeToggle:       { flexDirection: 'row', gap: spacing.xs, paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
+  modeToggleChip:   { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.full, borderWidth: 0.5, borderColor: colors.border, backgroundColor: colors.muted, minHeight: touchTarget.min },
+  modeToggleChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  modeToggleChipText: { fontSize: typography.size.xs, fontWeight: typography.weight.semibold, color: colors.foreground },
   setHeader:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingBottom: spacing.xs, borderBottomWidth: 0.5, borderBottomColor: colors.border },
   setCol:           { fontSize: typography.size.xs, color: colors.mutedForeground },
   setColNum:        { width: 32 },

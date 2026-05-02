@@ -91,6 +91,10 @@ export default function TrainScreen() {
     });
   };
 
+  const handleOpenBuilder = () => {
+    navigation.navigate('WorkoutBuilder');
+  };
+
   const handleResumeWorkout = (workout: TodayWorkout) => {
     navigation.navigate('ActiveWorkout', {
       workout: {
@@ -155,8 +159,9 @@ export default function TrainScreen() {
               Create a custom training program with your own exercises, sets, and progression.
             </Text>
             <Pressable
-              onPress={handleStartBlankWorkout}
+              onPress={handleOpenBuilder}
               style={[styles.primaryButton, { marginTop: spacing.md }]}
+              testID="train-create-program"
             >
               <Text style={styles.primaryButtonText}>Create Program</Text>
             </Pressable>

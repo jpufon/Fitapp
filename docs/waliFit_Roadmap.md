@@ -19,12 +19,19 @@ waliFit is a Hybrid Athlete OS combining AI coaching, workout building, nutritio
 **Design tokens:**
 ```
 primary:          #0BBFBD  (teal)
-primaryFg:        #000000  (ALWAYS dark on teal — never white)
+primaryFg:        #002f2f  (ALWAYS dark on teal — never white)
+primaryLight:     #3FD9D7
+primaryDark:      #0D6D6B
 background:       #0a0f0f
-card:             #181c1c
-energy:           #fbbf24  (amber, streaks)
-blue:             #60a5fa  (data, running)
-purple:           #a78bfa
+backgroundAlt:    #050A0A
+card:             #161b1b
+popover:          #1a1f1f
+border:           #2f3636
+energy:           #f59e0b  (effort, protein, warnings)
+hydration:        #60a5fa  (water, running)
+growth:           #84cc16
+accent.blue:      #3b82f6
+accent.purple:    #8b5cf6
 destructive:      #ef4444
 foreground:       #ececec
 mutedForeground:  #9ca3af
