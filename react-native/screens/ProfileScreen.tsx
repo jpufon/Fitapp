@@ -12,7 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   Sparkles, TrendingUp, Bell, User, Shield,
-  Settings, CloudOff, ChevronRight, LogOut, AlertCircle,
+  Settings, CloudOff, ChevronRight, LogOut, AlertCircle, Home as HomeIcon,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, borderRadius, typography } from '../theme';
@@ -175,13 +175,22 @@ export default function ProfileScreen() {
       >
         <View style={styles.header}>
           <Text style={styles.title}>Profile</Text>
-          <TouchableOpacity
-            style={styles.settingsBtn}
-            accessibilityLabel="Settings"
-            onPress={() => navigation.navigate('Settings')}
-          >
-            <Settings color={colors.foreground} size={20} strokeWidth={1.75} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity
+              style={styles.settingsBtn}
+              accessibilityLabel="Go Home"
+              onPress={() => navigation.navigate('MainTabs')}
+            >
+              <HomeIcon color={colors.primary} size={20} strokeWidth={1.75} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.settingsBtn}
+              accessibilityLabel="Settings"
+              onPress={() => navigation.navigate('Settings')}
+            >
+              <Settings color={colors.foreground} size={20} strokeWidth={1.75} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {userQuery.isOfflineFallback || statsQuery.isOfflineFallback ? (

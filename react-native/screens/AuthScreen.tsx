@@ -8,6 +8,7 @@ import {
   View, Text, TextInput, TouchableOpacity,
   ScrollView, KeyboardAvoidingView, Platform, StyleSheet, Linking,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { Eye, EyeOff, Apple, Mail, ArrowLeft, ChevronRight } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
 import { hasSupabaseConfig, supabase } from '../utils/supabase'
@@ -141,12 +142,12 @@ export default function AuthScreen({ onAuthComplete }: AuthScreenProps) {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {view === 'welcome'  && <WelcomeView onGetStarted={() => setView('signup')} onLogin={() => setView('login')} />}
       {view === 'signup'   && <SignUpView onBack={() => setView('welcome')} onSubmit={signUp} onOAuth={startOAuth} onLogin={() => setView('login')} loading={loading} error={authError} />}
       {view === 'login'    && <LoginView onBack={() => setView('welcome')} onSubmit={signIn} onOAuth={startOAuth} onForgot={() => setView('forgot')} onSignUp={() => setView('signup')} loading={loading} error={authError} />}
       {view === 'forgot'   && <ForgotView onBack={() => setView('login')} onSubmit={sendPasswordReset} loading={loading} message={authError} />}
-    </View>
+    </SafeAreaView>
   )
 }
 

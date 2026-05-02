@@ -118,15 +118,16 @@ export function useUser(): UseUserState {
         return;
       }
 
+      const resolved = session?.user ?? devJwtUser();
       setState((current) => ({
         ...current,
-        user: session?.user ?? null,
+        user: resolved,
         isLoading: false,
         error: null,
         isOfflineFallback: false,
       }));
-      if (session?.user) {
-        setCachedJson(USER_CACHE_KEY, session.user);
+      if (resolved) {
+        setCachedJson(USER_CACHE_KEY, resolved);
       }
     });
 

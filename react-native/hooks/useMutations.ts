@@ -2,50 +2,26 @@
 // All mutations go through apiMutate → either sent immediately or queued for retry.
 // On success, /home is invalidated so HomeScreen reflects the change.
 //
-// Body types are mirrored from packages/shared/src/schemas (types only, no Zod
-// at mobile runtime). When packages/shared gets Metro-resolvable, replace
-// these with `import type { ... } from 'walifit-shared'`.
+// Body types come from packages/shared via walifit-shared. Types only — the
+// runtime Zod schemas live in packages/shared but are evaluated only on the
+// backend (which validates incoming bodies). Mobile sends, backend validates.
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type {
+  StartWorkoutBody,
+  LogSetBody,
+  FinishWorkoutBody,
+  LogNutritionBody,
+  RecomputeVitalityBody,
+} from 'walifit-shared';
 import { apiMutate } from '../lib/api';
 
-type WorkoutType = 'strength' | 'hybrid' | 'conditioning' | 'run' | 'rest';
-type RunType = 'free' | 'preset';
-type RunDistancePreset = 'one_mile' | 'two_mile' | 'three_mile' | 'two_k' | 'five_k';
-
-export type StartWorkoutBody = { name: string; type: WorkoutType };
-
-export type LogSetBody = {
-  exerciseName: string;
-  exerciseId?: string;
-  setNumber: number;
-  reps: number;
-  weightKg?: number;
-  rpe?: number;
-  notes?: string;
-};
-
-export type FinishWorkoutBody = {
-  sessionRpe?: number;
-  notes?: string;
-  runDistanceM?: number;
-  runDurationS?: number;
-  runPaceSPerKm?: number;
-  runType?: RunType;
-  runDistancePreset?: RunDistancePreset;
-  runRoutePolyline?: string;
-  runSplitPaces?: unknown;
-};
-
-export type LogNutritionBody = {
-  proteinG?: number;
-  waterMl?: number;
-  stepsCount?: number;
-};
-
-export type RecomputeVitalityBody = {
-  date?: string;
-  isRestDay?: boolean;
+export type {
+  StartWorkoutBody,
+  LogSetBody,
+  FinishWorkoutBody,
+  LogNutritionBody,
+  RecomputeVitalityBody,
 };
 
 function invalidateHome(qc: ReturnType<typeof useQueryClient>) {

@@ -13,7 +13,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  CloudOff, Bell, Flame, Dumbbell, Clock, Play,
+  CloudOff, UserCircle, Flame, Dumbbell, Clock, Play,
   Droplets, Utensils, Footprints, MessageCircle, Users,
   TrendingUp, PlusCircle, Leaf, AlertCircle,
 } from 'lucide-react-native';
@@ -76,30 +76,16 @@ export default function HomeScreen() {
   }, [snap]);
 
   const state = useMemo<ScreenState>(() => {
-    if (userQuery.isLoading || homeQuery.isLoading || stepsQuery.isLoading) {
+    if (userQuery.isLoading && !userQuery.user) {
       return 'loading';
     }
 
-    if (!userQuery.user) {
-      return userQuery.error ? 'error' : 'empty';
-    }
-
-    const hasCriticalError =
-      (homeQuery.isError && !homeQuery.data) ||
-      (stepsQuery.isError && !stepsQuery.data);
-
-    if (hasCriticalError) {
+    if (!userQuery.user && userQuery.error) {
       return 'error';
     }
 
     return 'success';
   }, [
-    homeQuery.data,
-    homeQuery.isError,
-    homeQuery.isLoading,
-    stepsQuery.data,
-    stepsQuery.isError,
-    stepsQuery.isLoading,
     userQuery.error,
     userQuery.isLoading,
     userQuery.user,
@@ -107,8 +93,17 @@ export default function HomeScreen() {
 
   const offlineBanner = useMemo(() => {
     const usingCache = homeQuery.isOfflineFallback || stepsQuery.isOfflineFallback;
+    const liveDataUnavailable = homeQuery.isError || stepsQuery.isError;
+    if (liveDataUnavailable) {
+      return 'Some live data is unavailable. Showing your latest local dashboard.';
+    }
     return usingCache ? 'Showing cached data while the app reconnects.' : null;
-  }, [homeQuery.isOfflineFallback, stepsQuery.isOfflineFallback]);
+  }, [
+    homeQuery.isError,
+    homeQuery.isOfflineFallback,
+    stepsQuery.isError,
+    stepsQuery.isOfflineFallback,
+  ]);
 
   const displayName = useMemo(() => {
     const user = userQuery.user;
@@ -225,8 +220,12 @@ export default function HomeScreen() {
                 <Text style={styles.welcomeText}>WELCOME BACK</Text>
                 <Text style={styles.nameText}>{displayName}</Text>
               </View>
-              <TouchableOpacity style={styles.notificationButton}>
-                <Bell size={24} color={colors.mutedForeground} strokeWidth={1.75} />
+              <TouchableOpacity
+                style={styles.notificationButton}
+                accessibilityLabel="Profile"
+                onPress={() => navigation.navigate('Profile')}
+              >
+                <UserCircle size={24} color={colors.mutedForeground} strokeWidth={1.75} />
               </TouchableOpacity>
             </View>
 
@@ -334,10 +333,10 @@ export default function HomeScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Quick Actions</Text>
               <View style={styles.quickActionsGrid}>
-                <QuickActionCard icon={MessageCircle} label="Wali AI" color={colors.purple} />
+                <QuickActionCard icon={MessageCircle} label="Wali AI" color={colors.purple} onPress={() => navigation.navigate('Coach')} />
                 <QuickActionCard icon={Users} label="Squad" color={colors.blue} />
                 <QuickActionCard icon={TrendingUp} label="Progress" color={colors.primary} />
-                <QuickActionCard icon={PlusCircle} label="Quick Log" color={colors.energy} />
+                <QuickActionCard icon={PlusCircle} label="Quick Log" color={colors.energy} onPress={() => navigation.navigate('NutritionLog')} />
               </View>
             </View>
           </>
@@ -370,13 +369,14 @@ function StatCard({ icon: Icon, label, value, unit, progress, color }: {
   );
 }
 
-function QuickActionCard({ icon: Icon, label, color }: {
+function QuickActionCard({ icon: Icon, label, color, onPress }: {
   icon: React.ElementType;
   label: string;
   color: string;
+  onPress?: () => void;
 }) {
   return (
-    <TouchableOpacity style={[styles.quickActionCard, { borderColor: color + '30' }]}>
+    <TouchableOpacity style={[styles.quickActionCard, { borderColor: color + '30' }]} onPress={onPress}>
       <View style={[styles.quickActionIcon, { backgroundColor: color + '1A' }]}>
         <Icon color={color} size={28} strokeWidth={1.75} />
       </View>

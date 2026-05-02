@@ -4,8 +4,10 @@
 
 import React, { useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { Footprints, Droplets, Beef, Info } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
+import { useLogNutrition } from '../hooks/useMutations'
 
 type NutritionTab = 'protein' | 'hydration' | 'steps'
 
@@ -39,7 +41,7 @@ export default function NutritionLogScreen() {
   const [tab, setTab] = useState<NutritionTab>('protein')
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Nutrition</Text>
@@ -58,7 +60,7 @@ export default function NutritionLogScreen() {
         {tab === 'hydration' && <HydrationTab />}
         {tab === 'steps'     && <StepsTab />}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   )
 }
 
@@ -67,10 +69,17 @@ export default function NutritionLogScreen() {
 function ProteinTab() {
   const [total, setTotal]   = useState(MOCK_TODAY.proteinG)
   const [custom, setCustom] = useState('')
+  const logNutrition = useLogNutrition(formatLocalDate(new Date()))
   const goal = MOCK_TODAY.proteinGoal
   const pct  = Math.min((total / goal) * 100, 100)
 
-  const add = (amount: number) => setTotal(t => Math.min(t + amount, 999))
+  const add = (amount: number) => {
+    setTotal((current) => {
+      const next = Math.min(current + amount, 999)
+      logNutrition.mutate({ proteinG: next })
+      return next
+    })
+  }
 
   return (
     <View style={styles.tabContent}>
@@ -147,13 +156,20 @@ function ProteinTab() {
 
 function HydrationTab() {
   const [waterMl, setWaterMl] = useState(MOCK_TODAY.waterMl)
+  const logNutrition = useLogNutrition(formatLocalDate(new Date()))
   const goal    = MOCK_TODAY.waterGoal
   const glasses = Math.floor(waterMl / ML_PER_GLASS)
   const goalGlasses = Math.floor(goal / ML_PER_GLASS)
   const pct = Math.min((waterMl / goal) * 100, 100)
 
-  const addGlass  = () => setWaterMl(w => Math.min(w + ML_PER_GLASS, 9999))
-  const addAmount = (ml: number) => setWaterMl(w => Math.min(w + ml, 9999))
+  const addAmount = (ml: number) => {
+    setWaterMl((current) => {
+      const next = Math.min(current + ml, 9999)
+      logNutrition.mutate({ waterMl: next })
+      return next
+    })
+  }
+  const addGlass = () => addAmount(ML_PER_GLASS)
 
   return (
     <View style={styles.tabContent}>
@@ -282,6 +298,13 @@ function TabBtn({ icon: Icon, label, tab, active, onPress, color }: {
       <Text style={[styles.tabLabel, { color: isActive ? color : colors.mutedForeground }]}>{label}</Text>
     </TouchableOpacity>
   )
+}
+
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────

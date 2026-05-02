@@ -8,6 +8,7 @@ import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { Bot, Send, Paperclip, ChevronRight, RefreshCw, Check, Zap } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
 
@@ -57,11 +58,11 @@ export default function CoachScreen() {
   const [view, setView] = useState<CoachView>('home')
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {view === 'home'    && <CoachHome    onStartChat={() => setView('chat')} onGenerate={() => setView('program')} />}
       {view === 'chat'    && <CoachChat    onBack={() => setView('home')} />}
       {view === 'program' && <ProgramArchitect onBack={() => setView('home')} />}
-    </View>
+    </SafeAreaView>
   )
 }
 

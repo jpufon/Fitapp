@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, spacing, typography } from '../theme';
 import type { RootStackParamList } from '../App';
@@ -8,7 +9,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'WorkoutComplete'>;
 
 export default function WorkoutCompleteScreen({ navigation }: Props) {
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <Text style={styles.title}>Workout Complete — coming soon</Text>
       <TouchableOpacity
         style={styles.doneBtn}
@@ -17,7 +18,7 @@ export default function WorkoutCompleteScreen({ navigation }: Props) {
       >
         <Text style={styles.doneBtnText}>Done</Text>
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 }
 

@@ -1,38 +1,49 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
-  RefreshControl,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
-  CloudOff, Play, Clock, Sparkles, Dumbbell,
-  Check, Inbox, AlertCircle,
+  AlertCircle,
+  BookOpen,
+  Calendar as CalendarIcon,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  Dumbbell,
+  Inbox,
+  Library,
+  Play,
+  Plus,
+  Sparkles,
 } from 'lucide-react-native';
-import { colors, borderRadius, spacing, typography } from '../theme';
+import { ChipSelector } from '../components/ChipSelector';
+import { borderRadius, colors, spacing, touchTarget, typography } from '../theme';
 import type { RootStackParamList } from '../App';
-import {
-  fetchTodaysPlan,
-  fetchWorkoutHistory,
-  generateProgram,
-  type WorkoutSummary,
-} from '../lib/workouts';
-import { useCachedQuery } from '../hooks/useCachedQuery';
+import { useTrainData, type TodayWorkout, type WorkoutHistoryItem } from '../hooks/useTrainData';
 
-type TrainTab = 'start' | 'history';
 type DataState = 'loading' | 'success' | 'empty' | 'error';
+
+interface RecentWorkoutCardData {
+  id: string;
+  date: string;
+  primaryExercise: string;
+  exerciseCount: number;
+  duration: number;
+  rpe?: number;
+}
 
 function deriveState(
   isLoading: boolean,
   isError: boolean,
-  items: WorkoutSummary[] | undefined,
+  items: WorkoutHistoryItem[] | undefined,
 ): DataState {
   if (isLoading && !items) return 'loading';
   if (isError && !items) return 'error';
@@ -42,668 +53,549 @@ function deriveState(
 
 export default function TrainScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [activeTab, setActiveTab] = useState<TrainTab>('start');
+  const insets = useSafeAreaInsets();
+
+  const [duration, setDuration] = useState<string[]>(['45 min']);
+  const [focus, setFocus] = useState<string[]>([]);
+  const [equipment, setEquipment] = useState<string[]>(['Barbell', 'Dumbbells']);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isWaliExpanded, setIsWaliExpanded] = useState(true);
 
-  const todayQuery = useCachedQuery<WorkoutSummary[]>({
-    queryKey: ['train', 'today'],
-    cacheKey: 'query.train.today',
-    queryFn: fetchTodaysPlan,
-  });
+  const { todayWorkout, history, historyQuery } = useTrainData(20);
 
-  const historyQuery = useCachedQuery<WorkoutSummary[]>({
-    queryKey: ['train', 'history', 20],
-    cacheKey: 'query.train.history.20',
-    queryFn: () => fetchWorkoutHistory(20),
-  });
+  const inProgress = todayWorkout && !todayWorkout.finishedAt ? todayWorkout : null;
 
-  const todayItems = todayQuery.data ?? [];
-  const historyItems = historyQuery.data ?? [];
-
-  const todayState = deriveState(todayQuery.isLoading, todayQuery.isError, todayQuery.data);
   const historyState = deriveState(
     historyQuery.isLoading,
     historyQuery.isError,
     historyQuery.data,
   );
 
-  const todayError = todayQuery.error instanceof Error ? todayQuery.error.message : null;
-  const historyError = historyQuery.error instanceof Error ? historyQuery.error.message : null;
+  const recentWorkouts: RecentWorkoutCardData[] = history.slice(0, 6).map((w) => ({
+    id: w.id,
+    date: formatRecentDate(w.completedAt ?? w.finishedAt),
+    primaryExercise: w.name,
+    exerciseCount: w.exerciseCount,
+    duration: w.durationMinutes,
+  }));
 
-  const isRefreshing = todayQuery.isRefetching || historyQuery.isRefetching;
+  const handleStartBlankWorkout = () => {
+    navigation.navigate('ActiveWorkout', {
+      workout: {
+        id: `blank-${Date.now()}`,
+        name: 'Quick Workout',
+        type: 'custom',
+        exerciseCount: 0,
+        durationMinutes: 0,
+      },
+    });
+  };
 
-  const handleRefresh = useCallback(async () => {
-    await Promise.all([todayQuery.refetch(), historyQuery.refetch()]);
-  }, [historyQuery, todayQuery]);
+  const handleResumeWorkout = (workout: TodayWorkout) => {
+    navigation.navigate('ActiveWorkout', {
+      workout: {
+        id: workout.id,
+        name: workout.name,
+        type: workout.type,
+        exerciseCount: workout.sets.length,
+        durationMinutes: 0,
+      },
+    });
+  };
 
-  const handleGeneratePlan = useCallback(async () => {
+  const handleGenerateWorkout = () => {
     setIsGenerating(true);
-    try {
-      await generateProgram();
-      Alert.alert('Plan generated', 'Your training plan has been refreshed.');
-      await todayQuery.refetch();
-    } catch (error) {
-      Alert.alert(
-        'Unable to generate plan',
-        error instanceof Error ? error.message : 'Please try again.'
-      );
-    } finally {
+    setTimeout(() => {
       setIsGenerating(false);
-    }
-  }, [todayQuery]);
-
-  const offlineBanner = useMemo(() => {
-    if (activeTab === 'start' && todayQuery.isOfflineFallback && todayQuery.dataUpdatedAt) {
-      return `Offline cache from ${formatCachedAt(todayQuery.dataUpdatedAt)}`;
-    }
-
-    if (activeTab === 'history' && historyQuery.isOfflineFallback && historyQuery.dataUpdatedAt) {
-      return `Offline cache from ${formatCachedAt(historyQuery.dataUpdatedAt)}`;
-    }
-
-    return null;
-  }, [
-    activeTab,
-    historyQuery.dataUpdatedAt,
-    historyQuery.isOfflineFallback,
-    todayQuery.dataUpdatedAt,
-    todayQuery.isOfflineFallback,
-  ]);
+      handleStartBlankWorkout();
+    }, 1500);
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.root} edges={['top']}>
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 96 + 60 },
+        ]}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            tintColor={colors.primary}
-          />
-        }
       >
-        <View style={styles.header}>
-          <Text style={styles.headerEyebrow}>TRAIN</Text>
-          <Text style={styles.headerTitle}>Build strength, push limits</Text>
-        </View>
-
-        <View style={styles.tabBar}>
-          <TabButton
-            label="Start"
-            icon={Play}
-            active={activeTab === 'start'}
-            onPress={() => setActiveTab('start')}
-          />
-          <TabButton
-            label="History"
-            icon={Clock}
-            active={activeTab === 'history'}
-            onPress={() => setActiveTab('history')}
-          />
-        </View>
-
-        {offlineBanner ? (
-          <View style={styles.offlineBanner}>
-            <CloudOff size={16} color={colors.energy} strokeWidth={1.75} />
-            <Text style={styles.offlineBannerText}>{offlineBanner}</Text>
-          </View>
+        {/* Resume in-progress workout */}
+        {inProgress ? (
+          <Pressable
+            onPress={() => handleResumeWorkout(inProgress)}
+            style={styles.resumeCard}
+          >
+            <View style={styles.iconCircleLarge}>
+              <Dumbbell size={24} color={colors.primary} strokeWidth={1.75} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.resumeKicker}>In progress</Text>
+              <Text style={styles.h2}>{inProgress.name}</Text>
+              <Text style={styles.muted}>
+                {inProgress.sets.length === 0
+                  ? 'Started — no sets logged yet'
+                  : `${inProgress.sets.length} set${inProgress.sets.length === 1 ? '' : 's'} logged · ${formatStartedAt(inProgress.startedAt)}`}
+              </Text>
+            </View>
+            <View style={styles.resumeIconButton}>
+              <Play size={20} color={colors.primaryFg} strokeWidth={2} />
+            </View>
+          </Pressable>
         ) : null}
 
-        {activeTab === 'start' ? (
-          <StartTab
-            state={todayState}
-            error={todayError}
-            items={todayItems}
-            isGenerating={isGenerating}
-            onGenerate={handleGeneratePlan}
-            onRetry={() => { void todayQuery.refetch(); }}
-            onStartWorkout={(workout) => navigation.navigate('ActiveWorkout', { workout })}
-          />
-        ) : (
-          <HistoryTab
-            state={historyState}
-            error={historyError}
-            items={historyItems}
-            onRetry={() => { void historyQuery.refetch(); }}
-          />
-        )}
+        {/* Build Program empty card */}
+        <View style={styles.buildProgramCard}>
+          <View style={styles.iconCircleLarge}>
+            <CalendarIcon size={24} color={colors.primary} strokeWidth={1.75} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.h2}>Build Your Program</Text>
+            <Text style={styles.muted}>
+              Create a custom training program with your own exercises, sets, and progression.
+            </Text>
+            <Pressable
+              onPress={handleStartBlankWorkout}
+              style={[styles.primaryButton, { marginTop: spacing.md }]}
+            >
+              <Text style={styles.primaryButtonText}>Create Program</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Ask Wali */}
+        <View style={styles.waliCard}>
+          <Pressable
+            onPress={() => setIsWaliExpanded(!isWaliExpanded)}
+            style={styles.waliHeader}
+          >
+            <View style={styles.iconCircleSmall}>
+              <Sparkles size={20} color={colors.primary} strokeWidth={1.75} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.h2}>Ask Wali for a Workout</Text>
+              <Text style={styles.muted}>Quick, personalised, ready in seconds</Text>
+            </View>
+            {isWaliExpanded ? (
+              <ChevronUp size={20} color={colors.mutedForeground} strokeWidth={1.75} />
+            ) : (
+              <ChevronDown size={20} color={colors.mutedForeground} strokeWidth={1.75} />
+            )}
+          </Pressable>
+
+          {isWaliExpanded && (
+            <View style={styles.waliBody}>
+              <View>
+                <Text style={styles.tinyLabel}>Duration</Text>
+                <ChipSelector
+                  options={['20 min', '30 min', '45 min', '60 min', '90 min']}
+                  selected={duration}
+                  onSelect={setDuration}
+                />
+              </View>
+              <View>
+                <Text style={styles.tinyLabel}>Focus</Text>
+                <ChipSelector
+                  options={[
+                    'Upper Body',
+                    'Lower Body',
+                    'Full Body',
+                    'Push',
+                    'Pull',
+                    'Legs',
+                    'Cardio',
+                    'Core',
+                  ]}
+                  selected={focus}
+                  onSelect={setFocus}
+                />
+              </View>
+              <View>
+                <Text style={styles.tinyLabel}>Equipment</Text>
+                <ChipSelector
+                  options={[
+                    'Barbell',
+                    'Dumbbells',
+                    'Machines',
+                    'Cables',
+                    'Bodyweight',
+                    'Kettlebell',
+                  ]}
+                  selected={equipment}
+                  onSelect={setEquipment}
+                  multiSelect
+                />
+              </View>
+              <Pressable
+                onPress={handleGenerateWorkout}
+                disabled={isGenerating}
+                style={[styles.primaryButtonLarge, isGenerating && { opacity: 0.6 }]}
+              >
+                {isGenerating ? (
+                  <View style={styles.row8}>
+                    <ActivityIndicator size="small" color={colors.primaryFg} />
+                    <Text style={styles.primaryButtonText}>
+                      Wali is building your workout…
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.primaryButtonText}>Generate Workout</Text>
+                )}
+              </Pressable>
+            </View>
+          )}
+        </View>
+
+        {/* Recent */}
+        <View>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.h3}>Recent</Text>
+            <Pressable style={styles.row4}>
+              <Text style={styles.linkPrimary}>See all</Text>
+              <ChevronRight size={16} color={colors.primary} strokeWidth={1.75} />
+            </Pressable>
+          </View>
+
+          {historyState === 'loading' ? (
+            <View style={styles.recentLoadingRow}>
+              {[0, 1, 2].map((i) => (
+                <View key={i} style={styles.recentSkeleton} />
+              ))}
+            </View>
+          ) : historyState === 'error' ? (
+            <View style={styles.feedbackCard}>
+              <AlertCircle size={20} color={colors.destructive} strokeWidth={1.75} />
+              <Text style={styles.feedbackTitle}>Couldn’t load history</Text>
+              <Pressable
+                onPress={() => {
+                  void historyQuery.refetch();
+                }}
+                style={[styles.primaryButton, { marginTop: spacing.sm }]}
+              >
+                <Text style={styles.primaryButtonText}>Retry</Text>
+              </Pressable>
+            </View>
+          ) : historyState === 'empty' ? (
+            <View style={styles.feedbackCard}>
+              <Inbox size={20} color={colors.mutedForeground} strokeWidth={1.75} />
+              <Text style={styles.feedbackTitle}>No recent workouts</Text>
+              <Text style={styles.muted}>Completed sessions will appear here.</Text>
+            </View>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{
+                gap: spacing.sm + 4,
+                paddingBottom: spacing.sm,
+              }}
+            >
+              {recentWorkouts.map((workout) => (
+                <Pressable
+                  key={workout.id}
+                  onPress={handleStartBlankWorkout}
+                  style={styles.recentCard}
+                >
+                  <Text style={styles.muted}>{workout.date}</Text>
+                  <Text style={styles.recentTitle}>{workout.primaryExercise}</Text>
+                  <View style={styles.recentMeta}>
+                    <Text style={styles.recentMetaText}>
+                      {workout.exerciseCount} exercises
+                    </Text>
+                    <Text style={styles.recentMetaText}>•</Text>
+                    <Text style={styles.recentMetaText}>{workout.duration} min</Text>
+                    {workout.rpe != null && (
+                      <>
+                        <Text style={styles.recentMetaText}>•</Text>
+                        <View style={styles.rpePill}>
+                          <Text style={styles.rpePillText}>RPE {workout.rpe}</Text>
+                        </View>
+                      </>
+                    )}
+                  </View>
+                </Pressable>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+
+        {/* Secondary actions */}
+        <View style={{ gap: spacing.sm }}>
+          <Pressable style={styles.actionRow}>
+            <View style={styles.row12}>
+              <BookOpen size={20} color={colors.primary} strokeWidth={1.75} />
+              <View>
+                <Text style={styles.actionTitle}>My Templates</Text>
+                <Text style={styles.muted}>Saved templates</Text>
+              </View>
+            </View>
+            <ChevronRight size={20} color={colors.mutedForeground} strokeWidth={1.75} />
+          </Pressable>
+
+          <Pressable style={styles.actionRow}>
+            <View style={styles.row12}>
+              <Library size={20} color={colors.primary} strokeWidth={1.75} />
+              <View>
+                <Text style={styles.actionTitle}>Exercise Library</Text>
+                <Text style={styles.muted}>500+ exercises</Text>
+              </View>
+            </View>
+            <ChevronRight size={20} color={colors.mutedForeground} strokeWidth={1.75} />
+          </Pressable>
+        </View>
       </ScrollView>
+
+      {/* FAB */}
+      <Pressable
+        onPress={handleStartBlankWorkout}
+        style={[styles.fab, { bottom: insets.bottom + spacing.lg + 60 }]}
+      >
+        <Plus size={24} color={colors.primaryFg} strokeWidth={2} />
+      </Pressable>
     </SafeAreaView>
   );
 }
 
-function TabButton({
-  active,
-  icon: Icon,
-  label,
-  onPress,
-}: {
-  active: boolean;
-  icon: React.ElementType;
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={[styles.tabButton, active && styles.tabButtonActive]}
-    >
-      <Icon
-        size={16}
-        color={active ? colors.primary : colors.mutedForeground}
-        strokeWidth={1.75}
-      />
-      <Text style={[styles.tabButtonText, active && styles.tabButtonTextActive]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-function StartTab({
-  state,
-  error,
-  items,
-  isGenerating,
-  onGenerate,
-  onRetry,
-  onStartWorkout,
-}: {
-  state: DataState;
-  error: string | null;
-  items: WorkoutSummary[];
-  isGenerating: boolean;
-  onGenerate: () => void;
-  onRetry: () => void;
-  onStartWorkout: (workout: WorkoutSummary) => void;
-}) {
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Today's Plan</Text>
-
-      {state === 'loading' ? <LoadingCards count={2} /> : null}
-
-      {state === 'error' ? (
-        <ErrorState
-          title="Couldn’t load today’s plan"
-          message={error ?? 'Check your API connection and try again.'}
-          onRetry={onRetry}
-        />
-      ) : null}
-
-      {state === 'empty' ? (
-        <EmptyState
-          title="No workout scheduled"
-          message="Generate a fresh plan with Wali AI to build today's training."
-        />
-      ) : null}
-
-      {state === 'success'
-        ? items.map((workout) => (
-            <WorkoutCard
-              key={workout.id}
-              workout={workout}
-              onStartWorkout={() => onStartWorkout(workout)}
-            />
-          ))
-        : null}
-
-      <TouchableOpacity
-        onPress={onGenerate}
-        disabled={isGenerating}
-        style={[styles.generateButton, isGenerating && styles.generateButtonDisabled]}
-      >
-        {isGenerating ? (
-          <ActivityIndicator color={colors.black} />
-        ) : (
-          <>
-            <Sparkles size={20} color={colors.black} strokeWidth={1.75} />
-            <Text style={styles.generateButtonText}>Generate New Plan with Wali AI</Text>
-          </>
-        )}
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-function HistoryTab({
-  state,
-  error,
-  items,
-  onRetry,
-}: {
-  state: DataState;
-  error: string | null;
-  items: WorkoutSummary[];
-  onRetry: () => void;
-}) {
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Recent Workouts</Text>
-
-      {state === 'loading' ? <LoadingCards count={3} /> : null}
-
-      {state === 'error' ? (
-        <ErrorState
-          title="Couldn’t load workout history"
-          message={error ?? 'Check your API connection and try again.'}
-          onRetry={onRetry}
-        />
-      ) : null}
-
-      {state === 'empty' ? (
-        <EmptyState
-          title="No recent workouts"
-          message="Completed sessions will show up here once you start training."
-        />
-      ) : null}
-
-      {state === 'success'
-        ? items.map((item) => <HistoryCard key={item.id} workout={item} />)
-        : null}
-    </View>
-  );
-}
-
-function WorkoutCard({
-  workout,
-  onStartWorkout,
-}: {
-  workout: WorkoutSummary;
-  onStartWorkout: () => void;
-}) {
-  return (
-    <View style={styles.workoutCard}>
-      <View style={styles.workoutHeaderRow}>
-        <View style={styles.workoutTextBlock}>
-          <Text style={styles.workoutTitle}>{workout.name}</Text>
-          <View style={styles.workoutMetaRow}>
-            <View style={styles.metaItem}>
-              <Dumbbell size={16} color={colors.primary} strokeWidth={1.75} />
-              <Text style={styles.metaItemText}>{workout.exerciseCount} exercises</Text>
-            </View>
-            <View style={styles.metaItem}>
-              <Clock size={16} color={colors.energy} strokeWidth={1.75} />
-              <Text style={styles.metaItemText}>{workout.durationMinutes} min</Text>
-            </View>
-          </View>
-          <View style={styles.typeBadge}>
-            <Text style={styles.typeBadgeText}>{workout.type.toUpperCase()}</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity onPress={onStartWorkout} style={styles.playButton}>
-          <Play size={26} color={colors.black} strokeWidth={2} fill={colors.black} style={styles.playIcon} />
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity onPress={onStartWorkout} style={styles.startWorkoutButton}>
-        <Text style={styles.startWorkoutButtonText}>Start workout</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-function HistoryCard({ workout }: { workout: WorkoutSummary }) {
-  return (
-    <View style={styles.historyCard}>
-      <View>
-        <Text style={styles.historyDate}>
-          {formatHistoryDate(workout.completedAt)}
-        </Text>
-        <Text style={styles.historyTitle}>{workout.name}</Text>
-      </View>
-      <View style={styles.historyCheck}>
-        <Check size={18} color={colors.primary} strokeWidth={2.5} />
-      </View>
-    </View>
-  );
-}
-
-function LoadingCards({ count }: { count: number }) {
-  return (
-    <View style={styles.loadingGroup}>
-      {Array.from({ length: count }, (_, index) => (
-        <View key={index} style={styles.loadingCard}>
-          <View style={[styles.loadingBar, styles.loadingBarWide]} />
-          <View style={[styles.loadingBar, styles.loadingBarMedium]} />
-          <View style={[styles.loadingBar, styles.loadingBarShort]} />
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function EmptyState({ title, message }: { title: string; message: string }) {
-  return (
-    <View style={styles.feedbackCard}>
-      <Inbox size={24} color={colors.mutedForeground} strokeWidth={1.75} />
-      <Text style={styles.feedbackTitle}>{title}</Text>
-      <Text style={styles.feedbackMessage}>{message}</Text>
-    </View>
-  );
-}
-
-function ErrorState({
-  title,
-  message,
-  onRetry,
-}: {
-  title: string;
-  message: string;
-  onRetry: () => void;
-}) {
-  return (
-    <View style={styles.feedbackCard}>
-      <AlertCircle size={24} color={colors.destructive} strokeWidth={1.75} />
-      <Text style={styles.feedbackTitle}>{title}</Text>
-      <Text style={styles.feedbackMessage}>{message}</Text>
-      <TouchableOpacity onPress={onRetry} style={styles.retryButton}>
-        <Text style={styles.retryButtonText}>Retry</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-function formatHistoryDate(value?: string | null): string {
-  if (!value) {
-    return 'Completed workout';
-  }
-
+function formatRecentDate(value?: string | null): string {
+  if (!value) return 'Recent';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
+  if (Number.isNaN(date.getTime())) return 'Recent';
   return date.toLocaleDateString(undefined, {
-    month: 'short',
+    weekday: 'short',
     day: 'numeric',
-    year: 'numeric',
+    month: 'short',
   });
 }
 
-function formatCachedAt(value: number): string {
+function formatStartedAt(value: string): string {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return 'recently';
-  }
-
-  return date.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+  if (Number.isNaN(date.getTime())) return 'started today';
+  return `started ${date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollView: {
-    flex: 1,
-  },
+  root: { flex: 1, backgroundColor: colors.background },
   scrollContent: {
-    padding: spacing.lg,
-    paddingBottom: 120,
-    gap: spacing.lg,
-  },
-  header: {
-    gap: spacing.xs,
-  },
-  headerEyebrow: {
-    fontSize: typography.fontSize.sm,
-    color: colors.mutedForeground,
-    fontWeight: typography.fontWeight.semibold,
-    letterSpacing: 1,
-  },
-  headerTitle: {
-    fontSize: typography.fontSize['2xl'],
-    color: colors.foreground,
-    fontWeight: typography.fontWeight.bold,
-  },
-  tabBar: {
-    minHeight: 56,
-    flexDirection: 'row',
-    gap: spacing.sm,
-    padding: spacing.xs,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.secondary,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  tabButton: {
-    minHeight: 44,
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    borderRadius: borderRadius.md,
-  },
-  tabButtonActive: {
-    backgroundColor: colors.card,
-  },
-  tabButtonText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.mutedForeground,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  tabButtonTextActive: {
-    color: colors.primary,
-  },
-  offlineBanner: {
-    minHeight: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.energy + '14',
-    borderWidth: 1,
-    borderColor: colors.energy + '33',
+    paddingTop: spacing.lg,
+    gap: spacing.lg,
+    maxWidth: 672,
+    width: '100%',
+    alignSelf: 'center',
   },
-  offlineBannerText: {
-    flex: 1,
-    fontSize: typography.fontSize.sm,
-    color: colors.energy,
-    fontWeight: typography.fontWeight.medium,
-  },
-  section: {
-    gap: spacing.md,
-  },
-  sectionTitle: {
-    fontSize: typography.fontSize.xl,
-    color: colors.foreground,
-    fontWeight: typography.fontWeight.bold,
-  },
-  workoutCard: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.xl,
-    padding: spacing.md,
-    gap: spacing.md,
-  },
-  workoutHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-  },
-  workoutTextBlock: {
-    flex: 1,
-    gap: spacing.sm,
-  },
-  workoutTitle: {
+  h2: {
     fontSize: typography.fontSize.lg,
     color: colors.foreground,
-    fontWeight: typography.fontWeight.bold,
+    fontWeight: typography.fontWeight.semibold,
+    marginBottom: spacing.xs,
   },
-  workoutMetaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
+  h3: {
+    fontSize: typography.fontSize.lg,
+    color: colors.foreground,
+    fontWeight: typography.fontWeight.semibold,
   },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  metaItemText: {
+  muted: {
     fontSize: typography.fontSize.sm,
     color: colors.mutedForeground,
-    fontWeight: typography.fontWeight.medium,
   },
-  typeBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: 999,
-    backgroundColor: colors.primary + '1A',
+  tinyLabel: {
+    fontSize: typography.fontSize.xs,
+    color: colors.mutedForeground,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: spacing.sm,
+  },
+  buildProgramCard: {
+    backgroundColor: colors.card,
+    borderColor: colors.border,
     borderWidth: 1,
-    borderColor: colors.primary + '33',
+    borderRadius: borderRadius.md,
+    padding: spacing.lg,
+    flexDirection: 'row',
+    gap: spacing.md,
   },
-  typeBadgeText: {
+  resumeCard: {
+    backgroundColor: colors.card,
+    borderColor: colors.primary,
+    borderWidth: 1,
+    borderRadius: borderRadius.md,
+    padding: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  resumeKicker: {
     fontSize: typography.fontSize.xs,
     color: colors.primary,
-    fontWeight: typography.fontWeight.bold,
-    letterSpacing: 0.6,
+    fontWeight: typography.fontWeight.semibold,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: spacing.xs,
   },
-  playButton: {
-    width: 56,
-    height: 56,
+  resumeIconButton: {
+    width: touchTarget.comfortable,
+    height: touchTarget.comfortable,
+    borderRadius: touchTarget.comfortable / 2,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconCircleLarge: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primary + '33',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconCircleSmall: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary + '33',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryButton: {
+    width: '100%',
+    minHeight: touchTarget.comfortable,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryButtonLarge: {
+    width: '100%',
+    minHeight: touchTarget.workout,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryButtonText: {
+    color: colors.primaryFg,
+    fontWeight: typography.fontWeight.semibold,
+    fontSize: typography.fontSize.base,
+  },
+  linkPrimary: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary,
+  },
+  waliCard: {
+    backgroundColor: colors.card,
+    borderColor: colors.primary,
+    borderWidth: 1,
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+  },
+  waliHeader: {
+    padding: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+  },
+  waliBody: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+    paddingTop: spacing.md,
+    gap: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm + 4,
+  },
+  recentCard: {
+    width: 256,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  recentTitle: {
+    fontSize: typography.fontSize.base,
+    color: colors.foreground,
+    fontWeight: typography.fontWeight.semibold,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  recentMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  recentMetaText: {
+    fontSize: typography.fontSize.xs,
+    color: colors.mutedForeground,
+  },
+  rpePill: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    backgroundColor: colors.primary + '33',
+    borderRadius: borderRadius.sm,
+  },
+  rpePillText: {
+    fontSize: typography.fontSize.xs,
+    color: colors.primary,
+  },
+  recentLoadingRow: { flexDirection: 'row', gap: spacing.sm + 4 },
+  recentSkeleton: {
+    width: 256,
+    height: 100,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.secondary,
+  },
+  feedbackCard: {
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    gap: spacing.sm,
+  },
+  feedbackTitle: {
+    fontSize: typography.fontSize.base,
+    color: colors.foreground,
+    fontWeight: typography.fontWeight.semibold,
+    textAlign: 'center',
+  },
+  actionRow: {
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  actionTitle: {
+    fontSize: typography.fontSize.base,
+    color: colors.foreground,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  fab: {
+    position: 'absolute',
+    right: spacing.lg,
+    width: touchTarget.workout,
+    height: touchTarget.workout,
     borderRadius: 28,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  playIcon: {
-    marginLeft: 2,
-  },
-  startWorkoutButton: {
-    minHeight: 48,
-    borderRadius: 999,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  startWorkoutButtonText: {
-    fontSize: typography.fontSize.base,
-    color: colors.black,
-    fontWeight: typography.fontWeight.bold,
-  },
-  generateButton: {
-    minHeight: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-    borderRadius: 999,
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
-  },
-  generateButtonDisabled: {
-    opacity: 0.7,
-  },
-  generateButtonText: {
-    fontSize: typography.fontSize.base,
-    color: colors.black,
-    fontWeight: typography.fontWeight.bold,
-  },
-  historyCard: {
-    minHeight: 88,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-  },
-  historyDate: {
-    fontSize: typography.fontSize.sm,
-    color: colors.mutedForeground,
-    marginBottom: spacing.xs,
-  },
-  historyTitle: {
-    fontSize: typography.fontSize.base,
-    color: colors.foreground,
-    fontWeight: typography.fontWeight.bold,
-  },
-  historyCheck: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary + '14',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingGroup: {
-    gap: spacing.md,
-  },
-  loadingCard: {
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  loadingBar: {
-    height: 14,
-    borderRadius: 999,
-    backgroundColor: colors.secondary,
-  },
-  loadingBarWide: {
-    width: '70%',
-  },
-  loadingBarMedium: {
-    width: '50%',
-  },
-  loadingBarShort: {
-    width: '35%',
-  },
-  feedbackCard: {
-    alignItems: 'center',
-    gap: spacing.sm,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-  },
-  feedbackTitle: {
-    fontSize: typography.fontSize.lg,
-    color: colors.foreground,
-    fontWeight: typography.fontWeight.bold,
-    textAlign: 'center',
-  },
-  feedbackMessage: {
-    fontSize: typography.fontSize.base,
-    color: colors.mutedForeground,
-    lineHeight: 22,
-    textAlign: 'center',
-  },
-  retryButton: {
-    minHeight: 44,
-    minWidth: 120,
-    marginTop: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: 999,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  retryButtonText: {
-    fontSize: typography.fontSize.base,
-    color: colors.black,
-    fontWeight: typography.fontWeight.bold,
-  },
+  row4: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  row8: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  row12: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm + 4 },
 });

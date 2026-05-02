@@ -12,8 +12,8 @@ import {
   Home as HomeIcon,
   Dumbbell,
   Calendar as CalendarIcon,
+  Bot,
   Trophy,
-  User as UserIcon,
 } from 'lucide-react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -60,6 +60,7 @@ export type RootStackParamList = {
   Notifications: undefined;
   AccountSettings: undefined;
   PrivacyLegal: undefined;
+  Profile: undefined;
   Dev: undefined;
   WorkoutComplete: undefined;
   NutritionLog: undefined;
@@ -74,8 +75,8 @@ const TAB_ICONS: Record<string, React.ComponentType<{ size: number; color: strin
   Home: HomeIcon,
   Train: Dumbbell,
   Calendar: CalendarIcon,
+  Coach: Bot,
   Arena: Trophy,
-  Profile: UserIcon,
 };
 
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
@@ -202,8 +203,8 @@ function MainTabs() {
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Train" component={TrainScreen} />
       <Tab.Screen name="Calendar" component={CalendarScreen} />
+      <Tab.Screen name="Coach" component={CoachScreen} />
       <Tab.Screen name="Arena" component={ArenaScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
@@ -239,6 +240,7 @@ export default function App() {
             <Stack.Screen name="Notifications" component={ProfileDestinationScreen} />
             <Stack.Screen name="AccountSettings" component={ProfileDestinationScreen} />
             <Stack.Screen name="PrivacyLegal" component={ProfileDestinationScreen} />
+            <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen name="Dev" component={DevScreen} />
             <Stack.Screen name="WorkoutComplete" component={WorkoutCompleteScreen} />
             <Stack.Screen name="NutritionLog" component={NutritionLogScreen} />

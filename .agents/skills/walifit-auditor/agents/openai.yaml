@@ -1,4 +1,4 @@
-interface:
+/interface:
   display_name: "waliFit Auditor"
   short_description: "Audit waliFit for bugs and architecture drift"
   default_prompt: "Use $walifit-auditor to audit this waliFit change or repo area and prioritize concrete fixes."

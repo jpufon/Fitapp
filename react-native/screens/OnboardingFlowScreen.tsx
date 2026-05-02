@@ -13,6 +13,7 @@ import {
   StyleSheet,
   TextInput,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Check,
   Upload,
@@ -94,7 +95,7 @@ export default function OnboardingFlowScreen({ onComplete }: OnboardingFlowProps
   const progress = stepIndex >= 0 ? (stepIndex / (visibleSteps.length - 1)) * 100 : 100;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {step !== 'complete' && (
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: `${progress}%` as `${number}%` }]} />
@@ -112,7 +113,7 @@ export default function OnboardingFlowScreen({ onComplete }: OnboardingFlowProps
       {step === 'targets' && <TargetsStep />}
       {step === 'import' && <ImportStep />}
       {step === 'complete' && <CompleteStep onDone={onComplete} />}
-    </View>
+    </SafeAreaView>
   );
 }
 

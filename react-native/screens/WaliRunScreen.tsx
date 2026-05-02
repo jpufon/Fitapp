@@ -5,13 +5,15 @@
 
 import React, { useState } from 'react'
 import {
-  View, Text, TouchableOpacity, ScrollView, StyleSheet, Modal,
+  Alert, View, Text, TouchableOpacity, ScrollView, StyleSheet, Modal,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import {
   Play, Square, Pause, MapPin, Battery,
   ChevronRight, Award, Share2, ArrowLeft,
 } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
+import { apiMutate } from '../lib/api'
 
 type RunView = 'tab' | 'prerun' | 'active' | 'summary'
 
@@ -62,14 +64,75 @@ export default function WaliRunScreen() {
   const [selectedMode, setMode] = useState('5K')
   const [paused, setPaused]   = useState(false)
 
+  const finishRun = async () => {
+    const workoutId = createClientUuid()
+    try {
+      await apiMutate({
+        method: 'POST',
+        path: '/workouts',
+        body: {
+          id: workoutId,
+          name: `${selectedMode} Run`,
+          type: 'run',
+        },
+      })
+      await apiMutate({
+        method: 'PATCH',
+        path: `/workouts/${workoutId}`,
+        body: {
+          runDistanceM: Math.round(MOCK_SUMMARY.distance * 1000),
+          runDurationS: parseDurationSeconds(MOCK_SUMMARY.totalTime),
+          runPaceSPerKm: parsePaceSeconds(MOCK_SUMMARY.avgPaceKm),
+          runType: selectedMode === 'Free run' ? 'free' : 'preset',
+          runDistancePreset: presetForMode(selectedMode),
+          runSplitPaces: MOCK_SUMMARY.splits.map((split) => ({
+            km: split.km,
+            seconds: parsePaceSeconds(split.time),
+          })),
+        },
+      })
+      setView('summary')
+    } catch (error) {
+      Alert.alert('Run not saved', error instanceof Error ? error.message : 'Please try again.')
+    }
+  }
+
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {view === 'tab'     && <RunTab      selectedMode={selectedMode} onSelectMode={setMode} onStart={() => setView('prerun')} />}
       {view === 'prerun'  && <PreRunCheck onBack={() => setView('tab')} onStart={() => setView('active')} mode={selectedMode} />}
-      {view === 'active'  && <ActiveRun   onFinish={() => setView('summary')} mode={selectedMode} paused={paused} onPause={() => setPaused(!paused)} />}
+      {view === 'active'  && <ActiveRun   onFinish={finishRun} mode={selectedMode} paused={paused} onPause={() => setPaused(!paused)} />}
       {view === 'summary' && <RunSummary  onDone={() => setView('tab')} />}
-    </View>
+    </SafeAreaView>
   )
+}
+
+function createClientUuid(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+    const rand = Math.floor(Math.random() * 16)
+    const value = char === 'x' ? rand : (rand & 0x3) | 0x8
+    return value.toString(16)
+  })
+}
+
+function parseDurationSeconds(value: string): number {
+  const [minutes = '0', seconds = '0'] = value.split(':')
+  return Number(minutes) * 60 + Number(seconds)
+}
+
+function parsePaceSeconds(value: string): number {
+  return parseDurationSeconds(value)
+}
+
+function presetForMode(mode: string) {
+  switch (mode) {
+    case '2K':
+      return 'two_k'
+    case '5K':
+      return 'five_k'
+    default:
+      return undefined
+  }
 }
 
 // ─── Run Tab ──────────────────────────────────────────────────────────────────

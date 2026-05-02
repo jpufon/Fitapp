@@ -5,9 +5,10 @@
 
 import React, { useState } from 'react'
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView,
+  Alert, Linking, View, Text, TextInput, TouchableOpacity, ScrollView,
   Switch, StyleSheet, Modal,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import {
   ArrowLeft, User, Sliders, Bell, Shield, Info,
   ChevronRight, LogOut, Trash2, Download, Check, AlertTriangle,
@@ -15,6 +16,8 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
 import type { RootStackParamList } from '../App'
+import { apiMutate, apiQuery } from '../lib/api'
+import { hasSupabaseConfig, supabase } from '../utils/supabase'
 
 type SettingsView =
   | 'home' | 'profile' | 'preferences' | 'notifications'
@@ -40,19 +43,48 @@ export default function SettingsScreen({ navigation }: NativeStackScreenProps<Ro
   const [user, setUser]   = useState(MOCK_USER)
 
   const back = () => setView('home')
+  const saveProfile = async (patch: Partial<typeof MOCK_USER>) => {
+    setUser({ ...user, ...patch })
+    await apiMutate({
+      method: 'PATCH',
+      path: '/users/me',
+      body: {
+        displayName: patch.displayName,
+        username: patch.username,
+        unitSystem: patch.units,
+        proteinTargetG: patch.proteinGoal,
+        waterTargetMl: patch.waterGoal,
+        stepsGoal: patch.stepsGoal,
+        trainingDays: patch.trainingDays?.map(dayToIndex).filter((day) => day >= 0),
+      },
+    })
+    back()
+  }
+
+  const deleteAccount = async () => {
+    try {
+      await apiMutate({ method: 'DELETE', path: '/users/me' })
+      if (hasSupabaseConfig && supabase) {
+        await supabase.auth.signOut()
+      }
+      navigation.reset({ index: 0, routes: [{ name: 'Auth' }] })
+    } catch (error) {
+      Alert.alert('Could not delete account', error instanceof Error ? error.message : 'Please try again.')
+    }
+  }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {view === 'home'          && <SettingsHome    user={user} onNav={setView} onClose={onClose} />}
-      {view === 'profile'       && <EditProfile     user={user} onSave={u => { setUser({...user,...u}); back() }} onBack={back} />}
-      {view === 'preferences'   && <Preferences     user={user} onSave={u => { setUser({...user,...u}); back() }} onBack={back} />}
+      {view === 'profile'       && <EditProfile     user={user} onSave={u => { void saveProfile(u).catch(showSaveError) }} onBack={back} />}
+      {view === 'preferences'   && <Preferences     user={user} onSave={u => { void saveProfile(u).catch(showSaveError) }} onBack={back} />}
       {view === 'notifications' && <NotificationPrefs onBack={back} />}
       {view === 'account'       && <AccountManagement onNav={setView} onBack={back} />}
-      {view === 'delete'        && <DeleteAccount   onConfirm={() => {}} onBack={back} />}
+      {view === 'delete'        && <DeleteAccount   onConfirm={deleteAccount} onBack={back} />}
       {view === 'export'        && <DataExport      onBack={back} />}
       {view === 'legal'         && <LegalPrivacy    onBack={back} />}
       {view === 'about'         && <About           onBack={back} />}
-    </View>
+    </SafeAreaView>
   )
 }
 
@@ -350,6 +382,18 @@ function DeleteAccount({ onConfirm, onBack }: { onConfirm: () => void; onBack: (
 
 function DataExport({ onBack }: { onBack: () => void }) {
   const [exported, setExported] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const exportData = async () => {
+    setLoading(true)
+    try {
+      await apiQuery('/users/me/export')
+      setExported(true)
+    } catch (error) {
+      Alert.alert('Export failed', error instanceof Error ? error.message : 'Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
   return (
     <View style={styles.flex}>
       <SubNavBar title="Export data" onBack={onBack} />
@@ -363,10 +407,10 @@ function DataExport({ onBack }: { onBack: () => void }) {
             </View>
           ))}
         </View>
-        <TouchableOpacity style={[styles.saveBtn, exported && { backgroundColor: colors.card, borderColor: colors.primary }]} onPress={() => setExported(true)}>
+        <TouchableOpacity style={[styles.saveBtn, exported && { backgroundColor: colors.card, borderColor: colors.primary }]} onPress={exportData}>
           <Download color={exported ? colors.primary : colors.primaryFg} size={16} strokeWidth={1.75} />
           <Text style={[styles.saveBtnText, exported && { color: colors.primary }]}>
-            {exported ? 'Export ready — check Downloads' : 'Export my data'}
+            {loading ? 'Preparing export...' : exported ? 'Export requested' : 'Export my data'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -378,13 +422,21 @@ function DataExport({ onBack }: { onBack: () => void }) {
 
 function LegalPrivacy({ onBack }: { onBack: () => void }) {
   const [aiOptOut, setAiOptOut] = useState(false)
+  const updateOptOut = (value: boolean) => {
+    setAiOptOut(value)
+    void apiMutate({
+      method: 'PATCH',
+      path: '/users/me',
+      body: { aiTrainingOptOut: value },
+    }).catch(showSaveError)
+  }
   return (
     <View style={styles.flex}>
       <SubNavBar title="Privacy & Legal" onBack={onBack} />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.card}>
-          <SettingsLink label="Privacy Policy"    desc="How we handle your data"        onPress={() => {}} />
-          <SettingsLink label="Terms of Service"  desc="Rules and AI disclaimer"        onPress={() => {}} last />
+          <SettingsLink label="Privacy Policy"    desc="How we handle your data"        onPress={() => { void Linking.openURL('https://walifit.app/privacy') }} />
+          <SettingsLink label="Terms of Service"  desc="Rules and AI disclaimer"        onPress={() => { void Linking.openURL('https://walifit.app/terms') }} last />
         </View>
         <View style={styles.card}>
           <View style={styles.switchRow}>
@@ -392,7 +444,7 @@ function LegalPrivacy({ onBack }: { onBack: () => void }) {
               <Text style={styles.settingsLabel}>Opt out of AI training</Text>
               <Text style={styles.settingsDesc}>Your data will not be used to improve AI models</Text>
             </View>
-            <Switch value={aiOptOut} onValueChange={setAiOptOut}
+            <Switch value={aiOptOut} onValueChange={updateOptOut}
               trackColor={{ false: colors.muted, true: colors.primary }}
               thumbColor={colors.foreground}
             />
@@ -408,6 +460,14 @@ function LegalPrivacy({ onBack }: { onBack: () => void }) {
       </ScrollView>
     </View>
   )
+}
+
+function dayToIndex(day: string): number {
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(day)
+}
+
+function showSaveError(error: unknown) {
+  Alert.alert('Save failed', error instanceof Error ? error.message : 'Please try again.')
 }
 
 // ─── About ────────────────────────────────────────────────────────────────────

@@ -1,22 +1,31 @@
 import React, { useMemo, useState } from 'react';
 import {
-  Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
-  ChevronLeft, ChevronRight, CloudOff, Calendar,
-  AlertCircle, CheckCircle, Circle, X,
+  Activity,
+  AlertCircle,
+  Award,
+  Calendar as CalendarIcon,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  Dumbbell,
+  Target,
+  Trophy,
+  Zap,
 } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, spacing, borderRadius, typography } from '../theme';
+import { borderRadius, colors, spacing, typography } from '../theme';
 import {
   addDaysLocal,
   addMonthsLocal,
-  buildMonthGrid,
   formatLocalDate,
   startOfWeekLocal,
   useCalendarDay,
@@ -24,490 +33,566 @@ import {
   type CalendarDayItem,
 } from '../hooks/useCalendarData';
 
-type ViewMode = 'day' | 'week' | 'month';
-type ScreenState = 'loading' | 'success' | 'empty' | 'error';
+type DataState = 'loading' | 'success' | 'empty' | 'error';
+type CalendarView = 'day' | 'week' | 'month';
+
+const PROTEIN_GOAL_G = 160;
+const HYDRATION_GOAL_ML = 3000;
 
 export default function CalendarScreen() {
   const insets = useSafeAreaInsets();
-  const [view, setView] = useState<ViewMode>('week');
+  const [view, setView] = useState<CalendarView>('week');
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(() => formatLocalDate(new Date()));
-  const [isModalVisible, setIsModalVisible] = useState(false);
 
   const rangeQuery = useCalendarRange(currentDate);
   const dayQuery = useCalendarDay(selectedDate);
 
-  const rangeData = rangeQuery.data;
-  const days = rangeData?.days ?? [];
-  const monthStats = rangeData?.stats ?? { workouts: 0, streak: 0, avgScore: 0 };
+  const days = rangeQuery.data?.days ?? [];
 
-  const state = useMemo<ScreenState>(() => {
-    if (rangeQuery.isLoading) {
-      return 'loading';
-    }
-    if (rangeQuery.isError && !rangeQuery.data) {
-      return 'error';
-    }
-    if (!days.some((day) => day.hasActivity)) {
-      return 'empty';
-    }
+  const state = useMemo<DataState>(() => {
+    if (rangeQuery.isLoading && !rangeQuery.data) return 'loading';
+    if (rangeQuery.isError && !rangeQuery.data) return 'error';
+    if (!days.length) return 'empty';
     return 'success';
-  }, [days, rangeQuery.data, rangeQuery.isError, rangeQuery.isLoading]);
+  }, [days.length, rangeQuery.data, rangeQuery.isError, rangeQuery.isLoading]);
 
   const monthLabel = useMemo(
-    () => currentDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
-    [currentDate]
+    () =>
+      currentDate.toLocaleDateString(undefined, {
+        month: 'long',
+        year: 'numeric',
+      }),
+    [currentDate],
+  );
+
+  const monthCells = useMemo(
+    () => buildMondayFirstGrid(currentDate, days),
+    [currentDate, days],
   );
 
   const weekDays = useMemo(() => {
-    const start = startOfWeekLocal(currentDate);
+    const start = startOfMondayWeekLocal(parseLocalDate(selectedDate));
     const byDate = new Map(days.map((day) => [day.date, day]));
-
     return Array.from({ length: 7 }, (_, index) => {
       const date = addDaysLocal(start, index);
       const key = formatLocalDate(date);
-      return byDate.get(key) ?? {
-        date: key,
-        hasActivity: false,
-        completed: false,
-        type: 'rest' as const,
-        score: 0,
-        workoutName: null,
-        exerciseCount: 0,
-        durationMinutes: 0,
-        hydrationMl: 0,
-        proteinG: 0,
-        stepsCount: 0,
-        notes: null,
-      };
+      return byDate.get(key) ?? emptyCalendarDay(key);
     });
-  }, [currentDate, days]);
+  }, [days, selectedDate]);
 
-  const monthGrid = useMemo(() => buildMonthGrid(currentDate, days), [currentDate, days]);
   const selectedDay = dayQuery.data;
-  const offlineBanner = rangeQuery.isOfflineFallback || dayQuery.isOfflineFallback;
+  const todayString = formatLocalDate(new Date());
+  const stats = rangeQuery.data?.stats ?? getCalendarStats(days);
+  const selectedScore = Math.round(selectedDay?.vitalityScore ?? selectedDay?.score ?? 0);
 
-  const handlePrevious = () => {
-    setCurrentDate((date) => {
-      if (view === 'day') {
-        return addDaysLocal(date, -1);
-      }
-      if (view === 'week') {
-        return addDaysLocal(date, -7);
-      }
-      return addMonthsLocal(date, -1);
-    });
+  const navigateMonth = (direction: number) => {
+    setCurrentDate((date) => addMonthsLocal(date, direction));
   };
 
-  const handleNext = () => {
-    setCurrentDate((date) => {
-      if (view === 'day') {
-        return addDaysLocal(date, 1);
-      }
-      if (view === 'week') {
-        return addDaysLocal(date, 7);
-      }
-      return addMonthsLocal(date, 1);
-    });
-  };
+  const now = new Date();
+  const isFutureMonth =
+    currentDate.getFullYear() > now.getFullYear() ||
+    (currentDate.getFullYear() === now.getFullYear() &&
+      currentDate.getMonth() >= now.getMonth());
 
-  const handleDatePress = (date: string) => {
-    setSelectedDate(date);
-    setIsModalVisible(true);
-  };
-
-  const retry = () => {
-    void Promise.all([rangeQuery.refetch(), dayQuery.refetch()]);
-  };
+  const trainingPct = selectedDay?.completed ? 100 : Math.round(selectedDay?.score ?? 0);
+  const nutritionPct = selectedDay
+    ? Math.min(100, Math.round((selectedDay.proteinG / PROTEIN_GOAL_G) * 100))
+    : 0;
+  const hydrationPct = selectedDay
+    ? Math.min(100, Math.round((selectedDay.hydrationMl / HYDRATION_GOAL_ML) * 100))
+    : 0;
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
-        <View style={styles.headerTop}>
-          <Text style={styles.title}>Calendar</Text>
-        </View>
-        <View style={styles.dateNav}>
-          <TouchableOpacity style={styles.navBtn} accessibilityLabel="Previous" onPress={handlePrevious}>
-            <ChevronLeft color={colors.foreground} size={20} strokeWidth={1.75} />
-          </TouchableOpacity>
-          <Text style={styles.monthLabel}>{monthLabel}</Text>
-          <TouchableOpacity style={styles.navBtn} accessibilityLabel="Next" onPress={handleNext}>
-            <ChevronRight color={colors.foreground} size={20} strokeWidth={1.75} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.tabBar}>
-        {(['day', 'week', 'month'] as ViewMode[]).map((mode) => (
-          <TouchableOpacity
-            key={mode}
-            style={[styles.tab, view === mode && styles.tabActive]}
-            onPress={() => setView(mode)}
-          >
-            <Text style={[styles.tabLabel, { color: view === mode ? colors.primary : colors.mutedForeground }]}>
-              {mode.charAt(0).toUpperCase() + mode.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {offlineBanner ? (
-          <View style={styles.offlineBanner}>
-            <CloudOff size={16} color={colors.energy} strokeWidth={1.75} />
-            <Text style={styles.offlineBannerText}>Showing cached calendar data while reconnecting.</Text>
+    <SafeAreaView style={styles.root} edges={['top']}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + spacing.xxl + 60 },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <LinearGradient
+          colors={[colors.primary + '20', colors.energy + '12', colors.card]}
+          style={styles.heroCard}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={styles.headerRow}>
+            <View style={{ flex: 1 }}>
+              <View style={styles.kickerRow}>
+                <CalendarIcon size={16} color={colors.primary} strokeWidth={1.75} />
+                <Text style={styles.kickerText}>Training rhythm</Text>
+              </View>
+              <Text style={styles.screenTitle}>Calendar</Text>
+              <Text style={styles.monthLabel}>{monthLabel}</Text>
+            </View>
+            <View style={styles.row8}>
+              <TouchableOpacity onPress={() => navigateMonth(-1)} style={styles.iconButton}>
+                <ChevronLeft size={20} color={colors.foreground} strokeWidth={1.75} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => navigateMonth(1)}
+                disabled={isFutureMonth}
+                style={[styles.iconButton, isFutureMonth && { opacity: 0.4 }]}
+              >
+                <ChevronRight size={20} color={colors.foreground} strokeWidth={1.75} />
+              </TouchableOpacity>
+            </View>
           </View>
-        ) : null}
+
+          <View style={styles.signalRow}>
+            <SignalPill icon={Dumbbell} label="Sessions" value={`${stats.workouts}`} color={colors.primary} />
+            <SignalPill icon={Zap} label="Streak" value={`${stats.streak} days`} color={colors.energy} />
+            <SignalPill icon={Activity} label="Average" value={`${stats.avgScore}`} color={colors.blue} />
+          </View>
+        </LinearGradient>
+
+        <View style={styles.tabBar}>
+          {(['day', 'week', 'month'] as CalendarView[]).map((item) => {
+            const isActive = view === item;
+            return (
+              <TouchableOpacity
+                key={item}
+                onPress={() => setView(item)}
+                style={[styles.tab, isActive && styles.tabActive]}
+              >
+                <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                  {capitalize(item)}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
         {state === 'loading' ? <CalendarSkeleton /> : null}
-        {state === 'empty' ? (
-          <FeedbackCard
-            icon={Calendar}
-            title="No calendar activity yet"
-            message="Your workouts, nutrition, and steps will appear here once you start logging."
-          />
-        ) : null}
+
         {state === 'error' ? (
           <FeedbackCard
             icon={AlertCircle}
             iconColor={colors.destructive}
             title="Couldn’t load calendar"
-            message={rangeQuery.error instanceof Error ? rangeQuery.error.message : 'Please try again.'}
+            message={
+              rangeQuery.error instanceof Error
+                ? rangeQuery.error.message
+                : 'Please try again.'
+            }
             actionLabel="Retry"
-            onPress={retry}
+            onPress={() => {
+              void rangeQuery.refetch();
+            }}
+          />
+        ) : null}
+
+        {state === 'empty' ? (
+          <FeedbackCard
+            icon={CalendarIcon}
+            title="No calendar activity yet"
+            message="Workouts, nutrition, and steps will appear here once you start logging."
           />
         ) : null}
 
         {state === 'success' ? (
           <>
+            <FocusPanel
+              view={view}
+              selectedDate={selectedDate}
+              selectedScore={selectedScore}
+              stats={stats}
+              selectedDay={selectedDay}
+            />
+
             {view === 'day' ? (
               <DayView
-                day={selectedDay}
                 selectedDate={selectedDate}
-                onDatePress={() => setIsModalVisible(true)}
-                isLoading={dayQuery.isLoading}
+                selectedDay={selectedDay}
+                trainingPct={trainingPct}
+                nutritionPct={nutritionPct}
+                hydrationPct={hydrationPct}
               />
             ) : null}
-            {view === 'week' ? <WeekView days={weekDays} onDatePress={handleDatePress} /> : null}
-            {view === 'month' ? <MonthView cells={monthGrid} stats={monthStats} onDatePress={handleDatePress} /> : null}
+
+            {view === 'week' ? (
+              <WeekView
+                weekDays={weekDays}
+                selectedDate={selectedDate}
+                onSelectDate={setSelectedDate}
+              />
+            ) : null}
+
+            {view === 'month' ? (
+              <MonthView
+                monthCells={monthCells}
+                selectedDate={selectedDate}
+                todayString={todayString}
+                stats={stats}
+                onSelectDate={setSelectedDate}
+              />
+            ) : null}
           </>
         ) : null}
       </ScrollView>
-
-      <DayDetailModal
-        visible={isModalVisible}
-        onClose={() => setIsModalVisible(false)}
-        date={selectedDate}
-        day={selectedDay}
-        isLoading={dayQuery.isLoading}
-      />
-    </View>
+    </SafeAreaView>
   );
 }
 
 function DayView({
-  day,
   selectedDate,
-  onDatePress,
-  isLoading,
+  selectedDay,
+  trainingPct,
+  nutritionPct,
+  hydrationPct,
 }: {
-  day: ReturnType<typeof useCalendarDay>['data'];
   selectedDate: string;
-  onDatePress: () => void;
-  isLoading: boolean;
+  selectedDay: (CalendarDayItem & { vitalityScore: number }) | null | undefined;
+  trainingPct: number;
+  nutritionPct: number;
+  hydrationPct: number;
 }) {
-  if (isLoading) {
-    return <CalendarSkeleton compact />;
-  }
-
-  if (!day) {
-    return (
-      <View style={styles.viewContent}>
-        <FeedbackPanel
-          title="No activity for this day"
-          message={`Nothing logged for ${formatSelectedDate(selectedDate)}.`}
-          onPress={onDatePress}
-          actionLabel="View day detail"
-        />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.viewContent}>
-      <TouchableOpacity style={styles.card} onPress={onDatePress} activeOpacity={0.8}>
-        <Text style={styles.cardTitle}>{formatSelectedDate(selectedDate)}</Text>
+      <LinearGradient
+        colors={[getVitalityColor(selectedDay?.vitalityScore ?? 0) + '22', colors.card]}
+        style={styles.dayBreakdown}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.row8}>
+          <CalendarIcon size={18} color={colors.primary} strokeWidth={1.75} />
+          <Text style={styles.h2}>{formatHumanDate(selectedDate)}</Text>
+        </View>
+        <Text style={styles.bigPercent}>
+          {Math.round(selectedDay?.vitalityScore ?? 0)}%
+        </Text>
+        <View style={{ gap: spacing.sm }}>
+          <Bar label="Training" pct={trainingPct} />
+          <Bar label="Nutrition" pct={nutritionPct} />
+          <Bar label="Hydration" pct={hydrationPct} />
+        </View>
+      </LinearGradient>
 
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Workout</Text>
-          <View style={styles.completedRow}>
-            {day.completed ? (
-              <CheckCircle color={colors.primary} size={14} strokeWidth={1.75} />
-            ) : (
-              <Circle color={colors.mutedForeground} size={14} strokeWidth={1.75} />
-            )}
-            <Text style={[styles.completedText, { color: day.completed ? colors.primary : colors.mutedForeground }]}>
-              {day.completed ? 'Complete' : 'Not complete'}
+      <View style={styles.statsGrid}>
+        <StatCard label="Steps" value={(selectedDay?.stepsCount ?? 0).toLocaleString()} />
+        <StatCard label="Protein" value={`${selectedDay?.proteinG ?? 0}g`} accent={colors.energy} />
+        <StatCard label="Hydration" value={`${selectedDay?.hydrationMl ?? 0}ml`} accent={colors.blue} />
+      </View>
+
+      <View style={{ gap: spacing.sm + 4 }}>
+        {selectedDay && selectedDay.workoutName ? (
+          <View style={styles.feedCard}>
+            <View style={styles.row8}>
+              <Dumbbell size={20} color={colors.primary} strokeWidth={1.75} />
+              <Text style={styles.feedTitle}>Workout</Text>
+              <Text style={styles.muted}>· {selectedDay.durationMinutes} min</Text>
+            </View>
+            <Text style={[styles.foregroundText, { marginTop: spacing.sm }]}>
+              {selectedDay.workoutName}
+            </Text>
+            <Text style={styles.muted}>{selectedDay.exerciseCount} exercises</Text>
+          </View>
+        ) : (
+          <View style={styles.feedCard}>
+            <Text style={styles.feedTitle}>No workout logged</Text>
+            <Text style={[styles.muted, { marginTop: spacing.xs }]}>
+              Activity for this day will appear here after logging.
             </Text>
           </View>
-        </View>
-        <Text style={styles.summaryValue}>{day.workoutName ?? 'Rest / recovery'}</Text>
+        )}
 
-        <View style={styles.divider} />
-
-        <View style={styles.statsGrid}>
-          <View style={styles.statCell}>
-            <Text style={styles.statLabel}>Steps</Text>
-            <Text style={[styles.statValue, { color: colors.primary }]}>{day.stepsCount.toLocaleString()}</Text>
-          </View>
-          <View style={styles.statCell}>
-            <Text style={styles.statLabel}>Protein</Text>
-            <Text style={[styles.statValue, { color: colors.energy }]}>{day.proteinG}g</Text>
-          </View>
-          <View style={styles.statCell}>
-            <Text style={styles.statLabel}>Hydration</Text>
-            <Text style={[styles.statValue, { color: colors.blue }]}>{day.hydrationMl}ml</Text>
-          </View>
-        </View>
-
-        {day.notes ? (
-          <View style={styles.notesBox}>
-            <Text style={styles.notesLabel}>Notes</Text>
-            <Text style={styles.notesText}>{day.notes}</Text>
+        {selectedDay && (selectedDay.score ?? 0) >= 90 ? (
+          <View style={[styles.feedCard, { borderColor: colors.energy + '80' }]}>
+            <View style={styles.row8}>
+              <Trophy size={20} color={colors.energy} strokeWidth={1.75} />
+              <Text style={styles.feedTitle}>Personal Record</Text>
+            </View>
+            <Text style={[styles.foregroundText, { marginTop: spacing.sm }]}>
+              Strong session — top vitality day this week.
+            </Text>
           </View>
         ) : null}
-      </TouchableOpacity>
 
-      <View style={[styles.card, { borderColor: colors.primary + '40' }]}>
-        <View style={styles.vitalityRow}>
-          <View>
-            <Text style={styles.summaryLabel}>Vitality Score</Text>
-            <Text style={[styles.heroNumber, { color: colors.primary }]}>{day.vitalityScore}</Text>
+        {selectedDay?.notes ? (
+          <View style={styles.feedCard}>
+            <View style={styles.row8}>
+              <Award size={20} color={colors.primary} strokeWidth={1.75} />
+              <Text style={styles.feedTitle}>Notes</Text>
+            </View>
+            <Text style={[styles.foregroundText, { marginTop: spacing.sm }]}>
+              {selectedDay.notes}
+            </Text>
           </View>
-          <View style={[styles.vitalityCircle, { backgroundColor: colors.primary + '20' }]}>
-            <CheckCircle color={colors.primary} size={32} strokeWidth={1.75} />
-          </View>
-        </View>
+        ) : null}
       </View>
     </View>
   );
 }
 
-function WeekView({ days, onDatePress }: { days: CalendarDayItem[]; onDatePress: (date: string) => void }) {
-  const workouts = days.filter((day) => day.type === 'training');
-  const completed = workouts.filter((day) => day.completed).length;
-  const avgScore = workouts.filter((day) => day.score > 0).reduce((sum, day, _, arr) => {
-    return arr.length ? Math.round((sum + day.score) / arr.length) : 0;
-  }, 0);
+function WeekView({
+  weekDays,
+  selectedDate,
+  onSelectDate,
+}: {
+  weekDays: CalendarDayItem[];
+  selectedDate: string;
+  onSelectDate: (date: string) => void;
+}) {
+  const completedCount = weekDays.filter((day) => day.completed).length;
+  const trainingDays = weekDays.filter((day) => day.type === 'training' || day.hasActivity);
+  const scoredDays = weekDays.filter((day) => day.score > 0);
+  const avgScore = scoredDays.length
+    ? Math.round(scoredDays.reduce((sum, day) => sum + day.score, 0) / scoredDays.length)
+    : 0;
 
   return (
     <View style={styles.viewContent}>
       <View style={styles.weekGrid}>
-        {days.map((day) => {
-          const date = new Date(`${day.date}T12:00:00`);
+        {weekDays.map((day) => {
+          const date = parseLocalDate(day.date);
+          const isSelected = day.date === selectedDate;
           return (
             <TouchableOpacity
               key={day.date}
+              onPress={() => onSelectDate(day.date)}
               style={[
-                styles.dayCell,
-                day.completed && { borderColor: colors.primary, backgroundColor: colors.primary + '10' },
+                styles.weekGridCell,
+                day.completed && styles.weekGridCellCompleted,
+                isSelected && styles.weekGridCellSelected,
+                day.score >= 90 && !isSelected && styles.weekGridCellPeak,
               ]}
-              activeOpacity={0.7}
-              onPress={() => onDatePress(day.date)}
+              activeOpacity={0.75}
             >
-              <Text style={styles.dayCellDay}>
+              <Text style={[styles.weekGridDay, isSelected && styles.dayTextSelected]}>
                 {date.toLocaleDateString(undefined, { weekday: 'short' })}
               </Text>
-              <Text style={styles.dayCellDate}>{date.getDate()}</Text>
-              {day.type === 'training' ? (
-                <View style={[styles.dayCellDot, { backgroundColor: day.completed ? colors.primary : colors.mutedForeground }]} />
+              <Text style={[styles.weekGridDate, isSelected && styles.dayTextSelected]}>
+                {date.getDate()}
+              </Text>
+              {day.hasActivity ? (
+                <View
+                  style={[
+                    styles.vitalityDot,
+                    {
+                      backgroundColor: isSelected ? colors.primaryFg : getVitalityColor(day.score),
+                    },
+                  ]}
+                />
               ) : null}
             </TouchableOpacity>
           );
         })}
       </View>
 
-      <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>Workouts</Text>
-          <Text style={styles.statBig}>{completed}/{workouts.length}</Text>
-          <Text style={styles.statSub}>completed</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>Avg Vitality</Text>
-          <Text style={[styles.statBig, { color: colors.primary }]}>{avgScore}</Text>
-          <Text style={styles.statSub}>this week</Text>
+      <View style={styles.statsGrid}>
+        <StatCard label="Workouts" value={`${completedCount}/${trainingDays.length || 7}`} />
+        <StatCard label="Avg Vitality" value={`${avgScore}`} accent={colors.primary} />
+      </View>
+
+      <View style={styles.weekConsistency}>
+        <View style={styles.kickerRow}>
+          <Activity size={14} color={colors.primary} strokeWidth={1.75} />
+          <Text style={styles.muted}>{completedCount} of 7 days active this week</Text>
         </View>
       </View>
 
       <Text style={styles.sectionTitle}>Training Days</Text>
-      {workouts.map((day) => {
-        const date = new Date(`${day.date}T12:00:00`);
-        return (
-          <TouchableOpacity key={day.date} style={[styles.card, styles.trainingRow]} onPress={() => onDatePress(day.date)}>
-            <View>
-              <Text style={styles.summaryLabel}>
-                {date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-              </Text>
-              <Text style={styles.summaryValue}>{day.completed ? 'Workout Complete' : 'Upcoming'}</Text>
-            </View>
-            {day.score > 0 ? (
-              <Text style={[styles.scoreText, { color: colors.primary }]}>{day.score}</Text>
-            ) : null}
-          </TouchableOpacity>
-        );
-      })}
+      {trainingDays.map((day) => (
+        <TouchableOpacity
+          key={day.date}
+          onPress={() => onSelectDate(day.date)}
+          style={styles.trainingRow}
+          activeOpacity={0.75}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.summaryLabel}>
+              {parseLocalDate(day.date).toLocaleDateString(undefined, {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+              })}
+            </Text>
+            <Text style={styles.summaryValue}>
+              {day.workoutName ?? (day.completed ? 'Workout complete' : 'Upcoming')}
+            </Text>
+          </View>
+          {day.completed ? (
+            <CheckCircle size={18} color={colors.primary} strokeWidth={1.75} />
+          ) : null}
+          {day.score > 0 ? (
+            <Text style={[styles.scoreText, { color: getVitalityColor(day.score) }]}>
+              {day.score}
+            </Text>
+          ) : null}
+        </TouchableOpacity>
+      ))}
     </View>
   );
 }
 
 function MonthView({
-  cells,
+  monthCells,
+  selectedDate,
+  todayString,
   stats,
-  onDatePress,
+  onSelectDate,
 }: {
-  cells: Array<CalendarDayItem | null>;
+  monthCells: Array<CalendarDayItem | null>;
+  selectedDate: string;
+  todayString: string;
   stats: { workouts: number; streak: number; avgScore: number };
-  onDatePress: (date: string) => void;
+  onSelectDate: (date: string) => void;
 }) {
   return (
     <View style={styles.viewContent}>
-      <View style={styles.weekdayRow}>
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((label) => (
-          <Text key={label} style={styles.weekdayLabel}>{label}</Text>
-        ))}
+      <View style={styles.calendarBox}>
+        <View style={styles.weekRow}>
+          {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((label, i) => (
+            <View key={i} style={styles.weekDayCell}>
+              <Text style={styles.weekDayText}>{label}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={styles.dayGrid}>
+          {monthCells.map((cell, idx) => {
+            if (!cell) {
+              return <View key={`b-${idx}`} style={styles.dayCellPlaceholder} />;
+            }
+            const dayNum = parseLocalDate(cell.date).getDate();
+            const isSelected = cell.date === selectedDate;
+            const isToday = cell.date === todayString;
+            const score = cell.score;
+            const hasPR = score >= 90;
+
+            return (
+              <Pressable
+                key={cell.date}
+                onPress={() => onSelectDate(cell.date)}
+                style={[
+                  styles.dayCell,
+                  cell.hasActivity && !isSelected && {
+                    backgroundColor: getVitalityColor(score) + '14',
+                    borderColor: getVitalityColor(score) + '55',
+                  },
+                  isSelected && styles.dayCellSelected,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.dayText,
+                    isSelected && styles.dayTextSelected,
+                    isToday && !isSelected && styles.dayTextToday,
+                  ]}
+                >
+                  {dayNum}
+                </Text>
+                {cell.hasActivity ? (
+                  <View
+                    style={[
+                      styles.vitalityDot,
+                      {
+                        backgroundColor: isSelected
+                          ? colors.primaryFg
+                          : getVitalityColor(score),
+                      },
+                    ]}
+                  />
+                ) : null}
+                {hasPR && !isSelected ? <View style={styles.prRing} /> : null}
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
 
-      <View style={styles.monthGrid}>
-        {cells.map((day, index) => {
-          if (!day) {
-            return <View key={`blank-${index}`} style={styles.monthCellBlank} />;
-          }
-
-          const date = new Date(`${day.date}T12:00:00`);
-          return (
-            <TouchableOpacity
-              key={day.date}
-              style={[
-                styles.monthCell,
-                day.hasActivity && {
-                  borderColor: colors.primary,
-                  backgroundColor: colors.primary + '15',
-                },
-                !day.hasActivity && { opacity: 0.5 },
-              ]}
-              activeOpacity={0.7}
-              onPress={() => onDatePress(day.date)}
-            >
-              <Text style={styles.monthDate}>{date.getDate()}</Text>
-              {day.hasActivity ? <View style={[styles.monthDot, { backgroundColor: colors.primary }]} /> : null}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      <View style={styles.monthStats}>
-        <View style={styles.monthStatCard}>
-          <Text style={[styles.monthStatValue, { color: colors.primary }]}>{stats.workouts}</Text>
-          <Text style={styles.monthStatLabel}>Workouts</Text>
-        </View>
-        <View style={styles.monthStatCard}>
-          <Text style={[styles.monthStatValue, { color: colors.energy }]}>{stats.streak}</Text>
-          <Text style={styles.monthStatLabel}>Day Streak</Text>
-        </View>
-        <View style={styles.monthStatCard}>
-          <Text style={[styles.monthStatValue, { color: colors.primary }]}>{stats.avgScore}%</Text>
-          <Text style={styles.monthStatLabel}>Avg Score</Text>
-        </View>
+      <View style={styles.statsGrid}>
+        <StatCard label="Workouts" value={`${stats.workouts}`} />
+        <StatCard label="Streak" value={`${stats.streak}`} accent={colors.energy} />
+        <StatCard label="Avg Vitality" value={`${stats.avgScore}`} accent={colors.primary} />
       </View>
     </View>
   );
 }
 
-function DayDetailModal({
-  visible,
-  onClose,
-  date,
-  day,
-  isLoading,
+function StatCard({ label, value, accent }: { label: string; value: string; accent?: string }) {
+  return (
+    <View style={styles.statCard}>
+      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={[styles.statValue, accent ? { color: accent } : null]}>{value}</Text>
+    </View>
+  );
+}
+
+function SignalPill({
+  icon: Icon,
+  label,
+  value,
+  color,
 }: {
-  visible: boolean;
-  onClose: () => void;
-  date: string;
-  day: ReturnType<typeof useCalendarDay>['data'];
-  isLoading: boolean;
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  color: string;
 }) {
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.modalBackdrop}>
-        <View style={styles.modalCard}>
-          <View style={styles.modalHeader}>
-            <View>
-              <Text style={styles.cardTitle}>Day Detail</Text>
-              <Text style={styles.summaryLabel}>{formatSelectedDate(date)}</Text>
-            </View>
-            <TouchableOpacity onPress={onClose} style={styles.navBtn}>
-              <X color={colors.foreground} size={20} strokeWidth={1.75} />
-            </TouchableOpacity>
-          </View>
-
-          {isLoading ? <CalendarSkeleton compact /> : null}
-
-          {!isLoading && !day ? (
-            <FeedbackPanel
-              title="No activity for this day"
-              message="There’s no workout, nutrition, or step detail logged here yet."
-            />
-          ) : null}
-
-          {!isLoading && day ? (
-            <View style={styles.modalBody}>
-              <View style={styles.card}>
-                <Text style={styles.summaryLabel}>Workout</Text>
-                <Text style={styles.summaryValue}>{day.workoutName ?? 'Rest / recovery'}</Text>
-                <View style={styles.divider} />
-                <Text style={styles.notesText}>
-                  {day.exerciseCount > 0 ? `${day.exerciseCount} exercises · ${day.durationMinutes} min` : 'No workout details'}
-                </Text>
-              </View>
-
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>Nutrition + Steps</Text>
-                <View style={styles.statsGrid}>
-                  <View style={styles.statCell}>
-                    <Text style={styles.statLabel}>Protein</Text>
-                    <Text style={[styles.statValue, { color: colors.energy }]}>{day.proteinG}g</Text>
-                  </View>
-                  <View style={styles.statCell}>
-                    <Text style={styles.statLabel}>Hydration</Text>
-                    <Text style={[styles.statValue, { color: colors.blue }]}>{day.hydrationMl}ml</Text>
-                  </View>
-                  <View style={styles.statCell}>
-                    <Text style={styles.statLabel}>Steps</Text>
-                    <Text style={[styles.statValue, { color: colors.primary }]}>{day.stepsCount.toLocaleString()}</Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={[styles.card, styles.trainingRow]}>
-                <View>
-                  <Text style={styles.summaryLabel}>Vitality Score</Text>
-                  <Text style={[styles.heroNumber, { color: colors.primary }]}>{day.vitalityScore}</Text>
-                </View>
-                <CheckCircle size={32} color={colors.primary} strokeWidth={1.75} />
-              </View>
-
-              {day.notes ? (
-                <View style={styles.card}>
-                  <Text style={styles.notesLabel}>Notes</Text>
-                  <Text style={styles.notesText}>{day.notes}</Text>
-                </View>
-              ) : null}
-            </View>
-          ) : null}
-        </View>
+    <View style={[styles.signalPill, { borderColor: color + '40' }]}>
+      <Icon size={15} color={color} strokeWidth={1.75} />
+      <View>
+        <Text style={styles.signalLabel}>{label}</Text>
+        <Text style={styles.signalValue}>{value}</Text>
       </View>
-    </Modal>
+    </View>
+  );
+}
+
+function FocusPanel({
+  view,
+  selectedDate,
+  selectedScore,
+  stats,
+  selectedDay,
+}: {
+  view: CalendarView;
+  selectedDate: string;
+  selectedScore: number;
+  stats: { workouts: number; streak: number; avgScore: number };
+  selectedDay: (CalendarDayItem & { vitalityScore?: number }) | null | undefined;
+}) {
+  const hasWorkout = Boolean(selectedDay?.workoutName);
+  const insight =
+    view === 'month'
+      ? `${stats.workouts} sessions logged this month.`
+      : view === 'week'
+        ? `Weekly rhythm is tracking at ${stats.avgScore || selectedScore} vitality.`
+        : hasWorkout
+          ? `${selectedDay?.workoutName} is on the board for this day.`
+          : 'No session logged here yet.';
+
+  return (
+    <View style={styles.insightPanel}>
+      <View style={styles.insightIcon}>
+        <Target size={20} color={colors.primaryFg} strokeWidth={2} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.insightTitle}>Day focus</Text>
+        <Text style={styles.insightText}>
+          {formatHumanDate(selectedDate)} · {insight}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function Bar({ label, pct }: { label: string; pct: number }) {
+  const clamped = Math.max(0, Math.min(100, pct));
+  return (
+    <View style={styles.barRow}>
+      <Text style={[styles.muted, { width: 96 }]}>{label}</Text>
+      <View style={styles.barTrack}>
+        <View style={[styles.barFill, { width: `${clamped}%` }]} />
+      </View>
+      <Text style={styles.foregroundText}>{clamped}%</Text>
+    </View>
   );
 }
 
@@ -540,229 +625,480 @@ function FeedbackCard({
   );
 }
 
-function FeedbackPanel({
-  title,
-  message,
-  actionLabel,
-  onPress,
-}: {
-  title: string;
-  message: string;
-  actionLabel?: string;
-  onPress?: () => void;
-}) {
+function CalendarSkeleton() {
   return (
-    <View style={styles.feedbackPanel}>
-      <Text style={styles.feedbackPanelTitle}>{title}</Text>
-      <Text style={styles.feedbackPanelMessage}>{message}</Text>
-      {actionLabel && onPress ? (
-        <TouchableOpacity onPress={onPress} style={styles.feedbackInlineButton}>
-          <Text style={styles.feedbackInlineButtonText}>{actionLabel}</Text>
-        </TouchableOpacity>
-      ) : null}
+    <View style={{ gap: spacing.md }}>
+      <View style={styles.skeletonGrid} />
+      <View style={styles.skeletonRow} />
+      <View style={styles.skeletonCard} />
     </View>
   );
 }
 
-function CalendarSkeleton({ compact = false }: { compact?: boolean }) {
-  return (
-    <View style={styles.viewContent}>
-      <View style={[styles.skeletonCard, compact && styles.skeletonCardCompact]} />
-      <View style={styles.skeletonGrid}>
-        {Array.from({ length: compact ? 2 : 7 }, (_, index) => (
-          <View key={index} style={styles.skeletonCell} />
-        ))}
-      </View>
-      {!compact ? <View style={styles.skeletonCard} /> : null}
-    </View>
-  );
+function getVitalityColor(score: number): string {
+  if (score >= 76) return colors.primary;
+  if (score >= 56) return colors.primary + '99';
+  if (score >= 36) return colors.energy;
+  return colors.mutedForeground;
 }
 
-function formatSelectedDate(date: string): string {
-  return new Date(`${date}T12:00:00`).toLocaleDateString(undefined, {
+function getCalendarStats(days: CalendarDayItem[]) {
+  const workoutDays = days.filter((day) => day.hasActivity);
+  const scoredDays = workoutDays.filter((day) => day.score > 0);
+  let streak = 0;
+  let current = 0;
+
+  for (const day of days) {
+    if (day.hasActivity) {
+      current += 1;
+      streak = Math.max(streak, current);
+    } else {
+      current = 0;
+    }
+  }
+
+  return {
+    workouts: workoutDays.length,
+    streak,
+    avgScore: scoredDays.length
+      ? Math.round(scoredDays.reduce((sum, day) => sum + day.score, 0) / scoredDays.length)
+      : 0,
+  };
+}
+
+function emptyCalendarDay(date: string): CalendarDayItem {
+  return {
+    date,
+    hasActivity: false,
+    completed: false,
+    type: 'rest',
+    score: 0,
+    workoutName: null,
+    exerciseCount: 0,
+    durationMinutes: 0,
+    hydrationMl: 0,
+    proteinG: 0,
+    stepsCount: 0,
+    notes: null,
+  };
+}
+
+function startOfMondayWeekLocal(date: Date): Date {
+  const sunStart = startOfWeekLocal(date);
+  return addDaysLocal(sunStart, 1);
+}
+
+function buildMondayFirstGrid(
+  currentDate: Date,
+  days: CalendarDayItem[],
+): Array<CalendarDayItem | null> {
+  const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  const sundayOffset = firstDay.getDay();
+  const mondayOffset = (sundayOffset + 6) % 7;
+  const daysInMonth = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth() + 1,
+    0,
+  ).getDate();
+  const byDate = new Map(days.map((day) => [day.date, day]));
+
+  const leading: Array<CalendarDayItem | null> = Array.from(
+    { length: mondayOffset },
+    () => null,
+  );
+  const cells = Array.from({ length: daysInMonth }, (_, index) => {
+    const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), index + 1);
+    const key = formatLocalDate(date);
+    return byDate.get(key) ?? emptyCalendarDay(key);
+  });
+
+  return [...leading, ...cells];
+}
+
+function parseLocalDate(value: string): Date {
+  return new Date(`${value}T12:00:00`);
+}
+
+function formatHumanDate(value: string): string {
+  return parseLocalDate(value).toLocaleDateString(undefined, {
     weekday: 'long',
-    month: 'long',
     day: 'numeric',
-    year: 'numeric',
+    month: 'long',
   });
 }
 
+function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.sm, gap: spacing.md },
-  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { fontSize: typography.fontSize['2xl'], fontWeight: typography.fontWeight.bold, color: colors.foreground },
-  dateNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  navBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.secondary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  monthLabel: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: colors.foreground },
-  tabBar: {
-    flexDirection: 'row',
-    marginHorizontal: spacing.lg,
-    padding: 4,
-    backgroundColor: colors.secondary,
-    borderRadius: borderRadius.xl,
-    marginBottom: spacing.md,
-  },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: borderRadius.lg,
-    minHeight: 44,
-  },
-  tabActive: { backgroundColor: colors.card },
-  tabLabel: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold },
+  root: { flex: 1, backgroundColor: colors.background },
   scroll: { flex: 1 },
-  scrollContent: { paddingBottom: spacing.xxl },
-  offlineBanner: {
-    minHeight: 44,
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
+  scrollContent: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.energy + '33',
-    backgroundColor: colors.energy + '14',
+    paddingTop: spacing.lg,
+    gap: spacing.lg,
+    maxWidth: 672,
+    width: '100%',
+    alignSelf: 'center',
   },
-  offlineBannerText: {
-    flex: 1,
-    fontSize: typography.fontSize.sm,
-    color: colors.energy,
-    fontWeight: typography.fontWeight.medium,
-  },
-  viewContent: { paddingHorizontal: spacing.lg, gap: spacing.md },
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  cardTitle: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: colors.foreground },
-  summaryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  summaryLabel: { fontSize: typography.fontSize.sm, color: colors.mutedForeground },
-  summaryValue: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.semibold, color: colors.foreground },
-  completedRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  completedText: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold },
-  divider: { height: 1, backgroundColor: colors.border },
-  statsGrid: { flexDirection: 'row', gap: spacing.sm },
-  statCell: { flex: 1, gap: 3 },
-  statLabel: { fontSize: typography.fontSize.xs, color: colors.mutedForeground },
-  statValue: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: colors.foreground },
-  notesBox: { backgroundColor: colors.secondary, borderRadius: borderRadius.md, padding: spacing.sm, gap: 3 },
-  notesLabel: { fontSize: typography.fontSize.xs, color: colors.mutedForeground },
-  notesText: { fontSize: typography.fontSize.sm, color: colors.foreground },
-  vitalityRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  heroNumber: { fontSize: typography.fontSize['3xl'], fontWeight: typography.fontWeight.extrabold },
-  vitalityCircle: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
-  weekGrid: { flexDirection: 'row', gap: spacing.xs },
-  dayCell: {
-    flex: 1,
-    aspectRatio: 0.85,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-  },
-  dayCellDay: { fontSize: 9, color: colors.mutedForeground },
-  dayCellDate: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold, color: colors.foreground },
-  dayCellDot: { width: 5, height: 5, borderRadius: 3 },
-  statsRow: { flexDirection: 'row', gap: spacing.sm },
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    alignItems: 'center',
-    gap: 2,
-  },
-  statBig: { fontSize: typography.fontSize['2xl'], fontWeight: typography.fontWeight.bold, color: colors.foreground },
-  statSub: { fontSize: typography.fontSize.xs, color: colors.mutedForeground },
-  sectionTitle: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.semibold, color: colors.foreground },
-  trainingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  scoreText: { fontSize: typography.fontSize['2xl'], fontWeight: typography.fontWeight.bold },
-  weekdayRow: { flexDirection: 'row' },
-  weekdayLabel: { flex: 1, textAlign: 'center', fontSize: typography.fontSize.xs, color: colors.mutedForeground, paddingVertical: spacing.xs },
-  monthGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  monthCellBlank: { width: '12.5%', aspectRatio: 1 },
-  monthCell: {
-    width: '12.5%',
-    aspectRatio: 1,
-    borderRadius: borderRadius.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-  },
-  monthDate: { fontSize: 11, fontWeight: typography.fontWeight.semibold, color: colors.foreground },
-  monthDot: { width: 4, height: 4, borderRadius: 2 },
-  monthStats: { flexDirection: 'row', gap: spacing.sm },
-  monthStatCard: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    alignItems: 'center',
-    gap: 3,
-  },
-  monthStatValue: { fontSize: typography.fontSize['2xl'], fontWeight: typography.fontWeight.bold },
-  monthStatLabel: { fontSize: typography.fontSize.xs, color: colors.mutedForeground },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: colors.overlay,
-    justifyContent: 'flex-end',
-  },
-  modalCard: {
-    maxHeight: '84%',
-    backgroundColor: colors.background,
-    borderTopLeftRadius: borderRadius.xxl,
-    borderTopRightRadius: borderRadius.xxl,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  modalHeader: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  modalBody: { gap: spacing.md },
+  heroCard: {
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
+    borderColor: colors.primary + '35',
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  kickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  kickerText: {
+    fontSize: typography.fontSize.xs,
+    color: colors.primary,
+    fontWeight: typography.fontWeight.bold,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  signalRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  signalPill: {
+    flex: 1,
+    minHeight: 58,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    backgroundColor: colors.black + '24',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  signalLabel: {
+    fontSize: typography.fontSize.xs,
+    color: colors.mutedForeground,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  signalValue: {
+    fontSize: typography.fontSize.sm,
+    color: colors.foreground,
+    fontWeight: typography.fontWeight.bold,
+    marginTop: 2,
+  },
+  screenTitle: {
+    fontSize: typography.fontSize['3xl'],
+    color: colors.foreground,
+    fontWeight: typography.fontWeight.extrabold,
+    marginTop: spacing.xs,
+  },
+  monthLabel: {
+    fontSize: typography.fontSize.sm,
+    color: colors.mutedForeground,
+    marginTop: spacing.xs,
+  },
+  h1: {
+    fontSize: typography.fontSize.xl,
+    color: colors.foreground,
+    fontWeight: typography.fontWeight.bold,
+  },
+  h2: {
+    fontSize: typography.fontSize.lg,
+    color: colors.foreground,
+    fontWeight: typography.fontWeight.semibold,
+    marginBottom: spacing.sm,
+  },
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.black + '33',
+    borderWidth: 1,
+    borderColor: colors.border + '99',
+  },
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.lg,
+    padding: spacing.xs,
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  tab: {
+    flex: 1,
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: borderRadius.sm,
+  },
+  tabActive: {
+    backgroundColor: colors.primary + '18',
+    borderWidth: 1,
+    borderColor: colors.primary + '55',
+  },
+  tabText: {
+    color: colors.mutedForeground,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  tabTextActive: {
+    color: colors.primary,
+  },
+  insightPanel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.primary + '35',
+    padding: spacing.md,
+  },
+  insightIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  insightTitle: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary,
+    fontWeight: typography.fontWeight.bold,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  insightText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.foreground,
+    marginTop: spacing.xs,
+    lineHeight: 20,
+  },
+  viewContent: {
+    gap: spacing.lg,
+  },
+  calendarBox: {
+    backgroundColor: colors.card + 'E6',
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.primary + '24',
+  },
+  weekRow: {
+    flexDirection: 'row',
+    marginBottom: spacing.sm,
+  },
+  weekDayCell: { flex: 1, alignItems: 'center' },
+  weekDayText: {
+    fontSize: typography.fontSize.xs,
+    color: colors.mutedForeground,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  dayGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  dayCell: {
+    width: `${100 / 7}%`,
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: borderRadius.sm,
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  dayCellPlaceholder: {
+    width: `${100 / 7}%`,
+    aspectRatio: 1,
+  },
+  dayCellSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  dayText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.foreground,
+  },
+  dayTextSelected: {
+    color: colors.primaryFg,
+    fontWeight: typography.fontWeight.bold,
+  },
+  dayTextToday: { textDecorationLine: 'underline' },
+  weekGrid: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  weekGridCell: {
+    flex: 1,
+    minHeight: 76,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    gap: spacing.xs,
+  },
+  weekGridCellCompleted: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '12',
+  },
+  weekGridCellSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  weekGridCellPeak: {
+    borderColor: colors.energy,
+    backgroundColor: colors.energy + '12',
+  },
+  weekGridDay: {
+    fontSize: typography.fontSize.xs,
+    color: colors.mutedForeground,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  weekGridDate: {
+    fontSize: typography.fontSize.lg,
+    color: colors.foreground,
+    fontWeight: typography.fontWeight.bold,
+  },
+  vitalityDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 2,
+  },
+  prRing: {
+    position: 'absolute',
+    top: 4,
+    right: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: colors.energy,
+  },
+  weekConsistency: { alignItems: 'center', gap: spacing.sm },
+  consistencyDaysRow: {
+    flexDirection: 'row',
+    alignSelf: 'stretch',
+  },
+  consistencyDayCol: { flex: 1, alignItems: 'center', gap: spacing.xs },
+  consistencyDot: { width: 8, height: 8, borderRadius: 4 },
+  dayBreakdown: {
+    gap: spacing.sm,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.primary + '28',
+    padding: spacing.lg,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: colors.card + 'E6',
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border + 'CC',
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  statLabel: {
+    fontSize: typography.fontSize.xs,
+    color: colors.mutedForeground,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  statValue: {
+    fontSize: typography.fontSize.xl,
+    color: colors.foreground,
+    fontWeight: typography.fontWeight.bold,
+  },
+  sectionTitle: {
+    fontSize: typography.fontSize.lg,
+    color: colors.foreground,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  summaryLabel: {
+    fontSize: typography.fontSize.xs,
+    color: colors.mutedForeground,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  summaryValue: {
+    fontSize: typography.fontSize.base,
+    color: colors.foreground,
+    fontWeight: typography.fontWeight.semibold,
+    marginTop: spacing.xs,
+  },
+  trainingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.card + 'E6',
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border + 'CC',
+    padding: spacing.md,
+  },
+  scoreText: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+  },
+  bigPercent: {
+    fontSize: typography.fontSize['4xl'],
+    fontWeight: typography.fontWeight.extrabold,
+    color: colors.primary,
+    marginBottom: spacing.sm,
+  },
+  barRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  barTrack: {
+    flex: 1,
+    height: 8,
+    backgroundColor: colors.muted + 'CC',
+    borderRadius: 9999,
+    overflow: 'hidden',
+  },
+  barFill: { height: '100%', backgroundColor: colors.primary },
+  foregroundText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.foreground,
+  },
+  muted: {
+    fontSize: typography.fontSize.sm,
+    color: colors.mutedForeground,
+  },
+  feedCard: {
+    backgroundColor: colors.card + 'E6',
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border + 'CC',
+    padding: spacing.md,
+  },
+  feedTitle: {
+    fontSize: typography.fontSize.base,
+    color: colors.foreground,
+    fontWeight: typography.fontWeight.semibold,
+  },
   feedbackCard: {
     alignItems: 'center',
     backgroundColor: colors.card,
-    borderRadius: borderRadius.xxl,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.xl,
     gap: spacing.sm,
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.xl,
   },
   feedbackTitle: {
-    fontSize: typography.fontSize.xl,
+    fontSize: typography.fontSize.lg,
     color: colors.foreground,
     fontWeight: typography.fontWeight.bold,
     textAlign: 'center',
@@ -776,69 +1112,32 @@ const styles = StyleSheet.create({
   feedbackButton: {
     minHeight: 48,
     minWidth: 120,
-    marginTop: spacing.sm,
     paddingHorizontal: spacing.lg,
-    borderRadius: 999,
+    borderRadius: 9999,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primary,
+    marginTop: spacing.sm,
   },
   feedbackButtonText: {
-    fontSize: typography.fontSize.base,
-    color: colors.black,
-    fontWeight: typography.fontWeight.bold,
-  },
-  feedbackPanel: {
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  feedbackPanelTitle: {
+    color: colors.primaryFg,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.bold,
-    color: colors.foreground,
-  },
-  feedbackPanelMessage: {
-    fontSize: typography.fontSize.sm,
-    color: colors.mutedForeground,
-    lineHeight: 20,
-  },
-  feedbackInlineButton: {
-    minHeight: 44,
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.md,
-    borderRadius: 999,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-  },
-  feedbackInlineButtonText: {
-    color: colors.black,
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.bold,
-  },
-  skeletonCard: {
-    height: 140,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  skeletonCardCompact: {
-    height: 100,
   },
   skeletonGrid: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    flexWrap: 'wrap',
-  },
-  skeletonCell: {
-    flexGrow: 1,
-    minWidth: 40,
-    height: 64,
+    height: 320,
     borderRadius: borderRadius.md,
     backgroundColor: colors.secondary,
   },
+  skeletonRow: {
+    height: 40,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.secondary,
+  },
+  skeletonCard: {
+    height: 100,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.secondary,
+  },
+  row8: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
 });

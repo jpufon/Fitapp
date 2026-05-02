@@ -23,15 +23,18 @@ Train → Log → Progress → Compete → Repeat
 - State: Zustand (client) + TanStack Query (server)
 - Icons: lucide-react-native (standardized — no Ionicons, no @expo/vector-icons)
 - Animations: react-native-reanimated v3 + Lottie
-- Forms: React Hook Form + Zod schemas from packages/shared
-- Package manager: npm inside react-native/ · pnpm at root when backend exists
+- Forms: React Hook Form + Zod (mobile zod v4 · backend + shared zod v3 — types only on mobile)
+- Package manager: npm everywhere (react-native/, backend/, packages/shared/). No root workspace.
 
-## Bottom navigation — 5 tabs, in this exact order
+## Bottom navigation — 5 tabs, in this exact order (matches react-native/App.tsx)
 1. Home     — Vitality Tree hero, pillar cards, today's workout
-2. Train    — Workout logging, builder, exercise library, WaliRun GPS
+2. Train    — Workout logging, builder, exercise library, WaliRun entry
 3. Calendar — Daily / weekly / monthly activity views
-4. Coach    — Wali AI chat, program generation, workout adjustment
-5. Arena    — Social hub: feed, sessions, leaderboards, friends, challenges, badges
+4. Arena    — Social hub: feed, sessions, leaderboards, friends, challenges, badges
+5. Profile  — Profile, stats, settings, badges, account management
+
+Stack-only screens (not tabs): Coach, WaliRun, ActiveWorkout, NutritionLog,
+WorkoutComplete, Settings, Auth, OnboardingFlow, Friends, Badges, TreeDetail, Dev.
 
 ## Key paths — ACTUAL current paths
 - Mobile app root:    react-native/
@@ -48,37 +51,51 @@ Train → Log → Progress → Compete → Repeat
 - MMKV storage:       react-native/lib/storage.ts
 - Workout utils:      react-native/lib/workouts.ts
 - Design system:      DESIGN.md                    ← at project root
-- Backend root:       backend/                      ← Fastify + Prisma (Phase 1 scaffolded 2026-04-29)
+- Backend root:       backend/                      ← Fastify + Prisma · Phase 1+2 done, Phase 3 partial
 - Backend entry:      backend/src/server.ts
 - Backend env config: backend/src/config.ts (Zod-validated)
-- Prisma schema:      backend/prisma/schema.prisma  ← models land in Phase 2
+- Prisma schema:      backend/prisma/schema.prisma  ← V1 schema applied (3 migrations in backend/prisma/migrations)
 - Prisma client:      backend/src/lib/prisma.ts
+- Backend routes:     backend/src/routes/           ← me, workouts, calendar, nutrition, vitality, home, arena
 - AI service:         backend/src/waliAI/           ← Phase 6+
 - Shared types:       packages/shared/src/         ← walifit-shared package, Zod schemas
+- API contract:       docs/API_CONTRACT.md          ← every route, request, response, mobile hook
+- Sync queue:         docs/SYNC_QUEUE.md            ← offline mutation queue API
 
 ## Screens already built (DO NOT recreate these)
 - react-native/screens/HomeScreen.tsx
 - react-native/screens/TrainScreen.tsx
 - react-native/screens/ActiveWorkoutScreen.tsx
 - react-native/screens/ArenaScreen.tsx
+- react-native/screens/ArenaExtendedScreens.tsx   ← exports FriendsScreen, BadgesScreen
 - react-native/screens/CalendarScreen.tsx
+- react-native/screens/CoachScreen.tsx            ← stack-only, not a tab
 - react-native/screens/ProfileScreen.tsx
+- react-native/screens/ProfileDestinationScreen.tsx ← stub for WaliAI/Analytics/Notifications/Account/Privacy
 - react-native/screens/AuthScreen.tsx
-- react-native/screens/OnboardingScreen.tsx
 - react-native/screens/OnboardingFlowScreen.tsx
 - react-native/screens/SettingsScreen.tsx
-- react-native/screens/ProfileDestinationScreen.tsx
+- react-native/screens/NutritionLogScreen.tsx
+- react-native/screens/WorkoutCompleteScreen.tsx
+- react-native/screens/WaliRunScreen.tsx
+- react-native/screens/RemainingScreens.tsx        ← exports TreeDetailScreen
+- react-native/screens/DevScreen.tsx               ← dev-only utilities
 
 ## Components already built
 - react-native/components/VitalityTree.tsx  ← Vitality Tree component, extend don't replace
+- react-native/components/RestTimerSheet.tsx
+- react-native/components/ChipSelector.tsx
 
 ## Hooks already built
 - react-native/hooks/useHomeData.ts
 - react-native/hooks/useArenaData.ts
 - react-native/hooks/useCalendarData.ts
+- react-native/hooks/useTrainData.ts        ← today's workout + history (GET /workouts/today, GET /workouts)
 - react-native/hooks/useProfileData.ts
 - react-native/hooks/useUser.ts
 - react-native/hooks/useCachedQuery.ts
+- react-native/hooks/useMutations.ts        ← all write paths (workouts, sets, nutrition, vitality)
+- react-native/hooks/useSyncBootstrap.ts    ← mounts offline queue NetInfo subscriber once
 
 ## Design tokens (SOURCE OF TRUTH: react-native/theme.ts · spec: docs/waliFit_Design_Tokens.md v2.0)
 - Background:        #0a0f0f  (deep charcoal)

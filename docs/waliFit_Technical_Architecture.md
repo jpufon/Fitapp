@@ -68,43 +68,61 @@ External Services:
 
 ## 2. Repository Structure
 
+The repo is **flat — not a monorepo**. There is no root `package.json` and no
+`pnpm-workspace.yaml`. Each top-level package is installed independently with
+npm. `walifit-shared` is consumed by the backend via `"file:../packages/shared"`
+in `backend/package.json`. The mobile app does not yet import from
+`walifit-shared` at runtime (Metro resolution is an open task — see
+`docs/API_CONTRACT.md` § "Shared schemas").
+
 ```
-walifit/
-├── apps/
-│   ├── mobile/              # React Native + Expo
-│   │   ├── src/
-│   │   │   ├── screens/
-│   │   │   ├── components/
-│   │   │   ├── navigation/
-│   │   │   ├── stores/      # Zustand
-│   │   │   ├── hooks/
-│   │   │   ├── services/    # API client, local DB
-│   │   │   └── utils/
-│   │   ├── app.json
-│   │   └── package.json
-│   └── backend/             # Fastify TypeScript API
-│       ├── src/
-│       │   ├── routes/
-│       │   ├── waliAI/      # ALL AI logic lives here
-│       │   │   ├── providers/   # Claude + Gemini adapters
-│       │   │   ├── prompts/     # All system prompts
-│       │   │   ├── context/     # Context builder
-│       │   │   ├── jobs/        # Memory update BullMQ jobs
-│       │   │   ├── router.ts    # Task → model routing
-│       │   │   └── index.ts     # Public WaliAI interface
-│       │   ├── services/
-│       │   ├── db/          # Prisma client + migrations
-│       │   ├── jobs/        # BullMQ background jobs
-│       │   └── middleware/  # Auth, rate limiting, logging
-│       ├── prisma/schema.prisma
-│       └── package.json
+Fitapp/
+├── react-native/            # React Native + Expo (mobile app)
+│   ├── App.tsx              # entry — registers tabs + stack
+│   ├── theme.ts             # SOURCE OF TRUTH for design tokens
+│   ├── tailwind.config.js
+│   ├── app.json
+│   ├── package.json         # npm — not in a workspace
+│   ├── screens/             # 17 screens — see CLAUDE.md inventory
+│   ├── components/          # VitalityTree, RestTimerSheet, ChipSelector
+│   ├── hooks/               # useHomeData, useArenaData, useCalendarData,
+│   │                        #  useProfileData, useUser, useCachedQuery,
+│   │                        #  useMutations, useSyncBootstrap
+│   ├── lib/                 # api.ts (apiQuery, apiMutate), syncQueue.ts,
+│   │                        #  storage.ts (MMKV), queryClient.ts, workouts.ts
+│   └── utils/               # supabase.ts (encrypted MMKV wrapper)
+├── backend/                 # Fastify + Prisma API
+│   ├── prisma/
+│   │   ├── schema.prisma    # V1 schema — User, VitalityState, WorkoutLog,
+│   │   │                    #  WorkoutSet, DailyScore, SimpleNutritionLog,
+│   │   │                    #  PRRecord, UserMemory, Badge/UserBadge,
+│   │   │                    #  Squad/SquadMember, FeedItem/Reaction
+│   │   └── migrations/      # init · align_with_v1_schema · arena_v1
+│   ├── src/
+│   │   ├── server.ts        # Fastify entrypoint
+│   │   ├── config.ts        # Zod-validated env
+│   │   ├── lib/             # prisma, auth, dailyScore, pr, feed
+│   │   ├── routes/          # me, workouts, nutrition, vitality,
+│   │   │                    #  calendar, home, arena (~21 endpoints)
+│   │   ├── scripts/         # check-connectivity, mint-dev-jwt, test-*
+│   │   └── waliAI/          # NOT YET SCAFFOLDED — Phase 6+
+│   └── package.json         # npm
 ├── packages/
-│   └── shared/              # Shared TypeScript types
-│       ├── src/types/
-│       └── src/schemas/     # Zod schemas (API contracts)
-├── pnpm-workspace.yaml
-└── package.json
+│   └── shared/              # walifit-shared — Zod schemas + types
+│       ├── src/
+│       │   ├── index.ts     # barrel
+│       │   ├── schemas/     # workout, nutrition, vitality
+│       │   └── types/       # health
+│       └── package.json     # consumed by backend via file:../packages/shared
+├── docs/                    # all .md docs (API_CONTRACT, SYNC_QUEUE, etc.)
+├── CLAUDE.md                # project memory for Claude Code
+├── DESIGN.md                # design system notes
+└── README.md
 ```
+
+Future direction (V2+): if multiple front-ends or a separate web app are added,
+collapse into a real workspace (npm workspaces or pnpm). Until then the flat
+layout is intentional — it keeps Metro and Prisma simple.
 
 ---
 
@@ -115,8 +133,12 @@ walifit/
 ```prisma
 // prisma/schema.prisma
 
+// Real schema lives in backend/prisma/schema.prisma — this block is a
+// summary of the shipped V1 model. IDs are PostgreSQL UUIDs (@db.Uuid)
+// to match Supabase auth.users, NOT cuid().
+
 model User {
-  id              String    @id @default(cuid())
+  id              String    @id @db.Uuid
   email           String    @unique
   username        String    @unique
   displayName     String

@@ -12,6 +12,7 @@ export type RunDistancePreset = z.infer<typeof RunDistancePresetEnum>;
 // ─── POST /workouts ────────────────────────────────────────────────────────
 
 export const StartWorkoutSchema = z.object({
+  id: z.string().uuid().optional(),
   name: z.string().min(1).max(120),
   type: WorkoutTypeEnum,
 });
