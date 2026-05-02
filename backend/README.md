@@ -37,17 +37,27 @@ See `.env.example` for the full list. Minimum to boot the server:
 ```
 backend/
 ├── prisma/
-│   └── schema.prisma         # DB models (Phase 2+)
+│   ├── schema.prisma         # V1 schema (User, VitalityState, WorkoutLog, WorkoutSet,
+│   │                         #  DailyScore, SimpleNutritionLog, PRRecord, UserMemory,
+│   │                         #  Badge/UserBadge, Squad/SquadMember, FeedItem/Reaction)
+│   └── migrations/           # 3 migrations applied: init, align_with_v1_schema, arena_v1
 ├── src/
 │   ├── config.ts             # env validation via Zod
 │   ├── server.ts             # Fastify entrypoint
 │   ├── lib/
-│   │   └── prisma.ts         # Prisma client singleton
-│   └── routes/               # route handlers (Phase 2+)
+│   │   ├── prisma.ts         # Prisma client singleton
+│   │   ├── auth.ts           # requireAuth preHandler (Supabase JWT)
+│   │   ├── dailyScore.ts     # vitality computation (steps 40 / protein 30 / hydration 30)
+│   │   ├── pr.ts             # PR detection on workout finish
+│   │   └── feed.ts           # FeedItem writes after workout/PR
+│   ├── routes/               # me, workouts, nutrition, vitality, home, calendar, arena
+│   └── scripts/              # check-connectivity, mint-dev-jwt, test-auth, test-phase{3,4}
 ├── package.json
 ├── tsconfig.json
 └── .env.example
 ```
+
+See `docs/API_CONTRACT.md` at repo root for the full route inventory.
 
 ## Scripts
 
@@ -64,7 +74,11 @@ backend/
 ## Phase status
 
 - [x] Phase 1 — skeleton, healthz route, Prisma stub
-- [ ] Phase 2 — schema + Supabase JWT auth middleware
-- [ ] Phase 3 — core mutation routes (workouts, nutrition, vitality)
-- [ ] Phase 4 — mobile offline mutation queue (in `react-native/lib/`)
+- [x] Phase 2 — V1 schema applied (3 migrations) + Supabase JWT auth middleware (`src/lib/auth.ts`)
+- [x] Phase 3 — core mutation routes (workouts, nutrition, vitality, calendar, home, arena)
+- [x] Phase 4 — mobile offline mutation queue (`react-native/lib/syncQueue.ts`, `useSyncBootstrap.ts`, `useMutations.ts`)
 - [ ] Phase 5 — Railway deploy + e2e smoke test
+- [ ] Phase 6+ — waliAI service (`backend/src/waliAI/` — not yet scaffolded)
+
+Open follow-ups: full Arena polish, Coach/AI routes, run-specific endpoints
+(`/runs`, `/runs/prs`), squads leave/admin endpoints, account-deletion job.

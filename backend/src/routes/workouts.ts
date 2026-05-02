@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { randomUUID } from 'node:crypto';
 import {
   StartWorkoutSchema,
   LogSetSchema,
@@ -17,13 +18,20 @@ export async function workoutRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.flatten() });
     }
 
-    const workout = await prisma.workoutLog.create({
-      data: {
+    const workout = await prisma.workoutLog.upsert({
+      where: { id: parsed.data.id ?? randomUUID() },
+      update: {},
+      create: {
+        id: parsed.data.id,
         userId: request.user!.id,
         name: parsed.data.name,
         type: parsed.data.type,
       },
     });
+
+    if (workout.userId !== request.user!.id) {
+      return reply.code(403).send({ error: 'forbidden' });
+    }
 
     return reply.code(201).send({ workout });
   });
