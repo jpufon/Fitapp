@@ -12,10 +12,12 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   Sparkles, TrendingUp, Bell, User, Shield,
-  Settings, CloudOff, ChevronRight, LogOut, AlertCircle, Home as HomeIcon,
+  CloudOff, ChevronRight, LogOut, AlertCircle, Home as HomeIcon,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, borderRadius, typography } from '../theme';
+import type { SurfaceTokens } from '../theme/surfaceTheme';
+import { useWalifitTheme } from '../theme/ThemeProvider';
 import type { RootStackParamList } from '../App';
 import { useUser } from '../hooks/useUser';
 import { useProfileStats } from '../hooks/useProfileData';
@@ -23,7 +25,7 @@ import { hasSupabaseConfig, supabase } from '../utils/supabase';
 
 type ScreenState = 'loading' | 'success' | 'error';
 
-const SETTINGS_ITEMS: Array<{
+type SettingsItem = {
   id: keyof Pick<
     RootStackParamList,
     'WaliAI' | 'Analytics' | 'Notifications' | 'Settings' | 'PrivacyLegal'
@@ -32,49 +34,56 @@ const SETTINGS_ITEMS: Array<{
   label: string;
   description: string;
   color: string;
-}> = [
-  {
-    id: 'WaliAI',
-    icon: Sparkles,
-    label: 'Chat with Wali AI',
-    description: 'Get personalised coaching',
-    color: colors.purple,
-  },
-  {
-    id: 'Analytics',
-    icon: TrendingUp,
-    label: 'Progress & Analytics',
-    description: 'View your stats and trends',
-    color: colors.blue,
-  },
-  {
-    id: 'Notifications',
-    icon: Bell,
-    label: 'Notifications',
-    description: 'Manage preferences',
-    color: colors.energy,
-  },
-  {
-    id: 'Settings',
-    icon: User,
-    label: 'Account Settings',
-    description: 'Profile, units, targets',
-    color: colors.mutedForeground,
-  },
-  {
-    id: 'PrivacyLegal',
-    icon: Shield,
-    label: 'Privacy & Legal',
-    description: 'Terms, privacy, AI disclosure',
-    color: colors.mutedForeground,
-  },
-];
+};
+
+function buildSettingsItems(mutedForeground: string): SettingsItem[] {
+  return [
+    {
+      id: 'WaliAI',
+      icon: Sparkles,
+      label: 'Chat with Wali AI',
+      description: 'Get personalised coaching',
+      color: colors.purple,
+    },
+    {
+      id: 'Analytics',
+      icon: TrendingUp,
+      label: 'Progress & Analytics',
+      description: 'View your stats and trends',
+      color: colors.blue,
+    },
+    {
+      id: 'Notifications',
+      icon: Bell,
+      label: 'Notifications',
+      description: 'Manage preferences',
+      color: colors.energy,
+    },
+    {
+      id: 'Settings',
+      icon: User,
+      label: 'Account Settings',
+      description: 'Profile, units, targets',
+      color: mutedForeground,
+    },
+    {
+      id: 'PrivacyLegal',
+      icon: Shield,
+      label: 'Privacy & Legal',
+      description: 'Terms, privacy, AI disclosure',
+      color: mutedForeground,
+    },
+  ];
+}
 
 export default function ProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
   const userQuery = useUser();
   const statsQuery = useProfileStats();
+  const { surfaces } = useWalifitTheme();
+  const styles = useMemo(() => createStyles(surfaces), [surfaces]);
+  const settingsItems = useMemo(() => buildSettingsItems(surfaces.mutedForeground), [surfaces.mutedForeground]);
 
   const state = useMemo<ScreenState>(() => {
     if (userQuery.isLoading || statsQuery.isLoading) {
@@ -193,7 +202,7 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
-        {state === 'loading' ? <ProfileSkeleton /> : null}
+        {state === 'loading' ? <ProfileSkeleton styles={styles} /> : null}
 
         {state === 'error' ? (
           <FeedbackCard
@@ -208,6 +217,7 @@ export default function ProfileScreen() {
             onPress={() => {
               void handleRefresh();
             }}
+            styles={styles}
           />
         ) : null}
 
@@ -227,7 +237,7 @@ export default function ProfileScreen() {
 
               <View style={styles.statsRow}>
                 {stats.map((stat) => (
-                  <View key={stat.label} style={[styles.statCard, { backgroundColor: colors.card + 'CC' }]}>
+                  <View key={stat.label} style={[styles.statCard, { backgroundColor: surfaces.card + 'CC' }]}>
                     <Text style={[styles.statValue, { color: stat.color }]}>{stat.value}</Text>
                     <Text style={styles.statLabel}>{stat.label}</Text>
                   </View>
@@ -236,14 +246,14 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.settingsSection}>
-              {SETTINGS_ITEMS.map((item, index) => {
+              {settingsItems.map((item, index) => {
                 const Icon = item.icon;
                 return (
                   <TouchableOpacity
                     key={item.id}
                     style={[
                       styles.settingsRow,
-                      index < SETTINGS_ITEMS.length - 1 && styles.settingsRowBorder,
+                      index < settingsItems.length - 1 && styles.settingsRowBorder,
                     ]}
                     activeOpacity={0.7}
                     onPress={() => navigation.navigate(item.id)}
@@ -255,7 +265,7 @@ export default function ProfileScreen() {
                       <Text style={styles.settingsLabel}>{item.label}</Text>
                       <Text style={styles.settingsDesc}>{item.description}</Text>
                     </View>
-                    <ChevronRight color={colors.mutedForeground} size={18} strokeWidth={1.75} />
+                    <ChevronRight color={surfaces.mutedForeground} size={18} strokeWidth={1.75} />
                   </TouchableOpacity>
                 );
               })}
@@ -289,6 +299,7 @@ function FeedbackCard({
   message,
   actionLabel,
   onPress,
+  styles,
 }: {
   icon: React.ElementType;
   iconColor?: string;
@@ -296,6 +307,7 @@ function FeedbackCard({
   message: string;
   actionLabel?: string;
   onPress?: () => void;
+  styles: ProfileStyles;
 }) {
   return (
     <View style={styles.feedbackCard}>
@@ -311,10 +323,10 @@ function FeedbackCard({
   );
 }
 
-function ProfileSkeleton() {
+function ProfileSkeleton({ styles }: { styles: ProfileStyles }) {
   return (
     <>
-      <View style={[styles.userCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
+      <View style={styles.userCardSkeleton}>
         <View style={styles.userRow}>
           <View style={styles.skeletonAvatar} />
           <View style={styles.userInfo}>
@@ -326,7 +338,7 @@ function ProfileSkeleton() {
 
         <View style={styles.statsRow}>
           {Array.from({ length: 3 }, (_, index) => (
-            <View key={index} style={[styles.statCard, { backgroundColor: colors.secondary }]}>
+            <View key={index} style={styles.statCardSkeleton}>
               <View style={styles.skeletonStatValue} />
               <View style={styles.skeletonStatLabel} />
             </View>
@@ -339,143 +351,149 @@ function ProfileSkeleton() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.xxl, gap: spacing.md },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { fontSize: typography.fontSize['2xl'], fontWeight: typography.fontWeight.bold, color: colors.foreground },
-  settingsBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.secondary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  inlineBanner: {
-    minHeight: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.energy + '33',
-    backgroundColor: colors.energy + '14',
-  },
-  inlineBannerText: {
-    flex: 1,
-    fontSize: typography.fontSize.sm,
-    color: colors.energy,
-    fontWeight: typography.fontWeight.medium,
-  },
-  userCard: { borderRadius: borderRadius.xl, borderWidth: 1, padding: spacing.md, gap: spacing.md },
-  userRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  avatarLg: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  avatarText: { fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold, color: colors.black },
-  userInfo: { flex: 1, gap: 3 },
-  userName: { fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold, color: colors.foreground },
-  userHandle: { fontSize: typography.fontSize.sm, color: colors.mutedForeground },
-  userMember: { fontSize: typography.fontSize.xs, color: colors.mutedForeground },
-  statsRow: { flexDirection: 'row', gap: spacing.sm },
-  statCard: { flex: 1, borderRadius: borderRadius.md, padding: spacing.sm, alignItems: 'center', gap: 3 },
-  statValue: { fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold },
-  statLabel: { fontSize: 10, color: colors.mutedForeground, textAlign: 'center', lineHeight: 13 },
-  settingsSection: { backgroundColor: colors.card, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
-  settingsRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md, minHeight: 48 },
-  settingsRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  settingsIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  settingsText: { flex: 1, gap: 2 },
-  settingsLabel: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.semibold, color: colors.foreground },
-  settingsDesc: { fontSize: typography.fontSize.sm, color: colors.mutedForeground },
-  logoutBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md },
-  footer: { alignItems: 'center', gap: spacing.xs, paddingTop: spacing.md },
-  footerText: { fontSize: typography.fontSize.xs, color: colors.mutedForeground },
-  footerTagline: { fontSize: typography.fontSize.xs, color: colors.mutedForeground, textAlign: 'center' },
-  feedbackCard: {
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.xxl,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.xl,
-    gap: spacing.sm,
-  },
-  feedbackTitle: {
-    fontSize: typography.fontSize.xl,
-    color: colors.foreground,
-    fontWeight: typography.fontWeight.bold,
-    textAlign: 'center',
-  },
-  feedbackMessage: {
-    fontSize: typography.fontSize.base,
-    color: colors.mutedForeground,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  feedbackButton: {
-    minHeight: 48,
-    minWidth: 120,
-    marginTop: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-  },
-  feedbackButtonText: { fontSize: typography.fontSize.base, color: colors.black, fontWeight: typography.fontWeight.bold },
-  skeletonAvatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.secondary,
-  },
-  skeletonLineLong: {
-    width: '70%',
-    height: 18,
-    borderRadius: 999,
-    backgroundColor: colors.secondary,
-    marginBottom: spacing.xs,
-  },
-  skeletonLineMedium: {
-    width: '50%',
-    height: 14,
-    borderRadius: 999,
-    backgroundColor: colors.secondary,
-    marginBottom: spacing.xs,
-  },
-  skeletonLineShort: {
-    width: '40%',
-    height: 12,
-    borderRadius: 999,
-    backgroundColor: colors.secondary,
-  },
-  skeletonStatValue: {
-    width: 28,
-    height: 20,
-    borderRadius: 999,
-    backgroundColor: colors.background,
-  },
-  skeletonStatLabel: {
-    width: '80%',
-    height: 10,
-    borderRadius: 999,
-    backgroundColor: colors.background,
-  },
-  skeletonSection: {
-    height: 300,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  skeletonSectionShort: {
-    height: 88,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-});
+type ProfileStyles = ReturnType<typeof createStyles>;
+
+function createStyles(s: SurfaceTokens) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: s.background },
+    scroll: { flex: 1 },
+    scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.xxl, gap: spacing.md },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    title: { fontSize: typography.fontSize['2xl'], fontWeight: typography.fontWeight.bold, color: s.foreground },
+    settingsBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: s.secondary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    inlineBanner: {
+      minHeight: 44,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: borderRadius.lg,
+      borderWidth: 1,
+      borderColor: colors.energy + '33',
+      backgroundColor: colors.energy + '14',
+    },
+    inlineBannerText: {
+      flex: 1,
+      fontSize: typography.fontSize.sm,
+      color: colors.energy,
+      fontWeight: typography.fontWeight.medium,
+    },
+    userCard: { borderRadius: borderRadius.xl, borderWidth: 1, padding: spacing.md, gap: spacing.md },
+    userCardSkeleton: { borderRadius: borderRadius.xl, borderWidth: 1, padding: spacing.md, gap: spacing.md, borderColor: s.border, backgroundColor: s.card },
+    userRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+    avatarLg: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    avatarText: { fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold, color: colors.black },
+    userInfo: { flex: 1, gap: 3 },
+    userName: { fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold, color: s.foreground },
+    userHandle: { fontSize: typography.fontSize.sm, color: s.mutedForeground },
+    userMember: { fontSize: typography.fontSize.xs, color: s.mutedForeground },
+    statsRow: { flexDirection: 'row', gap: spacing.sm },
+    statCard: { flex: 1, borderRadius: borderRadius.md, padding: spacing.sm, alignItems: 'center', gap: 3 },
+    statCardSkeleton: { flex: 1, borderRadius: borderRadius.md, padding: spacing.sm, alignItems: 'center', gap: 3, backgroundColor: s.secondary },
+    statValue: { fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold },
+    statLabel: { fontSize: 10, color: s.mutedForeground, textAlign: 'center', lineHeight: 13 },
+    settingsSection: { backgroundColor: s.card, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: s.border, overflow: 'hidden' },
+    settingsRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md, minHeight: 48 },
+    settingsRowBorder: { borderBottomWidth: 1, borderBottomColor: s.border },
+    settingsIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    settingsText: { flex: 1, gap: 2 },
+    settingsLabel: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.semibold, color: s.foreground },
+    settingsDesc: { fontSize: typography.fontSize.sm, color: s.mutedForeground },
+    logoutBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md },
+    footer: { alignItems: 'center', gap: spacing.xs, paddingTop: spacing.md },
+    footerText: { fontSize: typography.fontSize.xs, color: s.mutedForeground },
+    footerTagline: { fontSize: typography.fontSize.xs, color: s.mutedForeground, textAlign: 'center' },
+    feedbackCard: {
+      alignItems: 'center',
+      backgroundColor: s.card,
+      borderRadius: borderRadius.xxl,
+      borderWidth: 1,
+      borderColor: s.border,
+      padding: spacing.xl,
+      gap: spacing.sm,
+    },
+    feedbackTitle: {
+      fontSize: typography.fontSize.xl,
+      color: s.foreground,
+      fontWeight: typography.fontWeight.bold,
+      textAlign: 'center',
+    },
+    feedbackMessage: {
+      fontSize: typography.fontSize.base,
+      color: s.mutedForeground,
+      textAlign: 'center',
+      lineHeight: 22,
+    },
+    feedbackButton: {
+      minHeight: 48,
+      minWidth: 120,
+      marginTop: spacing.sm,
+      paddingHorizontal: spacing.lg,
+      borderRadius: 999,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.primary,
+    },
+    feedbackButtonText: { fontSize: typography.fontSize.base, color: colors.black, fontWeight: typography.fontWeight.bold },
+    skeletonAvatar: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: s.secondary,
+    },
+    skeletonLineLong: {
+      width: '70%',
+      height: 18,
+      borderRadius: 999,
+      backgroundColor: s.secondary,
+      marginBottom: spacing.xs,
+    },
+    skeletonLineMedium: {
+      width: '50%',
+      height: 14,
+      borderRadius: 999,
+      backgroundColor: s.secondary,
+      marginBottom: spacing.xs,
+    },
+    skeletonLineShort: {
+      width: '40%',
+      height: 12,
+      borderRadius: 999,
+      backgroundColor: s.secondary,
+    },
+    skeletonStatValue: {
+      width: 28,
+      height: 20,
+      borderRadius: 999,
+      backgroundColor: s.background,
+    },
+    skeletonStatLabel: {
+      width: '80%',
+      height: 10,
+      borderRadius: 999,
+      backgroundColor: s.background,
+    },
+    skeletonSection: {
+      height: 300,
+      borderRadius: borderRadius.lg,
+      backgroundColor: s.card,
+      borderWidth: 1,
+      borderColor: s.border,
+    },
+    skeletonSectionShort: {
+      height: 88,
+      borderRadius: borderRadius.lg,
+      backgroundColor: s.card,
+      borderWidth: 1,
+      borderColor: s.border,
+    },
+  });
+}

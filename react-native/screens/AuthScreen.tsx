@@ -3,14 +3,16 @@
 // Auth via Supabase: Email + Apple Sign In + Google Sign In
 // Apple Sign In is MANDATORY when Google is offered (App Store rule)
 
-import React, { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity,
   ScrollView, KeyboardAvoidingView, Platform, StyleSheet, Linking,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Eye, EyeOff, Apple, Mail, ArrowLeft, ChevronRight } from 'lucide-react-native'
+import { Eye, EyeOff, Apple, Mail, ArrowLeft } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
+import type { SurfaceTokens } from '../theme/surfaceTheme'
+import { useWalifitTheme } from '../theme/ThemeProvider'
 import { hasSupabaseConfig, supabase } from '../utils/supabase'
 
 type AuthView = 'welcome' | 'signup' | 'login' | 'forgot'
@@ -24,6 +26,8 @@ export default function AuthScreen({ onAuthComplete }: AuthScreenProps) {
   const [view, setView] = useState<AuthView>('welcome')
   const [loading, setLoading] = useState<string | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
+  const { surfaces } = useWalifitTheme()
+  const styles = useMemo(() => createStyles(surfaces), [surfaces])
 
   useEffect(() => {
     const handleUrl = async ({ url }: { url: string }) => {
@@ -143,13 +147,15 @@ export default function AuthScreen({ onAuthComplete }: AuthScreenProps) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {view === 'welcome'  && <WelcomeView onGetStarted={() => setView('signup')} onLogin={() => setView('login')} />}
-      {view === 'signup'   && <SignUpView onBack={() => setView('welcome')} onSubmit={signUp} onOAuth={startOAuth} onLogin={() => setView('login')} loading={loading} error={authError} />}
-      {view === 'login'    && <LoginView onBack={() => setView('welcome')} onSubmit={signIn} onOAuth={startOAuth} onForgot={() => setView('forgot')} onSignUp={() => setView('signup')} loading={loading} error={authError} />}
-      {view === 'forgot'   && <ForgotView onBack={() => setView('login')} onSubmit={sendPasswordReset} loading={loading} message={authError} />}
+      {view === 'welcome'  && <WelcomeView onGetStarted={() => setView('signup')} onLogin={() => setView('login')} styles={styles} />}
+      {view === 'signup'   && <SignUpView onBack={() => setView('welcome')} onSubmit={signUp} onOAuth={startOAuth} onLogin={() => setView('login')} loading={loading} error={authError} styles={styles} surfaces={surfaces} />}
+      {view === 'login'    && <LoginView onBack={() => setView('welcome')} onSubmit={signIn} onOAuth={startOAuth} onForgot={() => setView('forgot')} onSignUp={() => setView('signup')} loading={loading} error={authError} styles={styles} surfaces={surfaces} />}
+      {view === 'forgot'   && <ForgotView onBack={() => setView('login')} onSubmit={sendPasswordReset} loading={loading} message={authError} styles={styles} surfaces={surfaces} />}
     </SafeAreaView>
   )
 }
+
+type AuthStyles = ReturnType<typeof createStyles>
 
 function readParam(url: string, name: string): string | null {
   const [, queryAndHash = ''] = url.split('?')
@@ -168,7 +174,7 @@ function readParam(url: string, name: string): string | null {
 
 // ─── Welcome ──────────────────────────────────────────────────────────────────
 
-function WelcomeView({ onGetStarted, onLogin }: { onGetStarted: () => void; onLogin: () => void }) {
+function WelcomeView({ onGetStarted, onLogin, styles }: { onGetStarted: () => void; onLogin: () => void; styles: AuthStyles }) {
   return (
     <View style={styles.welcomeContainer}>
       {/* Tree illustration placeholder */}
@@ -195,8 +201,9 @@ function WelcomeView({ onGetStarted, onLogin }: { onGetStarted: () => void; onLo
 
 // ─── Sign Up ──────────────────────────────────────────────────────────────────
 
-function SignUpView({ onBack, onSubmit, onOAuth, onLogin, loading, error }: {
+function SignUpView({ onBack, onSubmit, onOAuth, onLogin, loading, error, styles, surfaces }: {
   onBack: () => void; onSubmit: (email: string, password: string, username: string) => Promise<void>; onOAuth: (provider: OAuthProvider) => Promise<void>; onLogin: () => void; loading: string | null; error: string | null
+  styles: AuthStyles; surfaces: SurfaceTokens
 }) {
   const [email, setEmail]       = useState('')
   const [username, setUsername] = useState('')
@@ -218,7 +225,7 @@ function SignUpView({ onBack, onSubmit, onOAuth, onLogin, loading, error }: {
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled">
         <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <ArrowLeft color={colors.foreground} size={20} strokeWidth={1.75} />
+          <ArrowLeft color={surfaces.foreground} size={20} strokeWidth={1.75} />
         </TouchableOpacity>
 
         <Text style={styles.formTitle}>Create account</Text>
@@ -226,7 +233,7 @@ function SignUpView({ onBack, onSubmit, onOAuth, onLogin, loading, error }: {
 
         {/* Social auth */}
         <TouchableOpacity style={styles.socialBtn} onPress={() => { void onOAuth('apple') }} disabled={Boolean(loading)}>
-          <Apple color={colors.foreground} size={20} strokeWidth={1.75} />
+          <Apple color={surfaces.foreground} size={20} strokeWidth={1.75} />
           <Text style={styles.socialBtnText}>{loading === 'apple' ? 'Opening Apple...' : 'Continue with Apple'}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.socialBtn, { marginTop: spacing.sm }]} onPress={() => { void onOAuth('google') }} disabled={Boolean(loading)}>
@@ -243,14 +250,14 @@ function SignUpView({ onBack, onSubmit, onOAuth, onLogin, loading, error }: {
         {/* Email */}
         <Text style={styles.inputLabel}>Email</Text>
         <TextInput style={styles.input} value={email} onChangeText={setEmail}
-          placeholder="you@example.com" placeholderTextColor={colors.mutedForeground}
+          placeholder="you@example.com" placeholderTextColor={surfaces.mutedForeground}
           keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
 
         {/* Username */}
         <Text style={styles.inputLabel}>Username</Text>
         <View style={styles.inputRow}>
           <TextInput style={[styles.input, styles.flex]} value={username} onChangeText={checkUsername}
-            placeholder="yourhandle" placeholderTextColor={colors.mutedForeground}
+            placeholder="yourhandle" placeholderTextColor={surfaces.mutedForeground}
             autoCapitalize="none" autoCorrect={false} />
           {usernameOk === true  && <Text style={[styles.inputStatus, { color: colors.primary }]}>✓</Text>}
           {usernameOk === false && <Text style={[styles.inputStatus, { color: colors.destructive }]}>✗ taken</Text>}
@@ -260,12 +267,12 @@ function SignUpView({ onBack, onSubmit, onOAuth, onLogin, loading, error }: {
         <Text style={styles.inputLabel}>Password</Text>
         <View style={styles.inputRow}>
           <TextInput style={[styles.input, styles.flex]} value={password} onChangeText={setPassword}
-            placeholder="8+ characters" placeholderTextColor={colors.mutedForeground}
+            placeholder="8+ characters" placeholderTextColor={surfaces.mutedForeground}
             secureTextEntry={!showPw} autoCapitalize="none" />
           <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPw(!showPw)}>
             {showPw
-              ? <EyeOff color={colors.mutedForeground} size={18} strokeWidth={1.75} />
-              : <Eye    color={colors.mutedForeground} size={18} strokeWidth={1.75} />}
+              ? <EyeOff color={surfaces.mutedForeground} size={18} strokeWidth={1.75} />
+              : <Eye    color={surfaces.mutedForeground} size={18} strokeWidth={1.75} />}
           </TouchableOpacity>
         </View>
 
@@ -295,8 +302,9 @@ function SignUpView({ onBack, onSubmit, onOAuth, onLogin, loading, error }: {
 
 // ─── Login ────────────────────────────────────────────────────────────────────
 
-function LoginView({ onBack, onSubmit, onOAuth, onForgot, onSignUp, loading, error }: {
+function LoginView({ onBack, onSubmit, onOAuth, onForgot, onSignUp, loading, error, styles, surfaces }: {
   onBack: () => void; onSubmit: (email: string, password: string) => Promise<void>; onOAuth: (provider: OAuthProvider) => Promise<void>; onForgot: () => void; onSignUp: () => void; loading: string | null; error: string | null
+  styles: AuthStyles; surfaces: SurfaceTokens
 }) {
   const [email, setEmail]     = useState('')
   const [password, setPassword] = useState('')
@@ -306,14 +314,14 @@ function LoginView({ onBack, onSubmit, onOAuth, onForgot, onSignUp, loading, err
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled">
         <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <ArrowLeft color={colors.foreground} size={20} strokeWidth={1.75} />
+          <ArrowLeft color={surfaces.foreground} size={20} strokeWidth={1.75} />
         </TouchableOpacity>
 
         <Text style={styles.formTitle}>Welcome back</Text>
         <Text style={styles.formSubtitle}>Your tree missed you</Text>
 
         <TouchableOpacity style={styles.socialBtn} onPress={() => { void onOAuth('apple') }} disabled={Boolean(loading)}>
-          <Apple color={colors.foreground} size={20} strokeWidth={1.75} />
+          <Apple color={surfaces.foreground} size={20} strokeWidth={1.75} />
           <Text style={styles.socialBtnText}>{loading === 'apple' ? 'Opening Apple...' : 'Continue with Apple'}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.socialBtn, { marginTop: spacing.sm }]} onPress={() => { void onOAuth('google') }} disabled={Boolean(loading)}>
@@ -329,7 +337,7 @@ function LoginView({ onBack, onSubmit, onOAuth, onForgot, onSignUp, loading, err
 
         <Text style={styles.inputLabel}>Email</Text>
         <TextInput style={styles.input} value={email} onChangeText={setEmail}
-          placeholder="you@example.com" placeholderTextColor={colors.mutedForeground}
+          placeholder="you@example.com" placeholderTextColor={surfaces.mutedForeground}
           keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
 
         <View style={styles.passwordHeader}>
@@ -340,12 +348,12 @@ function LoginView({ onBack, onSubmit, onOAuth, onForgot, onSignUp, loading, err
         </View>
         <View style={styles.inputRow}>
           <TextInput style={[styles.input, styles.flex]} value={password} onChangeText={setPassword}
-            placeholder="Your password" placeholderTextColor={colors.mutedForeground}
+            placeholder="Your password" placeholderTextColor={surfaces.mutedForeground}
             secureTextEntry={!showPw} autoCapitalize="none" />
           <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPw(!showPw)}>
             {showPw
-              ? <EyeOff color={colors.mutedForeground} size={18} strokeWidth={1.75} />
-              : <Eye    color={colors.mutedForeground} size={18} strokeWidth={1.75} />}
+              ? <EyeOff color={surfaces.mutedForeground} size={18} strokeWidth={1.75} />
+              : <Eye    color={surfaces.mutedForeground} size={18} strokeWidth={1.75} />}
           </TouchableOpacity>
         </View>
 
@@ -370,8 +378,9 @@ function LoginView({ onBack, onSubmit, onOAuth, onForgot, onSignUp, loading, err
 
 // ─── Forgot Password ──────────────────────────────────────────────────────────
 
-function ForgotView({ onBack, onSubmit, loading, message }: {
+function ForgotView({ onBack, onSubmit, loading, message, styles, surfaces }: {
   onBack: () => void; onSubmit: (email: string) => Promise<boolean>; loading: string | null; message: string | null
+  styles: AuthStyles; surfaces: SurfaceTokens
 }) {
   const [email, setEmail] = useState('')
   const [sent, setSent]   = useState(false)
@@ -384,7 +393,7 @@ function ForgotView({ onBack, onSubmit, loading, message }: {
   return (
     <View style={styles.formContainer}>
       <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-        <ArrowLeft color={colors.foreground} size={20} strokeWidth={1.75} />
+        <ArrowLeft color={surfaces.foreground} size={20} strokeWidth={1.75} />
       </TouchableOpacity>
 
       {!sent ? (
@@ -393,7 +402,7 @@ function ForgotView({ onBack, onSubmit, loading, message }: {
           <Text style={styles.formSubtitle}>We'll send a reset link to your email</Text>
           <Text style={styles.inputLabel}>Email</Text>
           <TextInput style={styles.input} value={email} onChangeText={setEmail}
-            placeholder="you@example.com" placeholderTextColor={colors.mutedForeground}
+            placeholder="you@example.com" placeholderTextColor={surfaces.mutedForeground}
             keyboardType="email-address" autoCapitalize="none" />
           {message ? <Text style={styles.errorText}>{message}</Text> : null}
           <TouchableOpacity
@@ -420,40 +429,42 @@ function ForgotView({ onBack, onSubmit, loading, message }: {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  container:        { flex: 1, backgroundColor: colors.background },
-  flex:             { flex: 1 },
-  welcomeContainer: { flex: 1, alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.screen, paddingTop: spacing.xxl * 1.5, paddingBottom: spacing.xxl },
-  treePlaceholder:  { width: 160, height: 160, borderRadius: 80, backgroundColor: colors.primary + '15', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.primary + '40' },
-  treeEmoji:        { fontSize: 64 },
-  welcomeText:      { alignItems: 'center', gap: spacing.sm },
-  appName:          { fontSize: 40, fontWeight: typography.weight.extrabold, color: colors.foreground, letterSpacing: -1 },
-  tagline:          { fontSize: typography.size.xl, color: colors.mutedForeground, textAlign: 'center', lineHeight: 32 },
-  welcomeActions:   { width: '100%', gap: spacing.sm },
-  formContainer:    { paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: spacing.xxl, gap: spacing.md },
-  backBtn:          { width: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm, marginLeft: -spacing.sm },
-  formTitle:        { fontSize: typography.size['2xl'], fontWeight: typography.weight.bold, color: colors.foreground },
-  formSubtitle:     { fontSize: typography.size.base, color: colors.mutedForeground, marginTop: -spacing.xs },
-  socialBtn:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, height: touchTarget.comfortable },
-  socialBtnText:    { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: colors.foreground },
-  googleIcon:       { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
-  dividerRow:       { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  dividerLine:      { flex: 1, height: 0.5, backgroundColor: colors.border },
-  dividerText:      { fontSize: typography.size.sm, color: colors.mutedForeground },
-  inputLabel:       { fontSize: typography.size.sm, fontWeight: typography.weight.medium, color: colors.mutedForeground },
-  input:            { height: touchTarget.comfortable, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, paddingHorizontal: spacing.md, fontSize: typography.size.base, color: colors.foreground },
-  inputRow:         { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  inputStatus:      { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, minWidth: 50 },
-  eyeBtn:           { position: 'absolute', right: spacing.md, height: touchTarget.comfortable, alignItems: 'center', justifyContent: 'center' },
-  passwordHeader:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  primaryBtn:       { height: touchTarget.comfortable, backgroundColor: colors.primary, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
-  primaryBtnText:   { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.primaryFg },
-  disabledBtn:      { opacity: 0.6 },
-  errorText:        { fontSize: typography.size.sm, color: colors.destructive, lineHeight: 20 },
-  ghostBtn:         { height: touchTarget.comfortable, borderRadius: radius.full, borderWidth: 0.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  ghostBtnText:     { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: colors.foreground },
-  switchAuthRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  switchAuthText:   { fontSize: typography.size.sm, color: colors.mutedForeground },
-  legalText:        { fontSize: typography.size.xs, color: colors.mutedForeground, textAlign: 'center', lineHeight: 18 },
-  sentContainer:    { alignItems: 'center', gap: spacing.md, paddingTop: spacing.xxl },
-})
+function createStyles(s: SurfaceTokens) {
+  return StyleSheet.create({
+    container:        { flex: 1, backgroundColor: s.background },
+    flex:             { flex: 1 },
+    welcomeContainer: { flex: 1, alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.screen, paddingTop: spacing.xxl * 1.5, paddingBottom: spacing.xxl },
+    treePlaceholder:  { width: 160, height: 160, borderRadius: 80, backgroundColor: colors.primary + '15', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.primary + '40' },
+    treeEmoji:        { fontSize: 64 },
+    welcomeText:      { alignItems: 'center', gap: spacing.sm },
+    appName:          { fontSize: 40, fontWeight: typography.weight.extrabold, color: s.foreground, letterSpacing: -1 },
+    tagline:          { fontSize: typography.size.xl, color: s.mutedForeground, textAlign: 'center', lineHeight: 32 },
+    welcomeActions:   { width: '100%', gap: spacing.sm },
+    formContainer:    { paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: spacing.xxl, gap: spacing.md },
+    backBtn:          { width: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm, marginLeft: -spacing.sm },
+    formTitle:        { fontSize: typography.size['2xl'], fontWeight: typography.weight.bold, color: s.foreground },
+    formSubtitle:     { fontSize: typography.size.base, color: s.mutedForeground, marginTop: -spacing.xs },
+    socialBtn:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: s.card, borderRadius: radius.md, borderWidth: 0.5, borderColor: s.border, height: touchTarget.comfortable },
+    socialBtnText:    { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: s.foreground },
+    googleIcon:       { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
+    dividerRow:       { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    dividerLine:      { flex: 1, height: 0.5, backgroundColor: s.border },
+    dividerText:      { fontSize: typography.size.sm, color: s.mutedForeground },
+    inputLabel:       { fontSize: typography.size.sm, fontWeight: typography.weight.medium, color: s.mutedForeground },
+    input:            { height: touchTarget.comfortable, backgroundColor: s.card, borderRadius: radius.md, borderWidth: 0.5, borderColor: s.border, paddingHorizontal: spacing.md, fontSize: typography.size.base, color: s.foreground },
+    inputRow:         { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    inputStatus:      { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, minWidth: 50 },
+    eyeBtn:           { position: 'absolute', right: spacing.md, height: touchTarget.comfortable, alignItems: 'center', justifyContent: 'center' },
+    passwordHeader:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    primaryBtn:       { height: touchTarget.comfortable, backgroundColor: colors.primary, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
+    primaryBtnText:   { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.primaryFg },
+    disabledBtn:      { opacity: 0.6 },
+    errorText:        { fontSize: typography.size.sm, color: colors.destructive, lineHeight: 20 },
+    ghostBtn:         { height: touchTarget.comfortable, borderRadius: radius.full, borderWidth: 0.5, borderColor: s.border, alignItems: 'center', justifyContent: 'center' },
+    ghostBtnText:     { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: s.foreground },
+    switchAuthRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+    switchAuthText:   { fontSize: typography.size.sm, color: s.mutedForeground },
+    legalText:        { fontSize: typography.size.xs, color: s.mutedForeground, textAlign: 'center', lineHeight: 18 },
+    sentContainer:    { alignItems: 'center', gap: spacing.md, paddingTop: spacing.xxl },
+  })
+}

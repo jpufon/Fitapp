@@ -23,6 +23,8 @@ import {
   Zap,
 } from 'lucide-react-native';
 import { borderRadius, colors, spacing, typography } from '../theme';
+import type { SurfaceTokens } from '../theme/surfaceTheme';
+import { useWalifitTheme } from '../theme/ThemeProvider';
 import {
   addDaysLocal,
   addMonthsLocal,
@@ -42,6 +44,8 @@ const HYDRATION_GOAL_ML = 3000;
 
 export default function CalendarScreen() {
   const insets = useSafeAreaInsets();
+  const { surfaces } = useWalifitTheme();
+  const styles = useMemo(() => createStyles(surfaces), [surfaces]);
   const [view, setView] = useState<CalendarView>('week');
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(() => formatLocalDate(new Date()));
@@ -124,7 +128,7 @@ export default function CalendarScreen() {
         showsVerticalScrollIndicator={false}
       >
         <LinearGradient
-          colors={[colors.primary + '20', colors.energy + '12', colors.card]}
+          colors={[colors.primary + '20', colors.energy + '12', surfaces.card]}
           style={styles.heroCard}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -140,22 +144,22 @@ export default function CalendarScreen() {
             </View>
             <View style={styles.row8}>
               <TouchableOpacity onPress={() => navigateMonth(-1)} style={styles.iconButton}>
-                <ChevronLeft size={20} color={colors.foreground} strokeWidth={1.75} />
+                <ChevronLeft size={20} color={surfaces.foreground} strokeWidth={1.75} />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => navigateMonth(1)}
                 disabled={isFutureMonth}
                 style={[styles.iconButton, isFutureMonth && { opacity: 0.4 }]}
               >
-                <ChevronRight size={20} color={colors.foreground} strokeWidth={1.75} />
+                <ChevronRight size={20} color={surfaces.foreground} strokeWidth={1.75} />
               </TouchableOpacity>
             </View>
           </View>
 
           <View style={styles.signalRow}>
-            <SignalPill icon={Dumbbell} label="Sessions" value={`${stats.workouts}`} color={colors.primary} />
-            <SignalPill icon={Zap} label="Streak" value={`${stats.streak} days`} color={colors.energy} />
-            <SignalPill icon={Activity} label="Average" value={`${stats.avgScore}`} color={colors.blue} />
+            <SignalPill icon={Dumbbell} label="Sessions" value={`${stats.workouts}`} color={colors.primary} styles={styles} />
+            <SignalPill icon={Zap} label="Streak" value={`${stats.streak} days`} color={colors.energy} styles={styles} />
+            <SignalPill icon={Activity} label="Average" value={`${stats.avgScore}`} color={colors.blue} styles={styles} />
           </View>
         </LinearGradient>
 
@@ -177,7 +181,7 @@ export default function CalendarScreen() {
           })}
         </View>
 
-        {state === 'loading' ? <CalendarSkeleton /> : null}
+        {state === 'loading' ? <CalendarSkeleton styles={styles} /> : null}
 
         {state === 'error' ? (
           <FeedbackCard
@@ -193,6 +197,7 @@ export default function CalendarScreen() {
             onPress={() => {
               void rangeQuery.refetch();
             }}
+            styles={styles}
           />
         ) : null}
 
@@ -201,6 +206,7 @@ export default function CalendarScreen() {
             icon={CalendarIcon}
             title="No calendar activity yet"
             message="Workouts, nutrition, and steps will appear here once you start logging."
+            styles={styles}
           />
         ) : null}
 
@@ -212,6 +218,7 @@ export default function CalendarScreen() {
               selectedScore={selectedScore}
               stats={stats}
               selectedDay={selectedDay}
+              styles={styles}
             />
 
             {view === 'day' ? (
@@ -221,6 +228,8 @@ export default function CalendarScreen() {
                 trainingPct={trainingPct}
                 nutritionPct={nutritionPct}
                 hydrationPct={hydrationPct}
+                styles={styles}
+                surfaces={surfaces}
               />
             ) : null}
 
@@ -229,6 +238,8 @@ export default function CalendarScreen() {
                 weekDays={weekDays}
                 selectedDate={selectedDate}
                 onSelectDate={handleSelectDate}
+                styles={styles}
+                surfaces={surfaces}
               />
             ) : null}
 
@@ -239,6 +250,8 @@ export default function CalendarScreen() {
                 todayString={todayString}
                 stats={stats}
                 onSelectDate={handleSelectDate}
+                styles={styles}
+                surfaces={surfaces}
               />
             ) : null}
           </>
@@ -254,17 +267,21 @@ function DayView({
   trainingPct,
   nutritionPct,
   hydrationPct,
+  styles,
+  surfaces,
 }: {
   selectedDate: string;
   selectedDay: (CalendarDayItem & { vitalityScore: number }) | null | undefined;
   trainingPct: number;
   nutritionPct: number;
   hydrationPct: number;
+  styles: CalendarStyles;
+  surfaces: SurfaceTokens;
 }) {
   return (
     <View style={styles.viewContent}>
       <LinearGradient
-        colors={[getVitalityColor(selectedDay?.vitalityScore ?? 0) + '22', colors.card]}
+        colors={[getVitalityColor(selectedDay?.vitalityScore ?? 0, surfaces.mutedForeground) + '22', surfaces.card]}
         style={styles.dayBreakdown}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -277,16 +294,16 @@ function DayView({
           {Math.round(selectedDay?.vitalityScore ?? 0)}%
         </Text>
         <View style={{ gap: spacing.sm }}>
-          <Bar label="Training" pct={trainingPct} />
-          <Bar label="Nutrition" pct={nutritionPct} />
-          <Bar label="Hydration" pct={hydrationPct} />
+          <Bar label="Training" pct={trainingPct} styles={styles} />
+          <Bar label="Nutrition" pct={nutritionPct} styles={styles} />
+          <Bar label="Hydration" pct={hydrationPct} styles={styles} />
         </View>
       </LinearGradient>
 
       <View style={styles.statsGrid}>
-        <StatCard label="Steps" value={(selectedDay?.stepsCount ?? 0).toLocaleString()} />
-        <StatCard label="Protein" value={`${selectedDay?.proteinG ?? 0}g`} accent={colors.energy} />
-        <StatCard label="Hydration" value={`${selectedDay?.hydrationMl ?? 0}ml`} accent={colors.blue} />
+        <StatCard label="Steps" value={(selectedDay?.stepsCount ?? 0).toLocaleString()} styles={styles} />
+        <StatCard label="Protein" value={`${selectedDay?.proteinG ?? 0}g`} accent={colors.energy} styles={styles} />
+        <StatCard label="Hydration" value={`${selectedDay?.hydrationMl ?? 0}ml`} accent={colors.blue} styles={styles} />
       </View>
 
       <View style={{ gap: spacing.sm + 4 }}>
@@ -363,10 +380,14 @@ function WeekView({
   weekDays,
   selectedDate,
   onSelectDate,
+  styles,
+  surfaces,
 }: {
   weekDays: CalendarDayItem[];
   selectedDate: string;
   onSelectDate: (date: string) => void;
+  styles: CalendarStyles;
+  surfaces: SurfaceTokens;
 }) {
   const completedCount = weekDays.filter((day) => day.completed).length;
   const trainingDays = weekDays.filter((day) => day.type === 'training' || day.hasActivity);
@@ -405,7 +426,7 @@ function WeekView({
                   style={[
                     styles.vitalityDot,
                     {
-                      backgroundColor: isSelected ? colors.primaryFg : getVitalityColor(day.score),
+                      backgroundColor: isSelected ? colors.primaryFg : getVitalityColor(day.score, surfaces.mutedForeground),
                     },
                   ]}
                 />
@@ -416,8 +437,8 @@ function WeekView({
       </View>
 
       <View style={styles.statsGrid}>
-        <StatCard label="Workouts" value={`${completedCount}/${trainingDays.length || 7}`} />
-        <StatCard label="Avg Vitality" value={`${avgScore}`} accent={colors.primary} />
+        <StatCard label="Workouts" value={`${completedCount}/${trainingDays.length || 7}`} styles={styles} />
+        <StatCard label="Avg Vitality" value={`${avgScore}`} accent={colors.primary} styles={styles} />
       </View>
 
       <View style={styles.weekConsistency}>
@@ -451,7 +472,7 @@ function WeekView({
             <CheckCircle size={18} color={colors.primary} strokeWidth={1.75} />
           ) : null}
           {day.score > 0 ? (
-            <Text style={[styles.scoreText, { color: getVitalityColor(day.score) }]}>
+            <Text style={[styles.scoreText, { color: getVitalityColor(day.score, surfaces.mutedForeground) }]}>
               {day.score}
             </Text>
           ) : null}
@@ -467,12 +488,16 @@ function MonthView({
   todayString,
   stats,
   onSelectDate,
+  styles,
+  surfaces,
 }: {
   monthCells: Array<CalendarDayItem | null>;
   selectedDate: string;
   todayString: string;
   stats: { workouts: number; streak: number; avgScore: number };
   onSelectDate: (date: string) => void;
+  styles: CalendarStyles;
+  surfaces: SurfaceTokens;
 }) {
   return (
     <View style={styles.viewContent}>
@@ -503,8 +528,8 @@ function MonthView({
                 style={[
                   styles.dayCell,
                   cell.hasActivity && !isSelected && {
-                    backgroundColor: getVitalityColor(score) + '14',
-                    borderColor: getVitalityColor(score) + '55',
+                    backgroundColor: getVitalityColor(score, surfaces.mutedForeground) + '14',
+                    borderColor: getVitalityColor(score, surfaces.mutedForeground) + '55',
                   },
                   isSelected && styles.dayCellSelected,
                 ]}
@@ -525,7 +550,7 @@ function MonthView({
                       {
                         backgroundColor: isSelected
                           ? colors.primaryFg
-                          : getVitalityColor(score),
+                          : getVitalityColor(score, surfaces.mutedForeground),
                       },
                     ]}
                   />
@@ -538,15 +563,15 @@ function MonthView({
       </View>
 
       <View style={styles.statsGrid}>
-        <StatCard label="Workouts" value={`${stats.workouts}`} />
-        <StatCard label="Streak" value={`${stats.streak}`} accent={colors.energy} />
-        <StatCard label="Avg Vitality" value={`${stats.avgScore}`} accent={colors.primary} />
+        <StatCard label="Workouts" value={`${stats.workouts}`} styles={styles} />
+        <StatCard label="Streak" value={`${stats.streak}`} accent={colors.energy} styles={styles} />
+        <StatCard label="Avg Vitality" value={`${stats.avgScore}`} accent={colors.primary} styles={styles} />
       </View>
     </View>
   );
 }
 
-function StatCard({ label, value, accent }: { label: string; value: string; accent?: string }) {
+function StatCard({ label, value, accent, styles }: { label: string; value: string; accent?: string; styles: CalendarStyles }) {
   return (
     <View style={styles.statCard}>
       <Text style={styles.statLabel}>{label}</Text>
@@ -560,11 +585,13 @@ function SignalPill({
   label,
   value,
   color,
+  styles,
 }: {
   icon: React.ElementType;
   label: string;
   value: string;
   color: string;
+  styles: CalendarStyles;
 }) {
   return (
     <View style={[styles.signalPill, { borderColor: color + '40' }]}>
@@ -583,12 +610,14 @@ function FocusPanel({
   selectedScore,
   stats,
   selectedDay,
+  styles,
 }: {
   view: CalendarView;
   selectedDate: string;
   selectedScore: number;
   stats: { workouts: number; streak: number; avgScore: number };
   selectedDay: (CalendarDayItem & { vitalityScore?: number }) | null | undefined;
+  styles: CalendarStyles;
 }) {
   const hasWorkout = Boolean(selectedDay?.workoutName);
   const insight =
@@ -615,7 +644,7 @@ function FocusPanel({
   );
 }
 
-function Bar({ label, pct }: { label: string; pct: number }) {
+function Bar({ label, pct, styles }: { label: string; pct: number; styles: CalendarStyles }) {
   const clamped = Math.max(0, Math.min(100, pct));
   return (
     <View style={styles.barRow}>
@@ -635,6 +664,7 @@ function FeedbackCard({
   message,
   actionLabel,
   onPress,
+  styles,
 }: {
   icon: React.ElementType;
   iconColor?: string;
@@ -642,6 +672,7 @@ function FeedbackCard({
   message: string;
   actionLabel?: string;
   onPress?: () => void;
+  styles: CalendarStyles;
 }) {
   return (
     <View style={styles.feedbackCard}>
@@ -657,7 +688,7 @@ function FeedbackCard({
   );
 }
 
-function CalendarSkeleton() {
+function CalendarSkeleton({ styles }: { styles: CalendarStyles }) {
   return (
     <View style={{ gap: spacing.md }}>
       <View style={styles.skeletonGrid} />
@@ -667,11 +698,11 @@ function CalendarSkeleton() {
   );
 }
 
-function getVitalityColor(score: number): string {
+function getVitalityColor(score: number, mutedFg: string): string {
   if (score >= 76) return colors.primary;
   if (score >= 56) return colors.primary + '99';
   if (score >= 36) return colors.energy;
-  return colors.mutedForeground;
+  return mutedFg;
 }
 
 function getCalendarStats(days: CalendarDayItem[]) {
@@ -763,8 +794,11 @@ function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.background },
+type CalendarStyles = ReturnType<typeof createStyles>;
+
+function createStyles(s: SurfaceTokens) {
+  return StyleSheet.create({
+  root: { flex: 1, backgroundColor: s.background },
   scroll: { flex: 1 },
   scrollContent: {
     paddingHorizontal: spacing.md,
@@ -816,34 +850,34 @@ const styles = StyleSheet.create({
   },
   signalLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.mutedForeground,
+    color: s.mutedForeground,
     fontWeight: typography.fontWeight.semibold,
   },
   signalValue: {
     fontSize: typography.fontSize.sm,
-    color: colors.foreground,
+    color: s.foreground,
     fontWeight: typography.fontWeight.bold,
     marginTop: 2,
   },
   screenTitle: {
     fontSize: typography.fontSize['3xl'],
-    color: colors.foreground,
+    color: s.foreground,
     fontWeight: typography.fontWeight.extrabold,
     marginTop: spacing.xs,
   },
   monthLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.mutedForeground,
+    color: s.mutedForeground,
     marginTop: spacing.xs,
   },
   h1: {
     fontSize: typography.fontSize.xl,
-    color: colors.foreground,
+    color: s.foreground,
     fontWeight: typography.fontWeight.bold,
   },
   h2: {
     fontSize: typography.fontSize.lg,
-    color: colors.foreground,
+    color: s.foreground,
     fontWeight: typography.fontWeight.semibold,
     marginBottom: spacing.sm,
   },
@@ -855,16 +889,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.black + '33',
     borderWidth: 1,
-    borderColor: colors.border + '99',
+    borderColor: s.border + '99',
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: colors.card,
+    backgroundColor: s.card,
     borderRadius: borderRadius.lg,
     padding: spacing.xs,
     gap: spacing.xs,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: s.border,
   },
   tab: {
     flex: 1,
@@ -879,7 +913,7 @@ const styles = StyleSheet.create({
     borderColor: colors.primary + '55',
   },
   tabText: {
-    color: colors.mutedForeground,
+    color: s.mutedForeground,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
   },
@@ -890,7 +924,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    backgroundColor: colors.card,
+    backgroundColor: s.card,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.primary + '35',
@@ -913,7 +947,7 @@ const styles = StyleSheet.create({
   },
   insightText: {
     fontSize: typography.fontSize.sm,
-    color: colors.foreground,
+    color: s.foreground,
     marginTop: spacing.xs,
     lineHeight: 20,
   },
@@ -921,7 +955,7 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   calendarBox: {
-    backgroundColor: colors.card + 'E6',
+    backgroundColor: s.card + 'E6',
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     borderWidth: 1,
@@ -934,7 +968,7 @@ const styles = StyleSheet.create({
   weekDayCell: { flex: 1, alignItems: 'center' },
   weekDayText: {
     fontSize: typography.fontSize.xs,
-    color: colors.mutedForeground,
+    color: s.mutedForeground,
     fontWeight: typography.fontWeight.semibold,
   },
   dayGrid: { flexDirection: 'row', flexWrap: 'wrap' },
@@ -958,7 +992,7 @@ const styles = StyleSheet.create({
   },
   dayText: {
     fontSize: typography.fontSize.sm,
-    color: colors.foreground,
+    color: s.foreground,
   },
   dayTextSelected: {
     color: colors.primaryFg,
@@ -976,8 +1010,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: borderRadius.sm,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
+    borderColor: s.border,
+    backgroundColor: s.card,
     gap: spacing.xs,
   },
   weekGridCellCompleted: {
@@ -994,12 +1028,12 @@ const styles = StyleSheet.create({
   },
   weekGridDay: {
     fontSize: typography.fontSize.xs,
-    color: colors.mutedForeground,
+    color: s.mutedForeground,
     fontWeight: typography.fontWeight.semibold,
   },
   weekGridDate: {
     fontSize: typography.fontSize.lg,
-    color: colors.foreground,
+    color: s.foreground,
     fontWeight: typography.fontWeight.bold,
   },
   vitalityDot: {
@@ -1038,36 +1072,36 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: colors.card + 'E6',
+    backgroundColor: s.card + 'E6',
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.border + 'CC',
+    borderColor: s.border + 'CC',
     padding: spacing.md,
     gap: spacing.xs,
   },
   statLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.mutedForeground,
+    color: s.mutedForeground,
     fontWeight: typography.fontWeight.semibold,
   },
   statValue: {
     fontSize: typography.fontSize.xl,
-    color: colors.foreground,
+    color: s.foreground,
     fontWeight: typography.fontWeight.bold,
   },
   sectionTitle: {
     fontSize: typography.fontSize.lg,
-    color: colors.foreground,
+    color: s.foreground,
     fontWeight: typography.fontWeight.semibold,
   },
   summaryLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.mutedForeground,
+    color: s.mutedForeground,
     fontWeight: typography.fontWeight.semibold,
   },
   summaryValue: {
     fontSize: typography.fontSize.base,
-    color: colors.foreground,
+    color: s.foreground,
     fontWeight: typography.fontWeight.semibold,
     marginTop: spacing.xs,
   },
@@ -1075,10 +1109,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.card + 'E6',
+    backgroundColor: s.card + 'E6',
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.border + 'CC',
+    borderColor: s.border + 'CC',
     padding: spacing.md,
   },
   scoreText: {
@@ -1095,29 +1129,29 @@ const styles = StyleSheet.create({
   barTrack: {
     flex: 1,
     height: 8,
-    backgroundColor: colors.muted + 'CC',
+    backgroundColor: s.muted + 'CC',
     borderRadius: 9999,
     overflow: 'hidden',
   },
   barFill: { height: '100%', backgroundColor: colors.primary },
   foregroundText: {
     fontSize: typography.fontSize.sm,
-    color: colors.foreground,
+    color: s.foreground,
   },
   muted: {
     fontSize: typography.fontSize.sm,
-    color: colors.mutedForeground,
+    color: s.mutedForeground,
   },
   feedCard: {
-    backgroundColor: colors.card + 'E6',
+    backgroundColor: s.card + 'E6',
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.border + 'CC',
+    borderColor: s.border + 'CC',
     padding: spacing.md,
   },
   feedTitle: {
     fontSize: typography.fontSize.base,
-    color: colors.foreground,
+    color: s.foreground,
     fontWeight: typography.fontWeight.semibold,
   },
   dayBadge: {
@@ -1134,22 +1168,22 @@ const styles = StyleSheet.create({
   },
   feedbackCard: {
     alignItems: 'center',
-    backgroundColor: colors.card,
+    backgroundColor: s.card,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: s.border,
     padding: spacing.xl,
     gap: spacing.sm,
   },
   feedbackTitle: {
     fontSize: typography.fontSize.lg,
-    color: colors.foreground,
+    color: s.foreground,
     fontWeight: typography.fontWeight.bold,
     textAlign: 'center',
   },
   feedbackMessage: {
     fontSize: typography.fontSize.base,
-    color: colors.mutedForeground,
+    color: s.mutedForeground,
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -1171,17 +1205,18 @@ const styles = StyleSheet.create({
   skeletonGrid: {
     height: 320,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.secondary,
+    backgroundColor: s.secondary,
   },
   skeletonRow: {
     height: 40,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.secondary,
+    backgroundColor: s.secondary,
   },
   skeletonCard: {
     height: 100,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.secondary,
+    backgroundColor: s.secondary,
   },
   row8: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-});
+  });
+}

@@ -1,7 +1,7 @@
 import './global.css';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { NavigationContainer, useNavigation } from '@react-navigation/native';
+import { NavigationContainer, useNavigation, useNavigationContainerRef } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
   createNativeStackNavigator,
@@ -18,6 +18,7 @@ import {
 import { QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { colors, spacing, typography } from './theme';
+import type { UiSurfaceMode } from './theme/surfaceTheme';
 import type { WorkoutSummary } from './lib/workouts';
 import { apiQuery, hasApiConfig } from './lib/api';
 import { configureQueryClient, queryClient } from './lib/queryClient';
@@ -25,7 +26,6 @@ import { getCachedJson, setCachedJson } from './lib/storage';
 import { useSyncBootstrap } from './hooks/useSyncBootstrap';
 import { hasSupabaseConfig, supabase } from './utils/supabase';
 import { ThemeProvider, useWalifitTheme } from './theme/ThemeProvider';
-import { ThemeRouteSync } from './theme/ThemeRouteSync';
 
 // Screens
 import AuthScreen from './screens/AuthScreen';
@@ -263,13 +263,25 @@ function ThemedStatusBar() {
   return <StatusBar style={statusBarStyle} />;
 }
 
+function routeNameToUiMode(routeName: string | undefined): UiSurfaceMode {
+  if (routeName === 'ActiveWorkout') return 'workout';
+  if (routeName === 'Analytics') return 'analytics';
+  return 'default';
+}
+
 function AppNavigation() {
+  const navigationRef = useNavigationContainerRef<RootStackParamList>();
+  const { setUiMode } = useWalifitTheme();
+
+  const syncRouteTheme = useCallback(() => {
+    setUiMode(routeNameToUiMode(navigationRef.getCurrentRoute()?.name));
+  }, [navigationRef, setUiMode]);
+
   return (
     <>
       <ThemedStatusBar />
       <QueryClientProvider client={queryClient}>
-        <NavigationContainer>
-          <ThemeRouteSync />
+        <NavigationContainer ref={navigationRef} onReady={syncRouteTheme} onStateChange={syncRouteTheme}>
           <Stack.Navigator initialRouteName="Boot" screenOptions={{ headerShown: false }}>
             <Stack.Screen name="Boot" component={BootScreen} />
             <Stack.Screen name="Auth" component={AuthScreenWrapper} />

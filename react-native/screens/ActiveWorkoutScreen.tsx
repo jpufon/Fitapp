@@ -3,14 +3,16 @@
 // Includes: Set Logger inline + Plate Calculator + Rest Timer coupling
 // Every set save is an individual mutation — app kill must not lose data
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert, View, Text, ScrollView, TouchableOpacity,
   TextInput, StyleSheet, Modal,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { X, Plus, ChevronDown, Calculator, Check, MoreHorizontal, Zap, Dumbbell, Timer, Repeat } from 'lucide-react-native'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { X, Plus, Calculator, Check, MoreHorizontal, Dumbbell, Timer, Repeat } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
+import type { SurfaceTokens } from '../theme/surfaceTheme'
+import { useWalifitTheme } from '../theme/ThemeProvider'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { RootStackParamList } from '../App'
 import { useFinishWorkout, useLogSet, useStartWorkout } from '../hooks/useMutations'
@@ -68,12 +70,15 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ActiveWorkout'>
 type SaveState = 'idle' | 'starting' | 'ready' | 'queued' | 'error'
 
 export default function ActiveWorkoutScreen({ navigation, route }: Props) {
+  const { surfaces } = useWalifitTheme()
+  const styles = useMemo(() => createStyles(surfaces), [surfaces])
   const workout = route.params.workout
   const onDiscard = () => navigation.goBack()
+  const insets = useSafeAreaInsets()
 
   const unitSystem = useUnitSystem()
   const [exercises, setExercises]   = useState<Exercise[]>(MOCK_WORKOUT)
-  const [elapsed, setElapsed]       = useState('00:43:12')
+  const [elapsed]                   = useState('00:43:12')
   const [showPlates, setShowPlates] = useState(false)
   // Default plate-calc target depends on unit system (~100kg or ~225lb).
   const [plateTarget, setPlateTarget] = useState(unitSystem === 'imperial' ? '225' : '100')
@@ -224,7 +229,7 @@ export default function ActiveWorkoutScreen({ navigation, route }: Props) {
         <View style={styles.headerRight}>
           <Text style={styles.setsProgress}>{completedSets}/{totalSets} sets</Text>
           <TouchableOpacity style={styles.iconBtn}>
-            <MoreHorizontal color={colors.mutedForeground} size={20} strokeWidth={1.75} />
+            <MoreHorizontal color={surfaces.mutedForeground} size={20} strokeWidth={1.75} />
           </TouchableOpacity>
         </View>
       </View>
@@ -245,7 +250,11 @@ export default function ActiveWorkoutScreen({ navigation, route }: Props) {
       ) : null}
 
       {/* Exercise list */}
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+      >
         {exercises.map((exercise) => (
           <ExerciseCard
             key={exercise.id}
@@ -256,6 +265,8 @@ export default function ActiveWorkoutScreen({ navigation, route }: Props) {
             }
             pendingSetIds={pendingSetIds}
             onOpenPlates={() => setShowPlates(true)}
+            styles={styles}
+            surfaces={surfaces}
           />
         ))}
 
@@ -266,7 +277,7 @@ export default function ActiveWorkoutScreen({ navigation, route }: Props) {
       </ScrollView>
 
       {/* Bottom bar */}
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(spacing.xl, insets.bottom + spacing.sm) }]}>
         <TouchableOpacity style={styles.discardBtn} onPress={onDiscard}>
           <X color={colors.destructive} size={16} strokeWidth={2} />
           <Text style={[styles.discardBtnText, { color: colors.destructive }]}>Discard</Text>
@@ -295,6 +306,8 @@ export default function ActiveWorkoutScreen({ navigation, route }: Props) {
         onChangeTarget={setPlateTarget}
         unitSystem={unitSystem}
         onClose={() => setShowPlates(false)}
+        styles={styles}
+        surfaces={surfaces}
       />
     </SafeAreaView>
   )
@@ -306,12 +319,14 @@ type LogPayload = {
   weight?: string; reps?: string; durationS?: string; intervalWorkS?: string; intervalRestS?: string
 }
 
-function ExerciseCard({ exercise, onLogSet, onChangeMode, pendingSetIds, onOpenPlates }: {
+function ExerciseCard({ exercise, onLogSet, onChangeMode, pendingSetIds, onOpenPlates, styles, surfaces }: {
   exercise: Exercise;
   onLogSet: (setId: string, payload: LogPayload) => void;
   onChangeMode: (mode: SetMode) => void;
   pendingSetIds: Set<string>;
   onOpenPlates: () => void
+  styles: ActiveWorkoutStyles
+  surfaces: SurfaceTokens
 }) {
   const mode: SetMode = exercise.mode ?? 'strength'
   const isStrength = mode === 'strength'
@@ -337,25 +352,28 @@ function ExerciseCard({ exercise, onLogSet, onChangeMode, pendingSetIds, onOpenP
       {/* Mode toggle — strength / interval / rounds */}
       <View style={styles.modeToggle}>
         <ModeToggleChip
-          icon={<Dumbbell size={12} color={mode === 'strength' ? colors.primaryFg : colors.foreground} strokeWidth={1.75} />}
+          icon={<Dumbbell size={12} color={mode === 'strength' ? colors.primaryFg : surfaces.foreground} strokeWidth={1.75} />}
           label="Sets"
           active={mode === 'strength'}
           onPress={() => onChangeMode('strength')}
           testID={`active-mode-${exercise.id}-strength`}
+          styles={styles}
         />
         <ModeToggleChip
-          icon={<Timer size={12} color={mode === 'interval' ? colors.primaryFg : colors.foreground} strokeWidth={1.75} />}
+          icon={<Timer size={12} color={mode === 'interval' ? colors.primaryFg : surfaces.foreground} strokeWidth={1.75} />}
           label="Interval"
           active={mode === 'interval'}
           onPress={() => onChangeMode('interval')}
           testID={`active-mode-${exercise.id}-interval`}
+          styles={styles}
         />
         <ModeToggleChip
-          icon={<Repeat size={12} color={mode === 'rounds' ? colors.primaryFg : colors.foreground} strokeWidth={1.75} />}
+          icon={<Repeat size={12} color={mode === 'rounds' ? colors.primaryFg : surfaces.foreground} strokeWidth={1.75} />}
           label="Rounds"
           active={mode === 'rounds'}
           onPress={() => onChangeMode('rounds')}
           testID={`active-mode-${exercise.id}-rounds`}
+          styles={styles}
         />
       </View>
 
@@ -386,6 +404,8 @@ function ExerciseCard({ exercise, onLogSet, onChangeMode, pendingSetIds, onOpenP
             index={i + 1}
             pending={pendingSetIds.has(set.id)}
             onLog={(weight, reps) => onLogSet(set.id, { weight, reps })}
+            styles={styles}
+            surfaces={surfaces}
           />
         ) : (
           <ConditioningSetRow
@@ -395,13 +415,15 @@ function ExerciseCard({ exercise, onLogSet, onChangeMode, pendingSetIds, onOpenP
             mode={mode}
             pending={pendingSetIds.has(set.id)}
             onLog={(payload) => onLogSet(set.id, payload)}
+            styles={styles}
+            surfaces={surfaces}
           />
         )
       ))}
 
       {/* Add set */}
       <TouchableOpacity style={styles.addSetBtn}>
-        <Plus color={colors.mutedForeground} size={14} strokeWidth={2} />
+        <Plus color={surfaces.mutedForeground} size={14} strokeWidth={2} />
         <Text style={styles.addSetBtnText}>{mode === 'rounds' ? 'Add round' : 'Add set'}</Text>
       </TouchableOpacity>
     </View>
@@ -415,11 +437,15 @@ function SetRow({
   index,
   pending,
   onLog,
+  styles,
+  surfaces,
 }: {
   set: ExerciseSet;
   index: number;
   pending: boolean;
   onLog: (weight: string, reps: string) => void;
+  styles: ActiveWorkoutStyles;
+  surfaces: SurfaceTokens;
 }) {
   const [weight, setWeight] = useState(set.weight)
   const [reps, setReps]     = useState(set.reps)
@@ -434,7 +460,7 @@ function SetRow({
         onChangeText={setWeight}
         keyboardType="decimal-pad"
         placeholder="—"
-        placeholderTextColor={colors.mutedForeground}
+        placeholderTextColor={surfaces.mutedForeground}
         editable={!set.completed}
         testID={`active-set-${set.id}-weight`}
       />
@@ -444,7 +470,7 @@ function SetRow({
         onChangeText={setReps}
         keyboardType="number-pad"
         placeholder="—"
-        placeholderTextColor={colors.mutedForeground}
+        placeholderTextColor={surfaces.mutedForeground}
         editable={!set.completed}
         testID={`active-set-${set.id}-reps`}
       />
@@ -455,7 +481,7 @@ function SetRow({
         testID={`active-set-${set.id}-log`}
       >
         <Check
-          color={set.completed ? colors.primaryFg : pending ? colors.primary : colors.mutedForeground}
+          color={set.completed ? colors.primaryFg : pending ? colors.primary : surfaces.mutedForeground}
           size={16} strokeWidth={2.5}
         />
       </TouchableOpacity>
@@ -463,8 +489,9 @@ function SetRow({
   )
 }
 
-function ModeToggleChip({ icon, label, active, onPress, testID }: {
+function ModeToggleChip({ icon, label, active, onPress, testID, styles }: {
   icon: React.ReactNode; label: string; active: boolean; onPress: () => void; testID?: string
+  styles: ActiveWorkoutStyles
 }) {
   return (
     <TouchableOpacity
@@ -485,12 +512,16 @@ function ConditioningSetRow({
   mode,
   pending,
   onLog,
+  styles,
+  surfaces,
 }: {
   set: ExerciseSet;
   index: number;
   mode: SetMode;
   pending: boolean;
   onLog: (payload: LogPayload) => void;
+  styles: ActiveWorkoutStyles;
+  surfaces: SurfaceTokens;
 }) {
   const [duration, setDuration] = useState(set.durationS ?? '')
   const [workS, setWorkS] = useState(set.intervalWorkS ?? '')
@@ -516,7 +547,7 @@ function ConditioningSetRow({
             onChangeText={setWorkS}
             keyboardType="number-pad"
             placeholder="work"
-            placeholderTextColor={colors.mutedForeground}
+            placeholderTextColor={surfaces.mutedForeground}
             editable={!set.completed}
             testID={`active-set-${set.id}-work`}
           />
@@ -527,7 +558,7 @@ function ConditioningSetRow({
             onChangeText={setRestS}
             keyboardType="number-pad"
             placeholder="rest"
-            placeholderTextColor={colors.mutedForeground}
+            placeholderTextColor={surfaces.mutedForeground}
             editable={!set.completed}
             testID={`active-set-${set.id}-rest`}
           />
@@ -539,7 +570,7 @@ function ConditioningSetRow({
           onChangeText={setReps}
           keyboardType="number-pad"
           placeholder="reps"
-          placeholderTextColor={colors.mutedForeground}
+          placeholderTextColor={surfaces.mutedForeground}
           editable={!set.completed}
           testID={`active-set-${set.id}-reps`}
         />
@@ -550,7 +581,7 @@ function ConditioningSetRow({
         onChangeText={setDuration}
         keyboardType="number-pad"
         placeholder="seconds"
-        placeholderTextColor={colors.mutedForeground}
+        placeholderTextColor={surfaces.mutedForeground}
         editable={!set.completed}
         testID={`active-set-${set.id}-duration`}
       />
@@ -561,7 +592,7 @@ function ConditioningSetRow({
         testID={`active-set-${set.id}-log`}
       >
         <Check
-          color={set.completed ? colors.primaryFg : pending ? colors.primary : colors.mutedForeground}
+          color={set.completed ? colors.primaryFg : pending ? colors.primary : surfaces.mutedForeground}
           size={16} strokeWidth={2.5}
         />
       </TouchableOpacity>
@@ -590,12 +621,14 @@ function normalizeWorkoutType(type: string): WorkoutType {
 
 // ─── Plate Calculator ─────────────────────────────────────────────────────────
 
-function PlateCalculatorModal({ visible, targetWeight, onChangeTarget, unitSystem, onClose }: {
+function PlateCalculatorModal({ visible, targetWeight, onChangeTarget, unitSystem, onClose, styles, surfaces }: {
   visible: boolean
   targetWeight: string
   onChangeTarget: (v: string) => void
   unitSystem: UnitSystem
   onClose: () => void
+  styles: ActiveWorkoutStyles
+  surfaces: SurfaceTokens
 }) {
   const target = parseFloat(targetWeight) || 0
   const breakdown = calculatePlates(target, { system: unitSystem })
@@ -609,7 +642,7 @@ function PlateCalculatorModal({ visible, targetWeight, onChangeTarget, unitSyste
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Plate Calculator</Text>
             <TouchableOpacity onPress={onClose} style={styles.iconBtn}>
-              <X color={colors.foreground} size={20} strokeWidth={1.75} />
+              <X color={surfaces.foreground} size={20} strokeWidth={1.75} />
             </TouchableOpacity>
           </View>
 
@@ -653,70 +686,74 @@ function PlateCalculatorModal({ visible, targetWeight, onChangeTarget, unitSyste
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  container:        { flex: 1, backgroundColor: colors.background },
-  header:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: spacing.sm },
-  headerLeft:       { gap: 2 },
-  workoutName:      { fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: colors.foreground },
-  timer:            { fontSize: typography.size.lg, fontWeight: typography.weight.bold },
-  headerRight:      { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  setsProgress:     { fontSize: typography.size.sm, color: colors.mutedForeground },
-  iconBtn:          { width: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
-  progressTrack:    { height: 3, backgroundColor: colors.muted, marginHorizontal: spacing.screen },
-  progressFill:     { height: '100%', backgroundColor: colors.primary, borderRadius: 2 },
-  saveBanner:       { marginHorizontal: spacing.screen, marginTop: spacing.sm, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.sm },
-  saveBannerQueued: { borderColor: colors.energy + '60', backgroundColor: colors.energy + '12' },
-  saveBannerError:  { borderColor: colors.destructive + '60', backgroundColor: colors.destructive + '12' },
-  saveBannerText:   { fontSize: typography.size.xs, color: colors.mutedForeground },
-  scroll:           { flex: 1 },
-  scrollContent:    { paddingHorizontal: spacing.screen, paddingTop: spacing.md, paddingBottom: 120, gap: spacing.md },
-  exerciseCard:     { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, overflow: 'hidden' },
-  exerciseHeader:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.md },
-  exerciseName:     { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.foreground },
-  muscleTag:        { marginTop: 3, alignSelf: 'flex-start', backgroundColor: colors.blue + '18', paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.full },
-  muscleTagText:    { fontSize: typography.size.xs, color: colors.blue, fontWeight: typography.weight.semibold },
-  calcBtn:          { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  calcBtnText:      { fontSize: typography.size.sm, fontWeight: typography.weight.semibold },
-  modeToggle:       { flexDirection: 'row', gap: spacing.xs, paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
-  modeToggleChip:   { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.full, borderWidth: 0.5, borderColor: colors.border, backgroundColor: colors.muted, minHeight: touchTarget.min },
-  modeToggleChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  modeToggleChipText: { fontSize: typography.size.xs, fontWeight: typography.weight.semibold, color: colors.foreground },
-  setHeader:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingBottom: spacing.xs, borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  setCol:           { fontSize: typography.size.xs, color: colors.mutedForeground },
-  setColNum:        { width: 32 },
-  setColPrev:       { flex: 1 },
-  setColInput:      { width: 60, textAlign: 'center' },
-  setRow:           { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: colors.border + '60' },
-  setRowDone:       { opacity: 0.5 },
-  setNumText:       { fontWeight: typography.weight.semibold, color: colors.foreground, fontSize: typography.size.sm },
-  setPrevText:      { fontSize: typography.size.xs, color: colors.blue },
-  setInput:         { height: 36, backgroundColor: colors.muted, borderRadius: radius.sm, borderWidth: 0.5, borderColor: colors.border, paddingHorizontal: spacing.xs, fontSize: typography.size.base, color: colors.foreground, textAlign: 'center' },
-  logBtn:           { width: 44, height: 36, borderRadius: radius.sm, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' },
-  logBtnDone:       { backgroundColor: colors.primary },
-  addSetBtn:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, padding: spacing.sm, minHeight: touchTarget.min },
-  addSetBtnText:    { fontSize: typography.size.sm, color: colors.mutedForeground },
-  addExerciseBtn:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, borderStyle: 'dashed', padding: spacing.md, minHeight: touchTarget.comfortable },
-  addExerciseBtnText: { fontSize: typography.size.base, fontWeight: typography.weight.semibold },
-  bottomBar:        { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', gap: spacing.sm, padding: spacing.screen, paddingBottom: spacing.xl, backgroundColor: colors.background, borderTopWidth: 0.5, borderTopColor: colors.border },
-  discardBtn:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, height: touchTarget.comfortable, paddingHorizontal: spacing.md, borderRadius: radius.full, borderWidth: 0.5, borderColor: colors.destructive + '60' },
-  discardBtnText:   { fontSize: typography.size.sm, fontWeight: typography.weight.semibold },
-  finishBtn:        { flex: 1, height: touchTarget.comfortable, backgroundColor: colors.primary, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
-  finishBtnText:    { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.primaryFg },
-  modalOverlay:     { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay },
-  modalSheet:       { backgroundColor: colors.card, borderRadius: radius.xl, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xxl },
-  modalHandle:      { width: 36, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.xs },
-  modalHeader:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  modalTitle:       { fontSize: typography.size.lg, fontWeight: typography.weight.bold, color: colors.foreground },
-  targetRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  targetLabel:      { fontSize: typography.size.base, color: colors.foreground, fontWeight: typography.weight.medium },
-  targetInput:      { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.muted, borderRadius: radius.md, paddingHorizontal: spacing.md, height: touchTarget.comfortable },
-  targetInputText:  { fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: colors.foreground, minWidth: 60, textAlign: 'right' },
-  targetUnit:       { fontSize: typography.size.base, color: colors.mutedForeground, marginLeft: spacing.xs },
-  plateResult:      { backgroundColor: colors.muted, borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm },
-  plateResultLabel: { fontSize: typography.size.sm, color: colors.mutedForeground },
-  platesRow:        { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  plateBadge:       { paddingHorizontal: spacing.sm, paddingVertical: 6, borderRadius: radius.sm },
-  plateBadgeText:   { fontSize: typography.size.sm, fontWeight: typography.weight.bold },
-  noPlatesText:     { fontSize: typography.size.sm, color: colors.mutedForeground },
-  plateTotal:       { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.foreground },
-})
+type ActiveWorkoutStyles = ReturnType<typeof createStyles>
+
+function createStyles(s: SurfaceTokens) {
+  return StyleSheet.create({
+    container:        { flex: 1, backgroundColor: s.background },
+    header:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: spacing.sm },
+    headerLeft:       { gap: 2 },
+    workoutName:      { fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: s.foreground },
+    timer:            { fontSize: typography.size.lg, fontWeight: typography.weight.bold },
+    headerRight:      { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    setsProgress:     { fontSize: typography.size.sm, color: s.mutedForeground },
+    iconBtn:          { width: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
+    progressTrack:    { height: 3, backgroundColor: s.muted, marginHorizontal: spacing.screen },
+    progressFill:     { height: '100%', backgroundColor: colors.primary, borderRadius: 2 },
+    saveBanner:       { marginHorizontal: spacing.screen, marginTop: spacing.sm, backgroundColor: s.card, borderWidth: 1, borderColor: s.border, borderRadius: radius.md, padding: spacing.sm },
+    saveBannerQueued: { borderColor: colors.energy + '60', backgroundColor: colors.energy + '12' },
+    saveBannerError:  { borderColor: colors.destructive + '60', backgroundColor: colors.destructive + '12' },
+    saveBannerText:   { fontSize: typography.size.xs, color: s.mutedForeground },
+    scroll:           { flex: 1 },
+    scrollContent:    { paddingHorizontal: spacing.screen, paddingTop: spacing.md, paddingBottom: 120, gap: spacing.md },
+    exerciseCard:     { backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, overflow: 'hidden' },
+    exerciseHeader:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.md },
+    exerciseName:     { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: s.foreground },
+    muscleTag:        { marginTop: 3, alignSelf: 'flex-start', backgroundColor: colors.blue + '18', paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.full },
+    muscleTagText:    { fontSize: typography.size.xs, color: colors.blue, fontWeight: typography.weight.semibold },
+    calcBtn:          { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    calcBtnText:      { fontSize: typography.size.sm, fontWeight: typography.weight.semibold },
+    modeToggle:       { flexDirection: 'row', gap: spacing.xs, paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
+    modeToggleChip:   { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.full, borderWidth: 0.5, borderColor: s.border, backgroundColor: s.muted, minHeight: touchTarget.min },
+    modeToggleChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    modeToggleChipText: { fontSize: typography.size.xs, fontWeight: typography.weight.semibold, color: s.foreground },
+    setHeader:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingBottom: spacing.xs, borderBottomWidth: 0.5, borderBottomColor: s.border },
+    setCol:           { fontSize: typography.size.xs, color: s.mutedForeground },
+    setColNum:        { width: 32 },
+    setColPrev:       { flex: 1 },
+    setColInput:      { width: 60, textAlign: 'center' },
+    setRow:           { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: s.border + '60' },
+    setRowDone:       { opacity: 0.5 },
+    setNumText:       { fontWeight: typography.weight.semibold, color: s.foreground, fontSize: typography.size.sm },
+    setPrevText:      { fontSize: typography.size.xs, color: colors.blue },
+    setInput:         { height: 36, backgroundColor: s.muted, borderRadius: radius.sm, borderWidth: 0.5, borderColor: s.border, paddingHorizontal: spacing.xs, fontSize: typography.size.base, color: s.foreground, textAlign: 'center' },
+    logBtn:           { width: 44, height: 36, borderRadius: radius.sm, backgroundColor: s.muted, alignItems: 'center', justifyContent: 'center' },
+    logBtnDone:       { backgroundColor: colors.primary },
+    addSetBtn:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, padding: spacing.sm, minHeight: touchTarget.min },
+    addSetBtnText:    { fontSize: typography.size.sm, color: s.mutedForeground },
+    addExerciseBtn:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 1, borderColor: s.border, borderStyle: 'dashed', padding: spacing.md, minHeight: touchTarget.comfortable },
+    addExerciseBtnText: { fontSize: typography.size.base, fontWeight: typography.weight.semibold },
+    bottomBar:        { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', gap: spacing.sm, padding: spacing.screen, paddingBottom: spacing.xl, backgroundColor: s.background, borderTopWidth: 0.5, borderTopColor: s.border },
+    discardBtn:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, height: touchTarget.comfortable, paddingHorizontal: spacing.md, borderRadius: radius.full, borderWidth: 0.5, borderColor: colors.destructive + '60' },
+    discardBtnText:   { fontSize: typography.size.sm, fontWeight: typography.weight.semibold },
+    finishBtn:        { flex: 1, height: touchTarget.comfortable, backgroundColor: colors.primary, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
+    finishBtnText:    { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.primaryFg },
+    modalOverlay:     { flex: 1, justifyContent: 'flex-end', backgroundColor: s.overlay },
+    modalSheet:       { backgroundColor: s.card, borderRadius: radius.xl, borderWidth: 0.5, borderColor: s.border, padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xxl },
+    modalHandle:      { width: 36, height: 4, backgroundColor: s.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.xs },
+    modalHeader:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    modalTitle:       { fontSize: typography.size.lg, fontWeight: typography.weight.bold, color: s.foreground },
+    targetRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    targetLabel:      { fontSize: typography.size.base, color: s.foreground, fontWeight: typography.weight.medium },
+    targetInput:      { flexDirection: 'row', alignItems: 'center', backgroundColor: s.muted, borderRadius: radius.md, paddingHorizontal: spacing.md, height: touchTarget.comfortable },
+    targetInputText:  { fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: s.foreground, minWidth: 60, textAlign: 'right' },
+    targetUnit:       { fontSize: typography.size.base, color: s.mutedForeground, marginLeft: spacing.xs },
+    plateResult:      { backgroundColor: s.muted, borderRadius: radius.lg, padding: spacing.md, gap: spacing.sm },
+    plateResultLabel: { fontSize: typography.size.sm, color: s.mutedForeground },
+    platesRow:        { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+    plateBadge:       { paddingHorizontal: spacing.sm, paddingVertical: 6, borderRadius: radius.sm },
+    plateBadgeText:   { fontSize: typography.size.sm, fontWeight: typography.weight.bold },
+    noPlatesText:     { fontSize: typography.size.sm, color: s.mutedForeground },
+    plateTotal:       { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: s.foreground },
+  })
+}

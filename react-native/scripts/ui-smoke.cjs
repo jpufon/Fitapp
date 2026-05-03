@@ -61,6 +61,8 @@ const reactNativeMock = {
       (destructive || fallback)?.onPress?.();
     },
   },
+  useColorScheme: () => 'dark',
+  Switch: host('Switch'),
 };
 
 function host(name) {
@@ -377,9 +379,10 @@ function formatLocalDate(date) {
 }
 
 function render(element) {
+  const { ThemeProvider } = require('../theme/ThemeProvider');
   let root;
   TestRenderer.act(() => {
-    root = TestRenderer.create(element);
+    root = TestRenderer.create(React.createElement(ThemeProvider, null, element));
   });
   return root;
 }

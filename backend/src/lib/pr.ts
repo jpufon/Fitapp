@@ -3,7 +3,6 @@
 // Run: lowest runDurationS per (user, "<preset> Run"). Lower = better.
 // Returns the list of newly-set PRs so the route can include them in response.
 
-import { prisma } from './prisma.js';
 import type { Prisma } from '@prisma/client';
 
 export type NewPR = {

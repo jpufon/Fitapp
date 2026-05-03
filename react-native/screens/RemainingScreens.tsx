@@ -2,17 +2,21 @@
 // TreeDetailScreen, StreakModal, TreeAtRiskModal,
 // ExerciseDetailScreen, ExerciseLibraryScreen, OfflineSyncComponents
 
-import React, { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   StyleSheet, Modal,
 } from 'react-native'
 import {
-  Trees, Flame, AlertTriangle, Search, ChevronRight,
-  Wifi, WifiOff, RefreshCw, X, Play, Info,
+  AlertTriangle, Search, ChevronRight,
+  WifiOff, RefreshCw, X, Info,
 } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
+import type { SurfaceTokens } from '../theme/surfaceTheme'
+import { useWalifitTheme } from '../theme/ThemeProvider'
 import { useExerciseLibrary, useMuscleGroups, useFilteredExercises, type Exercise } from '../hooks/useExerciseLibrary'
+
+type Styles = ReturnType<typeof createStyles>
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -27,11 +31,13 @@ const MOCK_TREE = {
 // ─── Tree Detail Screen ───────────────────────────────────────────────────────
 
 export function TreeDetailScreen({ onClose }: { onClose: () => void }) {
+  const { surfaces } = useWalifitTheme()
+  const styles = useMemo(() => createStyles(surfaces), [surfaces])
   return (
     <View style={styles.container}>
       <View style={styles.navBar}>
         <TouchableOpacity style={styles.iconBtn} onPress={onClose}>
-          <X color={colors.foreground} size={20} strokeWidth={1.75} />
+          <X color={surfaces.foreground} size={20} strokeWidth={1.75} />
         </TouchableOpacity>
         <Text style={styles.navTitle}>Vitality Tree</Text>
         <View style={{ width: touchTarget.min }} />
@@ -74,7 +80,7 @@ export function TreeDetailScreen({ onClose }: { onClose: () => void }) {
             const isToday = i === MOCK_TREE.history.length - 1
             return (
               <View key={i} style={styles.historyBar}>
-                <View style={[styles.historyBarFill, { height: `${score}%` as any, backgroundColor: isToday ? colors.primary : colors.border }]} />
+                <View style={[styles.historyBarFill, { height: `${score}%` as any, backgroundColor: isToday ? colors.primary : surfaces.border }]} />
                 <Text style={[styles.historyDay, isToday && { color: colors.primary }]}>{days[i]}</Text>
                 <Text style={[styles.historyScore, isToday && { color: colors.primary }]}>{score}</Text>
               </View>
@@ -92,12 +98,12 @@ export function TreeDetailScreen({ onClose }: { onClose: () => void }) {
             { label: 'Growing',     range: '56–75', stage: MOCK_TREE.score <= 75 },
             { label: 'Thriving',    range: '76–90', stage: MOCK_TREE.score <= 90 },
             { label: 'Full Vitality',range:'91–100', stage: MOCK_TREE.score > 90 },
-          ].map((s, i) => (
-            <View key={i} style={[styles.stageRow, i < 5 && { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}>
-              <Text style={[styles.stageRange, { color: colors.mutedForeground }]}>{s.range}</Text>
-              <Text style={[styles.stageName, MOCK_TREE.stage === s.label && { color: colors.primary, fontWeight: typography.weight.bold }]}>
-                {s.label}
-                {MOCK_TREE.stage === s.label ? ' ← you' : ''}
+          ].map((stageEntry, i) => (
+            <View key={i} style={[styles.stageRow, i < 5 && { borderBottomWidth: 0.5, borderBottomColor: surfaces.border }]}>
+              <Text style={[styles.stageRange, { color: surfaces.mutedForeground }]}>{stageEntry.range}</Text>
+              <Text style={[styles.stageName, MOCK_TREE.stage === stageEntry.label && { color: colors.primary, fontWeight: typography.weight.bold }]}>
+                {stageEntry.label}
+                {MOCK_TREE.stage === stageEntry.label ? ' ← you' : ''}
               </Text>
             </View>
           ))}
@@ -119,12 +125,14 @@ export function TreeDetailScreen({ onClose }: { onClose: () => void }) {
 export function StreakModal({ visible, streak, onClose }: {
   visible: boolean; streak: number; onClose: () => void
 }) {
+  const { surfaces } = useWalifitTheme()
+  const styles = useMemo(() => createStyles(surfaces), [surfaces])
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
         <View style={styles.streakSheet}>
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-            <X color={colors.mutedForeground} size={18} strokeWidth={1.75} />
+            <X color={surfaces.mutedForeground} size={18} strokeWidth={1.75} />
           </TouchableOpacity>
           <Text style={{ fontSize: 64 }}>🔥</Text>
           <Text style={[styles.treeScore, { color: colors.energy }]}>{streak} day streak</Text>
@@ -153,6 +161,8 @@ export function StreakModal({ visible, streak, onClose }: {
 export function TreeAtRiskModal({ visible, onClose, onFixNow }: {
   visible: boolean; onClose: () => void; onFixNow: () => void
 }) {
+  const { surfaces } = useWalifitTheme()
+  const styles = useMemo(() => createStyles(surfaces), [surfaces])
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
@@ -191,6 +201,8 @@ export function ExerciseLibraryScreen({
 }: {
   onBack: () => void; onSelect?: (id: string) => void; mode?: 'browse' | 'pick'
 }) {
+  const { surfaces } = useWalifitTheme()
+  const styles = useMemo(() => createStyles(surfaces), [surfaces])
   const [query, setQuery]   = useState('')
   const [muscle, setMuscle] = useState('All')
 
@@ -203,7 +215,7 @@ export function ExerciseLibraryScreen({
     <View style={styles.container}>
       <View style={styles.navBar}>
         <TouchableOpacity style={styles.iconBtn} onPress={onBack}>
-          <ChevronRight color={colors.foreground} size={20} strokeWidth={1.75} style={{ transform: [{ rotate: '180deg' }] }} />
+          <ChevronRight color={surfaces.foreground} size={20} strokeWidth={1.75} style={{ transform: [{ rotate: '180deg' }] }} />
         </TouchableOpacity>
         <Text style={styles.navTitle}>{mode === 'pick' ? 'Add Exercise' : 'Exercise Library'}</Text>
         <View style={{ width: touchTarget.min }} />
@@ -211,9 +223,9 @@ export function ExerciseLibraryScreen({
 
       <View style={styles.libraryFilters}>
         <View style={styles.searchRow}>
-          <Search color={colors.mutedForeground} size={16} strokeWidth={1.75} />
+          <Search color={surfaces.mutedForeground} size={16} strokeWidth={1.75} />
           <TextInput style={styles.searchInput} value={query} onChangeText={setQuery}
-            placeholder="Search exercises" placeholderTextColor={colors.mutedForeground} />
+            placeholder="Search exercises" placeholderTextColor={surfaces.mutedForeground} />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.muscleFilter}>
           {groups.map(m => (
@@ -251,6 +263,8 @@ export function ExerciseLibraryScreen({
               exercise={ex}
               mode={mode}
               onSelect={() => onSelect?.(ex.id)}
+              styles={styles}
+              surfaces={surfaces}
             />
           ))}
         </ScrollView>
@@ -259,8 +273,9 @@ export function ExerciseLibraryScreen({
   )
 }
 
-function ExerciseRow({ exercise, mode, onSelect }: {
+function ExerciseRow({ exercise, mode, onSelect, styles, surfaces }: {
   exercise: Exercise; mode: 'browse' | 'pick'; onSelect: () => void
+  styles: Styles; surfaces: SurfaceTokens
 }) {
   const primaryMuscle = exercise.primaryMuscles[0] ?? exercise.category
   const equipmentLabel = exercise.equipment[0] ?? 'Bodyweight'
@@ -280,7 +295,7 @@ function ExerciseRow({ exercise, mode, onSelect }: {
         ? <TouchableOpacity style={styles.addExBtn} onPress={onSelect}>
             <Text style={styles.addExBtnText}>Add</Text>
           </TouchableOpacity>
-        : <ChevronRight color={colors.mutedForeground} size={16} strokeWidth={1.75} />
+        : <ChevronRight color={surfaces.mutedForeground} size={16} strokeWidth={1.75} />
       }
     </TouchableOpacity>
   )
@@ -289,6 +304,8 @@ function ExerciseRow({ exercise, mode, onSelect }: {
 // ─── Offline Sync Components ──────────────────────────────────────────────────
 
 export function OfflineBanner({ visible }: { visible: boolean }) {
+  const { surfaces } = useWalifitTheme()
+  const styles = useMemo(() => createStyles(surfaces), [surfaces])
   if (!visible) return null
   return (
     <View style={styles.offlineBanner}>
@@ -301,10 +318,12 @@ export function OfflineBanner({ visible }: { visible: boolean }) {
 export function SyncStatusIndicator({ pendingCount, onSync }: {
   pendingCount: number; onSync: () => void
 }) {
+  const { surfaces } = useWalifitTheme()
+  const styles = useMemo(() => createStyles(surfaces), [surfaces])
   if (pendingCount === 0) return null
   return (
     <TouchableOpacity style={styles.syncIndicator} onPress={onSync} activeOpacity={0.7}>
-      <RefreshCw color={colors.foreground} size={13} strokeWidth={2} />
+      <RefreshCw color={surfaces.foreground} size={13} strokeWidth={2} />
       <Text style={styles.syncIndicatorText}>{pendingCount} pending sync</Text>
     </TouchableOpacity>
   )
@@ -312,73 +331,75 @@ export function SyncStatusIndicator({ pendingCount, onSync }: {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  container:        { flex: 1, backgroundColor: colors.background },
-  navBar:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm, paddingTop: spacing.xl, paddingBottom: spacing.sm, borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  navTitle:         { fontSize: typography.size.lg, fontWeight: typography.weight.bold, color: colors.foreground },
-  iconBtn:          { width: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
-  content:          { paddingHorizontal: spacing.screen, paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
-  sectionLabel:     { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: colors.mutedForeground },
-  treeHero:         { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md },
-  treeCircle:       { width: 120, height: 120, borderRadius: 60, backgroundColor: colors.primary + '15', alignItems: 'center', justifyContent: 'center' },
-  treeScore:        { fontSize: 52, fontWeight: typography.weight.extrabold },
-  stageBadge:       { backgroundColor: colors.primary + '18', paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.full },
-  stageText:        { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.primary },
-  treeNextInfo:     { fontSize: typography.size.sm, color: colors.mutedForeground },
-  growthCard:       { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, gap: spacing.sm },
-  growthHeader:     { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  growthValue:      { fontSize: typography.size['3xl'], fontWeight: typography.weight.extrabold, color: colors.primary },
-  growthCopy:       { flex: 1, fontSize: typography.size.sm, color: colors.foreground, lineHeight: 20 },
-  growthTrack:      { height: 8, backgroundColor: colors.muted, borderRadius: radius.full, overflow: 'hidden' },
-  growthFill:       { height: '100%', backgroundColor: colors.primary, borderRadius: radius.full },
-  growthHint:       { fontSize: typography.size.xs, color: colors.mutedForeground, lineHeight: 18 },
-  historyCard:      { flexDirection: 'row', alignItems: 'flex-end', backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, height: 100, gap: spacing.xs },
-  historyBar:       { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end', gap: 3 },
-  historyBarFill:   { width: '100%', borderRadius: 2 },
-  historyDay:       { fontSize: 9, color: colors.mutedForeground },
-  historyScore:     { fontSize: 9, color: colors.mutedForeground },
-  stagesCard:       { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, overflow: 'hidden' },
-  stageRow:         { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md },
-  stageRange:       { width: 60, fontSize: typography.size.xs, color: colors.mutedForeground },
-  stageName:        { fontSize: typography.size.sm, color: colors.foreground },
-  stagesNotice:     { fontSize: typography.size.xs, color: colors.mutedForeground, textAlign: 'center' },
-  stepsNotice:      { flexDirection: 'row', gap: spacing.sm, backgroundColor: colors.primary + '08', borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.primary + '30', padding: spacing.md },
-  stepsNoticeText:  { flex: 1, fontSize: typography.size.xs, color: colors.mutedForeground, lineHeight: 18 },
-  overlay:          { flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center', padding: spacing.screen },
-  streakSheet:      { width: '100%', backgroundColor: colors.card, borderRadius: radius.xl, borderWidth: 0.5, borderColor: colors.border, padding: spacing.xl, alignItems: 'center', gap: spacing.md },
-  closeBtn:         { alignSelf: 'flex-end', width: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
-  streakSub:        { fontSize: typography.size.sm, color: colors.mutedForeground, textAlign: 'center', lineHeight: 20 },
-  streakMilestones: { flexDirection: 'row', gap: spacing.sm },
-  milestoneDot:     { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center', borderWidth: 0.5, borderColor: colors.border },
-  milestoneTxt:     { fontSize: typography.size.xs, fontWeight: typography.weight.bold, color: colors.mutedForeground },
-  streakCloseBtn:   { width: '100%', height: touchTarget.comfortable, backgroundColor: colors.primary, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
-  streakCloseBtnText:{ fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.primaryFg },
-  riskPillars:      { flexDirection: 'row', gap: spacing.sm, width: '100%' },
-  riskPillar:       { flex: 1, backgroundColor: colors.muted, borderRadius: radius.lg, borderWidth: 0.5, padding: spacing.md, alignItems: 'center', gap: spacing.xs },
-  riskPillarLabel:  { fontSize: typography.size.xs, color: colors.mutedForeground },
-  riskPillarValue:  { fontSize: typography.size.xl, fontWeight: typography.weight.extrabold },
-  libraryFilters:   { paddingHorizontal: spacing.screen, paddingTop: spacing.sm, gap: spacing.sm },
-  searchRow:        { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, paddingHorizontal: spacing.md, height: touchTarget.comfortable },
-  searchInput:      { flex: 1, fontSize: typography.size.base, color: colors.foreground },
-  muscleFilter:     { flexGrow: 0 },
-  muscleChip:       { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, backgroundColor: colors.card, borderRadius: radius.full, borderWidth: 0.5, borderColor: colors.border, marginRight: spacing.xs, minHeight: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
-  muscleChipActive: { borderColor: colors.primary, backgroundColor: colors.primary + '10' },
-  muscleChipText:   { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: colors.mutedForeground },
-  libraryStateBox:  { paddingHorizontal: spacing.screen, paddingTop: spacing.xl, alignItems: 'center', gap: spacing.md },
-  libraryStateText: { fontSize: typography.size.base, color: colors.mutedForeground, textAlign: 'center' },
-  libraryStateBtn:  { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.primary, borderRadius: radius.full, minHeight: touchTarget.comfortable, alignItems: 'center', justifyContent: 'center' },
-  libraryStateBtnText: { fontSize: typography.size.sm, fontWeight: typography.weight.bold, color: colors.primaryFg },
-  exerciseList:     { paddingHorizontal: spacing.screen, paddingTop: spacing.sm, paddingBottom: spacing.xxl },
-  exerciseRow:      { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: 0.5, borderBottomColor: colors.border, gap: spacing.md },
-  exerciseInfo:     { flex: 1, gap: spacing.xs },
-  exerciseName:     { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: colors.foreground },
-  exerciseTags:     { flexDirection: 'row', gap: spacing.xs },
-  exerciseTag:      { paddingHorizontal: spacing.sm, paddingVertical: 2, backgroundColor: colors.muted, borderRadius: radius.full },
-  exerciseTagText:  { fontSize: 10, color: colors.mutedForeground },
-  addExBtn:         { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, backgroundColor: colors.primary, borderRadius: radius.full, minHeight: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
-  addExBtnText:     { fontSize: typography.size.sm, fontWeight: typography.weight.bold, color: colors.primaryFg },
-  offlineBanner:    { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.energy + '18', paddingHorizontal: spacing.screen, paddingVertical: spacing.sm, borderBottomWidth: 0.5, borderBottomColor: colors.energy + '40' },
-  offlineBannerText:{ fontSize: typography.size.sm, color: colors.energy, fontWeight: typography.weight.semibold },
-  syncIndicator:    { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.card, borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderWidth: 0.5, borderColor: colors.border },
-  syncIndicatorText:{ fontSize: typography.size.xs, color: colors.foreground },
-})
+function createStyles(s: SurfaceTokens) {
+  return StyleSheet.create({
+    container:        { flex: 1, backgroundColor: s.background },
+    navBar:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm, paddingTop: spacing.xl, paddingBottom: spacing.sm, borderBottomWidth: 0.5, borderBottomColor: s.border },
+    navTitle:         { fontSize: typography.size.lg, fontWeight: typography.weight.bold, color: s.foreground },
+    iconBtn:          { width: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
+    content:          { paddingHorizontal: spacing.screen, paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+    sectionLabel:     { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: s.mutedForeground },
+    treeHero:         { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md },
+    treeCircle:       { width: 120, height: 120, borderRadius: 60, backgroundColor: colors.primary + '15', alignItems: 'center', justifyContent: 'center' },
+    treeScore:        { fontSize: 52, fontWeight: typography.weight.extrabold },
+    stageBadge:       { backgroundColor: colors.primary + '18', paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.full },
+    stageText:        { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.primary },
+    treeNextInfo:     { fontSize: typography.size.sm, color: s.mutedForeground },
+    growthCard:       { backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, padding: spacing.md, gap: spacing.sm },
+    growthHeader:     { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+    growthValue:      { fontSize: typography.size['3xl'], fontWeight: typography.weight.extrabold, color: colors.primary },
+    growthCopy:       { flex: 1, fontSize: typography.size.sm, color: s.foreground, lineHeight: 20 },
+    growthTrack:      { height: 8, backgroundColor: s.muted, borderRadius: radius.full, overflow: 'hidden' },
+    growthFill:       { height: '100%', backgroundColor: colors.primary, borderRadius: radius.full },
+    growthHint:       { fontSize: typography.size.xs, color: s.mutedForeground, lineHeight: 18 },
+    historyCard:      { flexDirection: 'row', alignItems: 'flex-end', backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, padding: spacing.md, height: 100, gap: spacing.xs },
+    historyBar:       { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end', gap: 3 },
+    historyBarFill:   { width: '100%', borderRadius: 2 },
+    historyDay:       { fontSize: 9, color: s.mutedForeground },
+    historyScore:     { fontSize: 9, color: s.mutedForeground },
+    stagesCard:       { backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, overflow: 'hidden' },
+    stageRow:         { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md },
+    stageRange:       { width: 60, fontSize: typography.size.xs, color: s.mutedForeground },
+    stageName:        { fontSize: typography.size.sm, color: s.foreground },
+    stagesNotice:     { fontSize: typography.size.xs, color: s.mutedForeground, textAlign: 'center' },
+    stepsNotice:      { flexDirection: 'row', gap: spacing.sm, backgroundColor: colors.primary + '08', borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.primary + '30', padding: spacing.md },
+    stepsNoticeText:  { flex: 1, fontSize: typography.size.xs, color: s.mutedForeground, lineHeight: 18 },
+    overlay:          { flex: 1, backgroundColor: s.overlay, alignItems: 'center', justifyContent: 'center', padding: spacing.screen },
+    streakSheet:      { width: '100%', backgroundColor: s.card, borderRadius: radius.xl, borderWidth: 0.5, borderColor: s.border, padding: spacing.xl, alignItems: 'center', gap: spacing.md },
+    closeBtn:         { alignSelf: 'flex-end', width: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
+    streakSub:        { fontSize: typography.size.sm, color: s.mutedForeground, textAlign: 'center', lineHeight: 20 },
+    streakMilestones: { flexDirection: 'row', gap: spacing.sm },
+    milestoneDot:     { width: 40, height: 40, borderRadius: 20, backgroundColor: s.muted, alignItems: 'center', justifyContent: 'center', borderWidth: 0.5, borderColor: s.border },
+    milestoneTxt:     { fontSize: typography.size.xs, fontWeight: typography.weight.bold, color: s.mutedForeground },
+    streakCloseBtn:   { width: '100%', height: touchTarget.comfortable, backgroundColor: colors.primary, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
+    streakCloseBtnText:{ fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.primaryFg },
+    riskPillars:      { flexDirection: 'row', gap: spacing.sm, width: '100%' },
+    riskPillar:       { flex: 1, backgroundColor: s.muted, borderRadius: radius.lg, borderWidth: 0.5, padding: spacing.md, alignItems: 'center', gap: spacing.xs },
+    riskPillarLabel:  { fontSize: typography.size.xs, color: s.mutedForeground },
+    riskPillarValue:  { fontSize: typography.size.xl, fontWeight: typography.weight.extrabold },
+    libraryFilters:   { paddingHorizontal: spacing.screen, paddingTop: spacing.sm, gap: spacing.sm },
+    searchRow:        { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, paddingHorizontal: spacing.md, height: touchTarget.comfortable },
+    searchInput:      { flex: 1, fontSize: typography.size.base, color: s.foreground },
+    muscleFilter:     { flexGrow: 0 },
+    muscleChip:       { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, backgroundColor: s.card, borderRadius: radius.full, borderWidth: 0.5, borderColor: s.border, marginRight: spacing.xs, minHeight: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
+    muscleChipActive: { borderColor: colors.primary, backgroundColor: colors.primary + '10' },
+    muscleChipText:   { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: s.mutedForeground },
+    libraryStateBox:  { paddingHorizontal: spacing.screen, paddingTop: spacing.xl, alignItems: 'center', gap: spacing.md },
+    libraryStateText: { fontSize: typography.size.base, color: s.mutedForeground, textAlign: 'center' },
+    libraryStateBtn:  { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.primary, borderRadius: radius.full, minHeight: touchTarget.comfortable, alignItems: 'center', justifyContent: 'center' },
+    libraryStateBtnText: { fontSize: typography.size.sm, fontWeight: typography.weight.bold, color: colors.primaryFg },
+    exerciseList:     { paddingHorizontal: spacing.screen, paddingTop: spacing.sm, paddingBottom: spacing.xxl },
+    exerciseRow:      { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: 0.5, borderBottomColor: s.border, gap: spacing.md },
+    exerciseInfo:     { flex: 1, gap: spacing.xs },
+    exerciseName:     { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: s.foreground },
+    exerciseTags:     { flexDirection: 'row', gap: spacing.xs },
+    exerciseTag:      { paddingHorizontal: spacing.sm, paddingVertical: 2, backgroundColor: s.muted, borderRadius: radius.full },
+    exerciseTagText:  { fontSize: 10, color: s.mutedForeground },
+    addExBtn:         { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, backgroundColor: colors.primary, borderRadius: radius.full, minHeight: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
+    addExBtnText:     { fontSize: typography.size.sm, fontWeight: typography.weight.bold, color: colors.primaryFg },
+    offlineBanner:    { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.energy + '18', paddingHorizontal: spacing.screen, paddingVertical: spacing.sm, borderBottomWidth: 0.5, borderBottomColor: colors.energy + '40' },
+    offlineBannerText:{ fontSize: typography.size.sm, color: colors.energy, fontWeight: typography.weight.semibold },
+    syncIndicator:    { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: s.card, borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderWidth: 0.5, borderColor: s.border },
+    syncIndicatorText:{ fontSize: typography.size.xs, color: s.foreground },
+  })
+}

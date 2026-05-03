@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Droplets, Footprints, Utensils } from 'lucide-react-native';
@@ -13,11 +13,24 @@ import Svg, {
   Stop,
 } from 'react-native-svg';
 import { colors, pillarColors, spacing, borderRadius, typography, componentSizes } from '../theme';
+import type { SurfaceTokens } from '../theme/surfaceTheme';
+import { useWalifitTheme } from '../theme/ThemeProvider';
 
 const treeSizes = componentSizes.vitalityTree;
 
+export type VitalityTreeStage =
+  | 'wilted'
+  | 'recovering'
+  | 'sprout'
+  | 'growing'
+  | 'thriving'
+  | 'full_vitality';
+
 interface VitalityTreeProps {
   score: number;
+  // Rolling 7-day stage from backend (WF-020). Drives the visual state.
+  // Optional so the component still renders standalone in tests / dev.
+  treeStage?: VitalityTreeStage;
   todayScore: {
     hydration: number;
     protein: number;
@@ -39,27 +52,18 @@ type GrowthStage = {
   isHealthy: boolean;
 };
 
-export default function VitalityTree({ score, todayScore }: VitalityTreeProps) {
-  const [clockTick, setClockTick] = useState(() => Date.now());
+export default function VitalityTree({ score, treeStage, todayScore }: VitalityTreeProps) {
+  const { surfaces, effectiveColorScheme } = useWalifitTheme();
+  const styles = useMemo(() => createStyles(surfaces), [surfaces]);
+  const isLight = effectiveColorScheme === 'light';
+  const cardGradientColors = (isLight
+    ? [colors.earthSand + 'F2', colors.earthClay + 'E6', colors.earthMoss + 'F2']
+    : [surfaces.card + 'F2', surfaces.popover + 'E6', surfaces.backgroundAlt + 'F2']) as readonly [string, string, string];
   const growthState = useMemo(
-    () => getGrowthState(score, new Date(clockTick)),
-    [score, clockTick]
+    () => (treeStage ? getGrowthStateFromStage(treeStage) : getGrowthStateFromScore(score)),
+    [score, treeStage]
   );
   const pulse = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const next = new Date();
-    const hour = next.getHours();
-    if (hour >= 20) {
-      next.setDate(next.getDate() + 1);
-      next.setHours(20, 0, 0, 0);
-    } else {
-      next.setHours(20, 0, 0, 0);
-    }
-    const delay = Math.max(1000, next.getTime() - Date.now());
-    const timer = setTimeout(() => setClockTick(Date.now()), delay);
-    return () => clearTimeout(timer);
-  }, [clockTick]);
 
   useEffect(() => {
     if (!growthState.isHealthy) {
@@ -115,7 +119,7 @@ export default function VitalityTree({ score, todayScore }: VitalityTreeProps) {
       />
 
       <LinearGradient
-        colors={[colors.card + 'F2', colors.popover + 'E6', colors.backgroundAlt + 'F2']}
+        colors={cardGradientColors}
         style={styles.card}
       >
         <View style={styles.heroHeader}>
@@ -171,118 +175,105 @@ export default function VitalityTree({ score, todayScore }: VitalityTreeProps) {
   );
 }
 
-function getGrowthState(score: number, now: Date = new Date()): GrowthStage {
-  const isLateDay = now.getHours() >= 20;
-
-  if (score < 40 && isLateDay) {
-    return {
-      stage: 'Wilted',
-      detail: 'Daily goals missed',
-      color: colors.destructive,
-      glow: colors.destructive,
-      variant: 'wilted',
-      canopyScale: 0.86,
-      leafOpacity: 0.36,
-      accentOpacity: 0.08,
-      branchOpacity: 0.9,
-      groundOpacity: 0.25,
-      isHealthy: false,
-    };
+// Backend stage → visual state. This is authoritative once a HomeSnapshot is loaded.
+function getGrowthStateFromStage(stage: VitalityTreeStage): GrowthStage {
+  switch (stage) {
+    case 'wilted':
+      return {
+        stage: 'Wilted',
+        detail: "You've fallen off — log a goal to recover.",
+        color: colors.destructive,
+        glow: colors.destructive,
+        variant: 'wilted',
+        canopyScale: 0.86,
+        leafOpacity: 0.36,
+        accentOpacity: 0.08,
+        branchOpacity: 0.9,
+        groundOpacity: 0.25,
+        isHealthy: false,
+      };
+    case 'recovering':
+      return {
+        stage: 'Recovering',
+        detail: 'First habits logged',
+        color: colors.earthAmber,
+        glow: colors.energyGlow,
+        variant: 'sapling',
+        canopyScale: 0.48,
+        leafOpacity: 0.58,
+        accentOpacity: 0.2,
+        branchOpacity: 0.86,
+        groundOpacity: 0.35,
+        isHealthy: false,
+      };
+    case 'sprout':
+      return {
+        stage: 'Sprout',
+        detail: 'Small but growing',
+        color: colors.earthSage,
+        glow: colors.earthSage,
+        variant: 'sprout',
+        canopyScale: 0.4,
+        leafOpacity: 0.78,
+        accentOpacity: 0.22,
+        branchOpacity: 0.78,
+        groundOpacity: 0.44,
+        isHealthy: false,
+      };
+    case 'growing':
+      return {
+        stage: 'Growing',
+        detail: 'Solid week in progress',
+        color: colors.vitalityLight,
+        glow: colors.primary,
+        variant: 'young',
+        canopyScale: 0.78,
+        leafOpacity: 0.78,
+        accentOpacity: 0.48,
+        branchOpacity: 1,
+        groundOpacity: 0.66,
+        isHealthy: true,
+      };
+    case 'thriving':
+      return {
+        stage: 'Thriving',
+        detail: 'Most goals on track',
+        color: colors.primary,
+        glow: colors.primary,
+        variant: 'mature',
+        canopyScale: 0.9,
+        leafOpacity: 0.86,
+        accentOpacity: 0.64,
+        branchOpacity: 1,
+        groundOpacity: 0.78,
+        isHealthy: true,
+      };
+    case 'full_vitality':
+      return {
+        stage: 'Full Vitality',
+        detail: 'Daily goals reached',
+        color: colors.primary,
+        glow: colors.vitalityDark,
+        variant: 'full',
+        canopyScale: 1,
+        leafOpacity: 1,
+        accentOpacity: 0.8,
+        branchOpacity: 1,
+        groundOpacity: 0.9,
+        isHealthy: true,
+      };
   }
+}
 
-  if (score <= 15) {
-    return {
-      stage: 'Sprout',
-      detail: 'New day reset',
-      color: colors.earthSage,
-      glow: colors.primaryDark,
-      variant: 'sprout',
-      canopyScale: 0.28,
-      leafOpacity: 0.95,
-      accentOpacity: 0.16,
-      branchOpacity: 0.62,
-      groundOpacity: 0.34,
-      isHealthy: false,
-    };
-  }
-
-  if (score <= 35) {
-    return {
-      stage: 'Recovering',
-      detail: 'First habits logged',
-      color: colors.earthAmber,
-      glow: colors.energyGlow,
-      variant: 'sapling',
-      canopyScale: 0.48,
-      leafOpacity: 0.58,
-      accentOpacity: 0.2,
-      branchOpacity: 0.86,
-      groundOpacity: 0.35,
-      isHealthy: false,
-    };
-  }
-
-  if (score <= 55) {
-    return {
-      stage: 'Sapling',
-      detail: 'Some goals are moving',
-      color: colors.earthSage,
-      glow: colors.earthSage,
-      variant: 'young',
-      canopyScale: 0.64,
-      leafOpacity: 0.68,
-      accentOpacity: 0.3,
-      branchOpacity: 0.9,
-      groundOpacity: 0.52,
-      isHealthy: false,
-    };
-  }
-
-  if (score <= 75) {
-    return {
-      stage: 'Growing',
-      detail: 'Solid day in progress',
-      color: colors.vitalityLight,
-      glow: colors.primary,
-      variant: 'mature',
-      canopyScale: 0.78,
-      leafOpacity: 0.78,
-      accentOpacity: 0.48,
-      branchOpacity: 1,
-      groundOpacity: 0.66,
-      isHealthy: true,
-    };
-  }
-
-  if (score <= 90) {
-    return {
-      stage: 'Thriving',
-      detail: 'Most goals are on track',
-      color: colors.primary,
-      glow: colors.primary,
-      variant: 'mature',
-      canopyScale: 0.9,
-      leafOpacity: 0.86,
-      accentOpacity: 0.64,
-      branchOpacity: 1,
-      groundOpacity: 0.78,
-      isHealthy: true,
-    };
-  }
-
-  return {
-    stage: 'Full Vitality',
-    detail: 'Daily goals reached',
-    color: colors.primary,
-    glow: colors.vitalityDark,
-    variant: 'full',
-    canopyScale: 1,
-    leafOpacity: 1,
-    accentOpacity: 0.8,
-    branchOpacity: 1,
-    groundOpacity: 0.9,
-    isHealthy: true,
-  };
+// Standalone fallback for tests / when a backend stage isn't available.
+// Mirrors backend stateFromScore thresholds (CLAUDE.md spec).
+function getGrowthStateFromScore(score: number): GrowthStage {
+  if (score <= 15) return getGrowthStateFromStage('wilted');
+  if (score <= 35) return getGrowthStateFromStage('recovering');
+  if (score <= 55) return getGrowthStateFromStage('sprout');
+  if (score <= 75) return getGrowthStateFromStage('growing');
+  if (score <= 90) return getGrowthStateFromStage('thriving');
+  return getGrowthStateFromStage('full_vitality');
 }
 
 function VitalityTreeArt({ state }: { state: GrowthStage }) {
@@ -502,6 +493,8 @@ function PillarStat({
   weight: string;
   color: string;
 }) {
+  const { surfaces } = useWalifitTheme();
+  const styles = useMemo(() => createStyles(surfaces), [surfaces]);
   const boundedValue = Math.max(0, Math.min(100, value));
 
   return (
@@ -521,7 +514,8 @@ function PillarStat({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(s: SurfaceTokens) {
+  return StyleSheet.create({
   container: {
     position: 'relative',
   },
@@ -537,7 +531,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.xxl,
     padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border + '80',
+    borderColor: s.border + '80',
     overflow: 'hidden',
   },
   heroHeader: {
@@ -574,7 +568,7 @@ const styles = StyleSheet.create({
     minHeight: treeSizes.scoreBadgeMinHeight,
     borderRadius: borderRadius.xl,
     borderWidth: 1,
-    backgroundColor: colors.backgroundAlt + 'AA',
+    backgroundColor: s.backgroundAlt + 'AA',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.sm,
@@ -616,7 +610,7 @@ const styles = StyleSheet.create({
   pillar: {
     flex: 1,
     minWidth: 0,
-    backgroundColor: colors.secondary + '66',
+    backgroundColor: s.secondary + '66',
     borderRadius: borderRadius.lg,
     padding: spacing.sm,
     borderWidth: 1,
@@ -653,7 +647,7 @@ const styles = StyleSheet.create({
   pillarBar: {
     width: '100%',
     height: treeSizes.pillarBarHeight,
-    backgroundColor: colors.muted + '40',
+    backgroundColor: s.muted + '40',
     borderRadius: borderRadius.full,
     overflow: 'hidden',
     marginTop: spacing.sm,
@@ -662,4 +656,5 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: borderRadius.full,
   },
-});
+  });
+}

@@ -42,6 +42,12 @@ const colors = {
     amber: '#f59e0b',
   },
 
+  // Earthy surfaces — for the Vitality Tree card backdrop in light mode.
+  // Sand → clay → moss gradient evokes living soil under the tree.
+  earthSand: '#D4C5A0',
+  earthClay: '#C1A788',
+  earthMoss: '#A89E7A',
+
   // Secondary accents
   accent: {
     blue: '#3b82f6',

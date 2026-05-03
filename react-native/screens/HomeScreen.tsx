@@ -19,6 +19,8 @@ import {
   TrendingUp, PlusCircle, Leaf, AlertCircle, ChevronDown, ChevronUp,
 } from 'lucide-react-native';
 import { colors, pillarColors, spacing, borderRadius, typography } from '../theme';
+import type { SurfaceTokens } from '../theme/surfaceTheme';
+import { useWalifitTheme } from '../theme/ThemeProvider';
 import VitalityTree from '../components/VitalityTree';
 import type { RootStackParamList } from '../App';
 import { useUser } from '../hooks/useUser';
@@ -48,9 +50,18 @@ function parsePositiveInt(value: string): number | null {
   return Math.round(parsed);
 }
 
+const ProgressMini = ({ label, value, color, styles }: { label: string; value: number; color: string; styles: HomeStyles }) => (
+  <View style={styles.progressMini}>
+    <Text style={styles.progressMiniLabel}>{label}</Text>
+    <Text style={[styles.progressMiniValue, { color }]}>{Math.round(value)}%</Text>
+  </View>
+);
+
 export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
+  const { surfaces } = useWalifitTheme();
+  const styles = useMemo(() => createStyles(surfaces), [surfaces]);
   const userQuery = useUser();
   const homeQuery = useHomeSnapshot();
   const snap = homeQuery.data;
@@ -217,24 +228,6 @@ export default function HomeScreen() {
     setCachedJson<WaterUnit>(WATER_UNIT_KEY, unit);
   };
 
-  const saveWaterCurrent = (value: string) => {
-    const parsed = parsePositiveInt(value);
-    if (parsed == null) {
-      Alert.alert('Check water amount', 'Enter a valid water total for today.');
-      return;
-    }
-    logNutrition.mutate({ waterMl: waterToMl(parsed, waterUnit) });
-  };
-
-  const saveProteinCurrent = (value: string) => {
-    const parsed = parsePositiveInt(value);
-    if (parsed == null) {
-      Alert.alert('Check protein amount', 'Enter a valid protein total for today.');
-      return;
-    }
-    logNutrition.mutate({ proteinG: parsed });
-  };
-
   const saveTargets = () => {
     const waterGoal = parsePositiveInt(draft.waterGoal);
     const proteinGoal = parsePositiveInt(draft.proteinGoal);
@@ -250,18 +243,15 @@ export default function HomeScreen() {
     });
   };
 
+  // Amount is in the user's chosen water unit (ml or oz); backend always
+  // takes ml, so convert before sending. Backend echoes the new total via
+  // /home invalidation — no optimistic client sum.
   const addWater = (amount: number) => {
-    const current = parsePositiveInt(draft.waterCurrent) ?? 0;
-    const next = current + amount;
-    setDraft((currentDraft) => ({ ...currentDraft, waterCurrent: String(next) }));
-    logNutrition.mutate({ waterMl: waterToMl(next, waterUnit) });
+    logNutrition.mutate({ waterDeltaMl: waterToMl(amount, waterUnit) });
   };
 
   const addProtein = (amount: number) => {
-    const current = parsePositiveInt(draft.proteinCurrent) ?? 0;
-    const next = current + amount;
-    setDraft((currentDraft) => ({ ...currentDraft, proteinCurrent: String(next) }));
-    logNutrition.mutate({ proteinG: next });
+    logNutrition.mutate({ proteinDeltaG: amount });
   };
 
   const handleStartWorkout = () => {
@@ -309,13 +299,14 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
-        {state === 'loading' ? <HomeSkeleton /> : null}
+        {state === 'loading' ? <HomeSkeleton styles={styles} /> : null}
 
         {state === 'empty' ? (
           <FeedbackCard
             icon={Leaf}
             title="Welcome to waliFit"
             message="Sign in and complete your setup to start syncing your vitality data."
+            styles={styles}
           />
         ) : null}
 
@@ -332,6 +323,7 @@ export default function HomeScreen() {
             }
             actionLabel="Retry"
             onPress={handleRetry}
+            styles={styles}
           />
         ) : null}
 
@@ -347,7 +339,7 @@ export default function HomeScreen() {
                 accessibilityLabel="Profile"
                 onPress={() => navigation.navigate('Profile')}
               >
-                <UserCircle size={24} color={colors.mutedForeground} strokeWidth={1.75} />
+                <UserCircle size={24} color={surfaces.mutedForeground} strokeWidth={1.75} />
               </TouchableOpacity>
             </View>
 
@@ -367,6 +359,7 @@ export default function HomeScreen() {
             <View style={styles.treeContainer}>
               <VitalityTree
                 score={vitalityScore}
+                treeStage={snap?.vitality.treeState}
                 todayScore={{
                   hydration: nutrition.hydration.progress,
                   protein: nutrition.protein.progress,
@@ -396,16 +389,16 @@ export default function HomeScreen() {
                   <View style={styles.progressSummaryRight}>
                     <Text style={[styles.progressPercent, { color: colors.primary }]}>{vitalityScore}%</Text>
                     {progressExpanded ? (
-                      <ChevronUp color={colors.greySoft} size={18} strokeWidth={1.75} />
+                      <ChevronUp color={surfaces.mutedForeground} size={18} strokeWidth={1.75} />
                     ) : (
-                      <ChevronDown color={colors.greySoft} size={18} strokeWidth={1.75} />
+                      <ChevronDown color={surfaces.mutedForeground} size={18} strokeWidth={1.75} />
                     )}
                   </View>
                 </View>
                 <View style={styles.progressMiniRow}>
-                  <ProgressMini label="Water" value={nutrition.hydration.progress} color={pillarColors.hydration} />
-                  <ProgressMini label="Protein" value={nutrition.protein.progress} color={pillarColors.protein} />
-                  <ProgressMini label="Steps" value={steps.progress} color={pillarColors.steps} />
+                  <ProgressMini label="Water" value={nutrition.hydration.progress} color={pillarColors.hydration} styles={styles} />
+                  <ProgressMini label="Protein" value={nutrition.protein.progress} color={pillarColors.protein} styles={styles} />
+                  <ProgressMini label="Steps" value={steps.progress} color={pillarColors.steps} styles={styles} />
                 </View>
                 <View style={styles.progressBar}>
                   <View style={[styles.progressFill, { width: `${vitalityScore}%`, backgroundColor: colors.primary }]} />
@@ -415,7 +408,7 @@ export default function HomeScreen() {
               {progressExpanded ? (
                 <>
                   <View style={styles.progressControlsRow}>
-                    <WaterUnitToggle value={waterUnit} onChange={handleWaterUnitChange} />
+                    <WaterUnitToggle value={waterUnit} onChange={handleWaterUnitChange} styles={styles} />
                   </View>
                   <View style={styles.progressStack}>
                     <EditableProgressCard
@@ -429,9 +422,7 @@ export default function HomeScreen() {
                       isExpanded={expandedEditor === 'water'}
                       onToggleExpanded={() => setExpandedEditor((current) => current === 'water' ? null : 'water')}
                       keyboardType="number-pad"
-                      onChangeValue={(value) => setDraft((current) => ({ ...current, waterCurrent: value }))}
                       onChangeGoal={(value) => setDraft((current) => ({ ...current, waterGoal: value }))}
-                      onSaveValue={saveWaterCurrent}
                       onSaveGoal={saveTargets}
                       quickActions={waterUnit === 'oz' ? [
                         { label: '+8 oz', onPress: () => addWater(8) },
@@ -441,6 +432,7 @@ export default function HomeScreen() {
                         { label: '+500 ml', onPress: () => addWater(500) },
                       ]}
                       disabled={logNutrition.isPending}
+                      styles={styles}
                     />
                     <EditableProgressCard
                       icon={Utensils}
@@ -453,15 +445,14 @@ export default function HomeScreen() {
                       isExpanded={expandedEditor === 'protein'}
                       onToggleExpanded={() => setExpandedEditor((current) => current === 'protein' ? null : 'protein')}
                       keyboardType="number-pad"
-                      onChangeValue={(value) => setDraft((current) => ({ ...current, proteinCurrent: value }))}
                       onChangeGoal={(value) => setDraft((current) => ({ ...current, proteinGoal: value }))}
-                      onSaveValue={saveProteinCurrent}
                       onSaveGoal={saveTargets}
                       quickActions={[
                         { label: '+20 g', onPress: () => addProtein(20) },
                         { label: '+40 g', onPress: () => addProtein(40) },
                       ]}
                       disabled={logNutrition.isPending}
+                      styles={styles}
                     />
                     <ReadOnlyProgressCard
                       icon={Footprints}
@@ -476,6 +467,7 @@ export default function HomeScreen() {
                       onChangeGoal={(value) => setDraft((current) => ({ ...current, stepsGoal: value }))}
                       onSaveGoal={saveTargets}
                       disabled={updateDailyTargets.isPending}
+                      styles={styles}
                     />
                   </View>
                 </>
@@ -490,7 +482,7 @@ export default function HomeScreen() {
               {workout ? (
                 <TouchableOpacity style={styles.workoutCard} onPress={handleStartWorkout}>
                   <LinearGradient
-                    colors={[colors.card + 'CC', colors.card + '80']}
+                    colors={[surfaces.card + 'CC', surfaces.card + '80']}
                     style={styles.workoutCardGradient}
                   >
                     <View style={styles.workoutContent}>
@@ -525,6 +517,7 @@ export default function HomeScreen() {
                 <FeedbackPanel
                   title="No workout scheduled"
                   message="Your plan hasn’t generated today’s session yet."
+                  styles={styles}
                 />
               )}
             </View>
@@ -532,10 +525,10 @@ export default function HomeScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Quick Actions</Text>
               <View style={styles.quickActionsGrid}>
-                <QuickActionCard icon={MessageCircle} label="Wali AI" color={colors.purple} onPress={() => navigation.navigate('Coach')} />
-                <QuickActionCard icon={Users} label="Squad" color={colors.blue} />
-                <QuickActionCard icon={TrendingUp} label="Progress" color={colors.primary} />
-                <QuickActionCard icon={PlusCircle} label="Quick Log" color={colors.energy} onPress={() => navigation.navigate('NutritionLog')} />
+                <QuickActionCard icon={MessageCircle} label="Wali AI" color={colors.purple} onPress={() => navigation.navigate('Coach')} styles={styles} />
+                <QuickActionCard icon={Users} label="Squad" color={colors.blue} styles={styles} />
+                <QuickActionCard icon={TrendingUp} label="Progress" color={colors.primary} styles={styles} />
+                <QuickActionCard icon={PlusCircle} label="Quick Log" color={colors.energy} onPress={() => navigation.navigate('NutritionLog')} styles={styles} />
               </View>
             </View>
           </>
@@ -556,12 +549,11 @@ function EditableProgressCard({
   isExpanded,
   onToggleExpanded,
   keyboardType,
-  onChangeValue,
   onChangeGoal,
-  onSaveValue,
   onSaveGoal,
   quickActions,
   disabled,
+  styles,
 }: {
   icon: React.ElementType;
   label: string;
@@ -573,13 +565,13 @@ function EditableProgressCard({
   isExpanded: boolean;
   onToggleExpanded: () => void;
   keyboardType: 'number-pad';
-  onChangeValue: (value: string) => void;
   onChangeGoal: (value: string) => void;
-  onSaveValue: (value: string) => void;
   onSaveGoal: () => void;
   quickActions: Array<{ label: string; onPress: () => void }>;
   disabled?: boolean;
+  styles: HomeStyles;
 }) {
+  const { surfaces } = useWalifitTheme();
   return (
     <View style={[styles.progressCard, { borderColor: color + '30' }]}>
       <TouchableOpacity
@@ -601,9 +593,9 @@ function EditableProgressCard({
         <Text style={[styles.progressPercent, { color }]}>{Math.round(progress)}%</Text>
         <View style={styles.expandIcon}>
           {isExpanded ? (
-            <ChevronUp color={colors.greySoft} size={18} strokeWidth={1.75} />
+            <ChevronUp color={surfaces.mutedForeground} size={18} strokeWidth={1.75} />
           ) : (
-            <ChevronDown color={colors.greySoft} size={18} strokeWidth={1.75} />
+            <ChevronDown color={surfaces.mutedForeground} size={18} strokeWidth={1.75} />
           )}
         </View>
       </TouchableOpacity>
@@ -614,17 +606,9 @@ function EditableProgressCard({
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Consumed</Text>
               <View style={styles.valueInputWrap}>
-                <TextInput
-                  value={value}
-                  onChangeText={onChangeValue}
-                  onSubmitEditing={() => onSaveValue(value)}
-                  onBlur={() => onSaveValue(value)}
-                  keyboardType={keyboardType}
-                  returnKeyType="done"
-                  editable={!disabled}
-                  selectTextOnFocus
-                  style={[styles.valueInput, { color }]}
-                />
+                <Text style={[styles.valueInput, { color }]} accessibilityLabel={`${label} consumed`}>
+                  {value || '0'}
+                </Text>
                 <Text style={styles.inputUnit}>{unit}</Text>
               </View>
             </View>
@@ -682,6 +666,7 @@ function ReadOnlyProgressCard({
   onChangeGoal,
   onSaveGoal,
   disabled,
+  styles,
 }: {
   icon: React.ElementType;
   label: string;
@@ -695,7 +680,9 @@ function ReadOnlyProgressCard({
   onChangeGoal: (value: string) => void;
   onSaveGoal: () => void;
   disabled?: boolean;
+  styles: HomeStyles;
 }) {
+  const { surfaces } = useWalifitTheme();
   return (
     <View style={[styles.progressCard, { borderColor: color + '30' }]}>
       <TouchableOpacity
@@ -717,9 +704,9 @@ function ReadOnlyProgressCard({
         <Text style={[styles.progressPercent, { color }]}>{Math.round(progress)}%</Text>
         <View style={styles.expandIcon}>
           {isExpanded ? (
-            <ChevronUp color={colors.greySoft} size={18} strokeWidth={1.75} />
+            <ChevronUp color={surfaces.mutedForeground} size={18} strokeWidth={1.75} />
           ) : (
-            <ChevronDown color={colors.greySoft} size={18} strokeWidth={1.75} />
+            <ChevronDown color={surfaces.mutedForeground} size={18} strokeWidth={1.75} />
           )}
         </View>
       </TouchableOpacity>
@@ -763,7 +750,7 @@ function ReadOnlyProgressCard({
   );
 }
 
-function WaterUnitToggle({ value, onChange }: { value: WaterUnit; onChange: (unit: WaterUnit) => void }) {
+function WaterUnitToggle({ value, onChange, styles }: { value: WaterUnit; onChange: (unit: WaterUnit) => void; styles: HomeStyles }) {
   return (
     <View style={styles.unitToggle}>
       {(['ml', 'oz'] as WaterUnit[]).map((unit) => {
@@ -782,20 +769,12 @@ function WaterUnitToggle({ value, onChange }: { value: WaterUnit; onChange: (uni
   );
 }
 
-function ProgressMini({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <View style={styles.progressMini}>
-      <Text style={styles.progressMiniLabel}>{label}</Text>
-      <Text style={[styles.progressMiniValue, { color }]}>{Math.round(value)}%</Text>
-    </View>
-  );
-}
-
-function QuickActionCard({ icon: Icon, label, color, onPress }: {
+function QuickActionCard({ icon: Icon, label, color, onPress, styles }: {
   icon: React.ElementType;
   label: string;
   color: string;
   onPress?: () => void;
+  styles: HomeStyles;
 }) {
   return (
     <TouchableOpacity style={[styles.quickActionCard, { borderColor: color + '30' }]} onPress={onPress}>
@@ -807,7 +786,7 @@ function QuickActionCard({ icon: Icon, label, color, onPress }: {
   );
 }
 
-function HomeSkeleton() {
+function HomeSkeleton({ styles }: { styles: HomeStyles }) {
   return (
     <>
       <View style={styles.header}>
@@ -837,6 +816,7 @@ function FeedbackCard({
   message,
   actionLabel,
   onPress,
+  styles,
 }: {
   icon: React.ElementType;
   iconColor?: string;
@@ -844,6 +824,7 @@ function FeedbackCard({
   message: string;
   actionLabel?: string;
   onPress?: () => void;
+  styles: HomeStyles;
 }) {
   return (
     <View style={styles.feedbackCard}>
@@ -859,7 +840,7 @@ function FeedbackCard({
   );
 }
 
-function FeedbackPanel({ title, message }: { title: string; message: string }) {
+function FeedbackPanel({ title, message, styles }: { title: string; message: string; styles: HomeStyles }) {
   return (
     <View style={styles.feedbackPanel}>
       <Text style={styles.feedbackPanelTitle}>{title}</Text>
@@ -876,10 +857,13 @@ function formatNumber(value: number): string {
   return new Intl.NumberFormat().format(value);
 }
 
-const styles = StyleSheet.create({
+type HomeStyles = ReturnType<typeof createStyles>;
+
+function createStyles(s: SurfaceTokens) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: s.background,
   },
   ambientContainer: {
     position: 'absolute',
@@ -929,23 +913,23 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     fontSize: typography.fontSize.sm,
-    color: colors.creamMuted,
+    color: s.mutedForeground,
     fontWeight: typography.fontWeight.medium,
     letterSpacing: 1,
     marginBottom: 4,
   },
   nameText: {
     fontSize: typography.fontSize['3xl'],
-    color: colors.cream,
+    color: s.foreground,
     fontWeight: typography.fontWeight.bold,
   },
   notificationButton: {
     width: 44,
     height: 44,
     borderRadius: borderRadius.xl,
-    backgroundColor: colors.secondary + '80',
+    backgroundColor: s.secondary + '80',
     borderWidth: 1,
-    borderColor: colors.border + '80',
+    borderColor: s.border + '80',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -974,7 +958,7 @@ const styles = StyleSheet.create({
   },
   streakLabel: {
     fontSize: typography.fontSize.sm,
-    color: colors.greySoft,
+    color: s.mutedForeground,
     fontWeight: typography.fontWeight.medium,
   },
   treeContainer: {
@@ -991,18 +975,18 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: typography.fontSize.xl,
-    color: colors.cream,
+    color: s.foreground,
     fontWeight: typography.fontWeight.bold,
     marginBottom: spacing.md,
   },
   sectionTitleCompact: {
     fontSize: typography.fontSize.xl,
-    color: colors.cream,
+    color: s.foreground,
     fontWeight: typography.fontWeight.bold,
   },
   sectionSubtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.greySoft,
+    color: s.mutedForeground,
     fontWeight: typography.fontWeight.medium,
     letterSpacing: 1,
   },
@@ -1014,11 +998,11 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   progressSummaryCard: {
-    backgroundColor: colors.card + '80',
+    backgroundColor: s.card + '80',
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border + '80',
+    borderColor: s.border + '80',
     gap: spacing.md,
   },
   progressSummaryHeader: {
@@ -1030,7 +1014,7 @@ const styles = StyleSheet.create({
   },
   progressSummaryText: {
     fontSize: typography.fontSize.sm,
-    color: colors.greySoft,
+    color: s.mutedForeground,
     marginTop: spacing.xs,
   },
   progressSummaryRight: {
@@ -1047,13 +1031,13 @@ const styles = StyleSheet.create({
     minHeight: 44,
     justifyContent: 'center',
     borderRadius: borderRadius.md,
-    backgroundColor: colors.background + '40',
+    backgroundColor: s.background + '40',
     paddingHorizontal: spacing.sm,
     gap: 2,
   },
   progressMiniLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.greySoft,
+    color: s.mutedForeground,
     fontWeight: typography.fontWeight.medium,
   },
   progressMiniValue: {
@@ -1067,7 +1051,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   progressCard: {
-    backgroundColor: colors.card + '80',
+    backgroundColor: s.card + '80',
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     borderWidth: 1,
@@ -1095,7 +1079,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: colors.card + '80',
+    backgroundColor: s.card + '80',
     borderRadius: borderRadius.xl,
     padding: spacing.md,
     borderWidth: 1,
@@ -1109,7 +1093,7 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.greySoft,
+    color: s.mutedForeground,
     fontWeight: typography.fontWeight.medium,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -1122,7 +1106,7 @@ const styles = StyleSheet.create({
   },
   statUnit: {
     fontSize: typography.fontSize.xs,
-    color: colors.greySoft,
+    color: s.mutedForeground,
   },
   inputRow: {
     flexDirection: 'row',
@@ -1134,7 +1118,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.greySoft,
+    color: s.mutedForeground,
     fontWeight: typography.fontWeight.medium,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -1146,19 +1130,19 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.border + '80',
-    backgroundColor: colors.background + '66',
+    borderColor: s.border + '80',
+    backgroundColor: s.background + '66',
     paddingHorizontal: spacing.md,
   },
   readOnlyInputWrap: {
-    backgroundColor: colors.muted + '20',
+    backgroundColor: s.muted + '20',
   },
   valueInput: {
     flex: 1,
     minWidth: 0,
     paddingVertical: spacing.sm,
     fontSize: typography.fontSize.lg,
-    color: colors.foreground,
+    color: s.foreground,
     fontWeight: typography.fontWeight.bold,
     fontFamily: typography.fontFamily.mono,
   },
@@ -1170,7 +1154,7 @@ const styles = StyleSheet.create({
   },
   inputUnit: {
     fontSize: typography.fontSize.xs,
-    color: colors.greySoft,
+    color: s.mutedForeground,
     fontWeight: typography.fontWeight.semibold,
     textTransform: 'uppercase',
   },
@@ -1185,7 +1169,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    backgroundColor: colors.background + '40',
+    backgroundColor: s.background + '40',
   },
   quickLogText: {
     fontSize: typography.fontSize.sm,
@@ -1193,7 +1177,7 @@ const styles = StyleSheet.create({
   },
   readOnlyNote: {
     fontSize: typography.fontSize.xs,
-    color: colors.greySoft,
+    color: s.mutedForeground,
     lineHeight: 17,
   },
   unitToggle: {
@@ -1202,8 +1186,8 @@ const styles = StyleSheet.create({
     padding: 2,
     borderRadius: borderRadius.full,
     borderWidth: 1,
-    borderColor: colors.border + '80',
-    backgroundColor: colors.card + '80',
+    borderColor: s.border + '80',
+    backgroundColor: s.card + '80',
   },
   unitToggleButton: {
     minHeight: 36,
@@ -1218,7 +1202,7 @@ const styles = StyleSheet.create({
   },
   unitToggleText: {
     fontSize: typography.fontSize.xs,
-    color: colors.greySoft,
+    color: s.mutedForeground,
     fontWeight: typography.fontWeight.bold,
     textTransform: 'uppercase',
   },
@@ -1227,7 +1211,7 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: 8,
-    backgroundColor: colors.muted + '33',
+    backgroundColor: s.muted + '33',
     borderRadius: 4,
     overflow: 'hidden',
     marginTop: spacing.sm,
@@ -1242,7 +1226,7 @@ const styles = StyleSheet.create({
   },
   workoutCardGradient: {
     borderWidth: 1,
-    borderColor: colors.border + '80',
+    borderColor: s.border + '80',
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
   },
@@ -1256,7 +1240,7 @@ const styles = StyleSheet.create({
   },
   workoutTitle: {
     fontSize: typography.fontSize['2xl'],
-    color: colors.foreground,
+    color: s.foreground,
     fontWeight: typography.fontWeight.bold,
     marginBottom: spacing.md - 2,
   },
@@ -1272,7 +1256,7 @@ const styles = StyleSheet.create({
   },
   workoutMetaText: {
     fontSize: typography.fontSize.sm,
-    color: colors.greySoft,
+    color: s.mutedForeground,
     fontWeight: typography.fontWeight.medium,
   },
   workoutBadge: {
@@ -1309,7 +1293,7 @@ const styles = StyleSheet.create({
   },
   quickActionCard: {
     width: '48%',
-    backgroundColor: colors.card + '80',
+    backgroundColor: s.card + '80',
     borderRadius: borderRadius.xl,
     padding: spacing.md + 4,
     borderWidth: 1,
@@ -1324,28 +1308,28 @@ const styles = StyleSheet.create({
   },
   quickActionLabel: {
     fontSize: typography.fontSize.base,
-    color: colors.cream,
+    color: s.foreground,
     fontWeight: typography.fontWeight.bold,
   },
   feedbackCard: {
     alignItems: 'center',
-    backgroundColor: colors.card + 'CC',
+    backgroundColor: s.card + 'CC',
     borderRadius: borderRadius.xxl,
     borderWidth: 1,
-    borderColor: colors.border + '80',
+    borderColor: s.border + '80',
     padding: spacing.xl,
     gap: spacing.sm,
     marginTop: spacing.xxl,
   },
   feedbackTitle: {
     fontSize: typography.fontSize.xl,
-    color: colors.cream,
+    color: s.foreground,
     fontWeight: typography.fontWeight.bold,
     textAlign: 'center',
   },
   feedbackMessage: {
     fontSize: typography.fontSize.base,
-    color: colors.greySoft,
+    color: s.mutedForeground,
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -1365,25 +1349,25 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.bold,
   },
   feedbackPanel: {
-    backgroundColor: colors.card + '80',
+    backgroundColor: s.card + '80',
     borderWidth: 1,
-    borderColor: colors.border + '80',
+    borderColor: s.border + '80',
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
   },
   feedbackPanelTitle: {
     fontSize: typography.fontSize.lg,
-    color: colors.cream,
+    color: s.foreground,
     fontWeight: typography.fontWeight.bold,
     marginBottom: spacing.xs,
   },
   feedbackPanelMessage: {
     fontSize: typography.fontSize.base,
-    color: colors.greySoft,
+    color: s.mutedForeground,
     lineHeight: 22,
   },
   skeletonBar: {
-    backgroundColor: colors.secondary,
+    backgroundColor: s.secondary,
     borderRadius: 999,
   },
   skeletonHeaderEyebrow: {
@@ -1399,21 +1383,21 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.secondary,
+    backgroundColor: s.secondary,
   },
   skeletonBadge: {
     width: 140,
     height: 48,
     borderRadius: borderRadius.xl,
-    backgroundColor: colors.secondary,
+    backgroundColor: s.secondary,
     marginBottom: spacing.lg,
   },
   skeletonTree: {
     height: 420,
     borderRadius: borderRadius.xxl,
-    backgroundColor: colors.card,
+    backgroundColor: s.card,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: s.border,
     marginBottom: spacing.lg,
   },
   skeletonRow: {
@@ -1425,15 +1409,16 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 160,
     borderRadius: borderRadius.xl,
-    backgroundColor: colors.card,
+    backgroundColor: s.card,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: s.border,
   },
   skeletonWorkout: {
     height: 132,
     borderRadius: borderRadius.xl,
-    backgroundColor: colors.card,
+    backgroundColor: s.card,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: s.border,
   },
-});
+  });
+}

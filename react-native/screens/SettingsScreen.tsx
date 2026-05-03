@@ -6,7 +6,7 @@
 import React, { useMemo, useState } from 'react'
 import {
   Alert, Linking, View, Text, TextInput, TouchableOpacity, ScrollView,
-  Switch, StyleSheet, Modal,
+  Switch, StyleSheet,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import {
@@ -292,18 +292,26 @@ function Preferences({ user, onSave, onBack, styles, surfaces, appearance, setAp
           Workout and Analytics screens can switch the shell automatically (see docs/waliFit_Theme_Precedence.md).
         </Text>
         <View style={styles.unitsToggle}>
-          {(['dark', 'light', 'system'] as const).map((opt) => (
-            <TouchableOpacity
-              key={opt}
-              style={[styles.unitOption, appearance === opt && styles.unitOptionActive]}
-              onPress={() => setAppearance(opt)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.unitOptionText, appearance === opt && { color: colors.primary }]}>
-                {opt === 'system' ? 'System' : opt === 'dark' ? 'Dark' : 'Light'}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {(['dark', 'light', 'system'] as const).map((opt) => {
+            const isActive = appearance === opt
+            const activeColor = isActive && opt === 'light' ? colors.greyLight : colors.primary
+            return (
+              <TouchableOpacity
+                key={opt}
+                style={[
+                  styles.unitOption,
+                  isActive && styles.unitOptionActive,
+                  isActive && opt === 'light' && { borderColor: colors.greyLight },
+                ]}
+                onPress={() => setAppearance(opt)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.unitOptionText, isActive && { color: activeColor }]}>
+                  {opt === 'system' ? 'System' : opt === 'dark' ? 'Dark' : 'Light'}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
         </View>
 
         <Text style={styles.sectionTitle}>Units</Text>

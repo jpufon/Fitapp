@@ -101,6 +101,7 @@ model User {
   dailyScores       DailyScore[]
   prs               PRRecord[]
   nutritionLogs     SimpleNutritionLog[]
+  nutritionEntries  NutritionEntry[]
   userBadges        UserBadge[]
   squadsOwned       Squad[]              @relation("SquadOwner")
   squadMemberships  SquadMember[]
@@ -115,16 +116,19 @@ model User {
 // but rarely changes. Streak math uses this row's timezone.
 
 model VitalityState {
-  id             String    @id @default(uuid()) @db.Uuid
-  userId         String    @unique @db.Uuid
-  streak         Int       @default(0)
-  longestStreak  Int       @default(0)
-  treeHealth     Float     @default(100) // 0-100
-  treeStage      TreeState @default(sprout)
-  lastActiveDate DateTime?
-  freezeTokens   Int       @default(0)
-  timezone       String    @default("UTC")
-  updatedAt      DateTime  @updatedAt
+  id                       String    @id @default(uuid()) @db.Uuid
+  userId                   String    @unique @db.Uuid
+  streak                   Int       @default(0)
+  longestStreak            Int       @default(0)
+  treeHealth               Float     @default(100) // 0-100
+  treeStage                TreeState @default(sprout)
+  lastActiveDate           DateTime?
+  freezeTokens             Int       @default(0)
+  // Highest streak threshold (7/30/60/100) we've already awarded a token for.
+  // Resets to 0 when the streak breaks so milestones are re-earnable.
+  lastFreezeAwardedStreak  Int       @default(0)
+  timezone                 String    @default("UTC")
+  updatedAt                DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -177,6 +181,10 @@ model WorkoutSet {
   id           String @id @default(uuid()) @db.Uuid
   workoutLogId String @db.Uuid
 
+  // Mobile-minted UUID per set tap. Unique per workout so retries from the
+  // offline sync queue collapse into a single insert.
+  clientId String @db.Uuid
+
   exerciseName String
   exerciseId   String?
 
@@ -197,6 +205,7 @@ model WorkoutSet {
 
   workout WorkoutLog @relation(fields: [workoutLogId], references: [id], onDelete: Cascade)
 
+  @@unique([workoutLogId, clientId])
   @@index([workoutLogId, setNumber])
   @@map("workout_sets")
 }
@@ -254,6 +263,28 @@ model SimpleNutritionLog {
 
   @@unique([userId, date])
   @@map("simple_nutrition_logs")
+}
+
+// ─── NutritionEntry ────────────────────────────────────────────────────────
+// Append-only ledger of every protein/water tap. SimpleNutritionLog is the
+// SUM materialization; this is the source of truth.
+// `clientId` is the mobile-minted UUID per tap. Unique per user so retries
+// from the offline sync queue collapse into a single insert.
+
+model NutritionEntry {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @db.Uuid
+  date          DateTime @db.Date
+  clientId      String
+  proteinDeltaG Int      @default(0)
+  waterDeltaMl  Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clientId])
+  @@index([userId, date])
+  @@map("nutrition_entries")
 }
 
 // ─── PRRecord ──────────────────────────────────────────────────────────────

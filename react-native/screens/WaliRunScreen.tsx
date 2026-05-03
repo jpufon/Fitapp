@@ -3,7 +3,7 @@
 // + Lap Split overlay + Run Summary + Run History
 // Foreground GPS only in V1 — screen stays on during run
 
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   Alert, View, Text, TouchableOpacity, ScrollView, StyleSheet, Modal,
 } from 'react-native'
@@ -13,6 +13,8 @@ import {
   ChevronRight, Award, Share2, ArrowLeft,
 } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
+import type { SurfaceTokens } from '../theme/surfaceTheme'
+import { useWalifitTheme } from '../theme/ThemeProvider'
 import { apiMutate } from '../lib/api'
 
 type RunView = 'tab' | 'prerun' | 'active' | 'summary'
@@ -60,6 +62,8 @@ const MOCK_RUN_HISTORY = [
 // ─── Screen router ────────────────────────────────────────────────────────────
 
 export default function WaliRunScreen() {
+  const { surfaces } = useWalifitTheme()
+  const styles = useMemo(() => createStyles(surfaces), [surfaces])
   const [view, setView]       = useState<RunView>('tab')
   const [selectedMode, setMode] = useState('5K')
   const [paused, setPaused]   = useState(false)
@@ -99,10 +103,10 @@ export default function WaliRunScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {view === 'tab'     && <RunTab      selectedMode={selectedMode} onSelectMode={setMode} onStart={() => setView('prerun')} />}
-      {view === 'prerun'  && <PreRunCheck onBack={() => setView('tab')} onStart={() => setView('active')} mode={selectedMode} />}
-      {view === 'active'  && <ActiveRun   onFinish={finishRun} mode={selectedMode} paused={paused} onPause={() => setPaused(!paused)} />}
-      {view === 'summary' && <RunSummary  onDone={() => setView('tab')} />}
+      {view === 'tab'     && <RunTab      selectedMode={selectedMode} onSelectMode={setMode} onStart={() => setView('prerun')} styles={styles} surfaces={surfaces} />}
+      {view === 'prerun'  && <PreRunCheck onBack={() => setView('tab')} onStart={() => setView('active')} mode={selectedMode} styles={styles} surfaces={surfaces} />}
+      {view === 'active'  && <ActiveRun   onFinish={finishRun} mode={selectedMode} paused={paused} onPause={() => setPaused(!paused)} styles={styles} surfaces={surfaces} />}
+      {view === 'summary' && <RunSummary  onDone={() => setView('tab')} styles={styles} surfaces={surfaces} />}
     </SafeAreaView>
   )
 }
@@ -137,8 +141,9 @@ function presetForMode(mode: string) {
 
 // ─── Run Tab ──────────────────────────────────────────────────────────────────
 
-function RunTab({ selectedMode, onSelectMode, onStart }: {
+function RunTab({ selectedMode, onSelectMode, onStart, styles, surfaces }: {
   selectedMode: string; onSelectMode: (m: string) => void; onStart: () => void
+  styles: WaliRunStyles; surfaces: SurfaceTokens
 }) {
   return (
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -182,7 +187,7 @@ function RunTab({ selectedMode, onSelectMode, onStart }: {
               </View>
             )}
             <Text style={[styles.historyTime, { color: colors.blue }]}>{run.time}</Text>
-            <ChevronRight color={colors.mutedForeground} size={16} strokeWidth={1.75} />
+            <ChevronRight color={surfaces.mutedForeground} size={16} strokeWidth={1.75} />
           </View>
         </TouchableOpacity>
       ))}
@@ -192,7 +197,10 @@ function RunTab({ selectedMode, onSelectMode, onStart }: {
 
 // ─── Pre-run Checklist ────────────────────────────────────────────────────────
 
-function PreRunCheck({ onBack, onStart, mode }: { onBack: () => void; onStart: () => void; mode: string }) {
+function PreRunCheck({ onBack, onStart, mode, styles, surfaces }: {
+  onBack: () => void; onStart: () => void; mode: string
+  styles: WaliRunStyles; surfaces: SurfaceTokens
+}) {
   const [gpsStrength] = useState<'strong' | 'weak' | 'none'>('strong')
   const [battery]     = useState(78)
 
@@ -200,7 +208,7 @@ function PreRunCheck({ onBack, onStart, mode }: { onBack: () => void; onStart: (
     <View style={styles.flex}>
       <View style={styles.prerunHeader}>
         <TouchableOpacity style={styles.iconBtn} onPress={onBack}>
-          <ArrowLeft color={colors.foreground} size={20} strokeWidth={1.75} />
+          <ArrowLeft color={surfaces.foreground} size={20} strokeWidth={1.75} />
         </TouchableOpacity>
         <Text style={styles.navTitle}>Ready to run?</Text>
         <View style={{ width: touchTarget.min }} />
@@ -216,12 +224,14 @@ function PreRunCheck({ onBack, onStart, mode }: { onBack: () => void; onStart: (
             label="GPS signal"
             status={gpsStrength === 'strong' ? 'Strong signal' : 'Finding signal...'}
             ok={gpsStrength === 'strong'}
+            styles={styles}
           />
           <CheckRow
             icon={<Battery color={battery > 20 ? colors.primary : colors.destructive} size={20} strokeWidth={1.75} />}
             label="Battery"
             status={`${battery}% — ${battery > 20 ? 'Good to go' : 'Low battery'}`}
             ok={battery > 20}
+            styles={styles}
           />
         </View>
 
@@ -246,8 +256,9 @@ function PreRunCheck({ onBack, onStart, mode }: { onBack: () => void; onStart: (
 
 // ─── Active Run ───────────────────────────────────────────────────────────────
 
-function ActiveRun({ onFinish, mode, paused, onPause }: {
+function ActiveRun({ onFinish, mode, paused, onPause, styles, surfaces }: {
   onFinish: () => void; mode: string; paused: boolean; onPause: () => void
+  styles: WaliRunStyles; surfaces: SurfaceTokens
 }) {
   const [showFinishConfirm, setShowFinishConfirm] = useState(false)
   const data = MOCK_ACTIVE
@@ -284,7 +295,7 @@ function ActiveRun({ onFinish, mode, paused, onPause }: {
           </View>
           <View style={styles.activeStatDivider} />
           <View style={styles.activeStatCell}>
-            <Text style={[styles.activeStatValue, { color: colors.mutedForeground }]}>{data.avgPace}</Text>
+            <Text style={[styles.activeStatValue, { color: surfaces.mutedForeground }]}>{data.avgPace}</Text>
             <Text style={styles.activeStatLabel}>avg pace</Text>
           </View>
         </View>
@@ -345,7 +356,10 @@ function ActiveRun({ onFinish, mode, paused, onPause }: {
 
 // ─── Run Summary ──────────────────────────────────────────────────────────────
 
-function RunSummary({ onDone }: { onDone: () => void }) {
+function RunSummary({ onDone, styles, surfaces }: {
+  onDone: () => void
+  styles: WaliRunStyles; surfaces: SurfaceTokens
+}) {
   const s = MOCK_SUMMARY
 
   return (
@@ -360,17 +374,17 @@ function RunSummary({ onDone }: { onDone: () => void }) {
 
       {/* Stats */}
       <View style={styles.summaryStatsGrid}>
-        <StatCard label="Distance"  value={`${s.distance} km`}  color={colors.blue}    />
-        <StatCard label="Time"      value={s.totalTime}          color={colors.foreground} />
-        <StatCard label="Avg pace"  value={`${s.avgPaceKm}/km`} color={colors.blue}    />
-        <StatCard label="Calories"  value={`${s.calories} cal`}  color={colors.energy}  />
+        <StatCard label="Distance"  value={`${s.distance} km`}  color={colors.blue}    styles={styles} />
+        <StatCard label="Time"      value={s.totalTime}          color={surfaces.foreground} styles={styles} />
+        <StatCard label="Avg pace"  value={`${s.avgPaceKm}/km`} color={colors.blue}    styles={styles} />
+        <StatCard label="Calories"  value={`${s.calories} cal`}  color={colors.energy}  styles={styles} />
       </View>
 
       {/* Splits */}
       <View style={styles.splitsCard}>
         <Text style={styles.sectionLabel}>Splits</Text>
         {s.splits.map((split, i) => (
-          <View key={i} style={[styles.splitRow, i < s.splits.length - 1 && { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}>
+          <View key={i} style={[styles.splitRow, i < s.splits.length - 1 && { borderBottomWidth: 0.5, borderBottomColor: surfaces.border }]}>
             <Text style={styles.splitKm}>KM {split.km}</Text>
             <View style={[styles.splitBar, { width: `${(parseFloat(split.time) / 6) * 100}%` as any }]} />
             <Text style={[styles.splitTime, { color: colors.blue }]}>{split.time}</Text>
@@ -399,7 +413,10 @@ function RunSummary({ onDone }: { onDone: () => void }) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function CheckRow({ icon, label, status, ok }: { icon: React.ReactNode; label: string; status: string; ok: boolean }) {
+function CheckRow({ icon, label, status, ok, styles }: {
+  icon: React.ReactNode; label: string; status: string; ok: boolean
+  styles: WaliRunStyles
+}) {
   return (
     <View style={styles.checkRow}>
       {icon}
@@ -411,7 +428,10 @@ function CheckRow({ icon, label, status, ok }: { icon: React.ReactNode; label: s
   )
 }
 
-function StatCard({ label, value, color }: { label: string; value: string; color: string }) {
+function StatCard({ label, value, color, styles }: {
+  label: string; value: string; color: string
+  styles: WaliRunStyles
+}) {
   return (
     <View style={styles.summaryStatCard}>
       <Text style={[styles.summaryStatValue, { color }]}>{value}</Text>
@@ -422,87 +442,91 @@ function StatCard({ label, value, color }: { label: string; value: string; color
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  container:          { flex: 1, backgroundColor: colors.background },
-  flex:               { flex: 1 },
-  content:            { paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: spacing.xxl, gap: spacing.md },
-  title:              { fontSize: typography.size['2xl'], fontWeight: typography.weight.bold, color: colors.foreground },
-  subtitle:           { fontSize: typography.size.sm, color: colors.mutedForeground, marginTop: -spacing.sm },
-  sectionLabel:       { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: colors.mutedForeground },
-  modesGrid:          { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  modeCard:           { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.card, borderRadius: radius.full, borderWidth: 0.5, borderColor: colors.border, minHeight: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
-  modeCardActive:     { borderColor: colors.blue, backgroundColor: colors.blue + '10', borderWidth: 1.5 },
-  modeLabel:          { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: colors.foreground },
-  startBtn:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, height: touchTarget.large, backgroundColor: colors.blue, borderRadius: radius.full },
-  startBtnText:       { fontSize: typography.size.lg, fontWeight: typography.weight.bold, color: colors.blueFg },
-  historyCard:        { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md },
-  historyLeft:        { flex: 1, gap: 3 },
-  historyDate:        { fontSize: typography.size.xs, color: colors.mutedForeground },
-  historyName:        { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: colors.foreground },
-  historyRight:       { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  historyTime:        { fontSize: typography.size.base, fontWeight: typography.weight.bold },
-  prBadge:            { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: spacing.xs, paddingVertical: 3, borderRadius: radius.full },
-  prBadgeText:        { fontSize: 10, fontWeight: typography.weight.bold },
-  prerunHeader:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm, paddingTop: spacing.xl, paddingBottom: spacing.sm, borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  navTitle:           { fontSize: typography.size.lg, fontWeight: typography.weight.bold, color: colors.foreground },
-  iconBtn:            { width: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
-  prerunContent:      { paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: spacing.xxl, gap: spacing.md },
-  prerunMode:         { fontSize: typography.size['2xl'], fontWeight: typography.weight.extrabold, color: colors.blue, textAlign: 'center' },
-  checksList:         { gap: spacing.sm },
-  checkRow:           { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md },
-  checkLabel:         { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: colors.foreground },
-  checkStatus:        { fontSize: typography.size.sm },
-  warningBox:         { backgroundColor: colors.energy + '10', borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.energy + '30', padding: spacing.md },
-  warningText:        { fontSize: typography.size.sm, color: colors.foreground, lineHeight: 20 },
-  activeContainer:    { flex: 1, backgroundColor: colors.runBackground },
-  activeHeader:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: spacing.md },
-  gpsIndicator:       { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.full },
-  gpsDot:             { width: 7, height: 7, borderRadius: 4 },
-  gpsText:            { fontSize: typography.size.xs, fontWeight: typography.weight.bold },
-  activeModeLabel:    { fontSize: typography.size.lg, fontWeight: typography.weight.bold, color: colors.foreground },
-  activeStats:        { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.screen },
-  distanceLarge:      { fontSize: 80, fontWeight: typography.weight.extrabold, lineHeight: 88 },
-  distanceUnit:       { fontSize: typography.size.xl, color: colors.mutedForeground, marginTop: -spacing.sm },
-  activeStatRow:      { flexDirection: 'row', alignItems: 'center', width: '100%', marginTop: spacing.xl },
-  activeStatCell:     { flex: 1, alignItems: 'center', gap: 3 },
-  activeStatDivider:  { width: 0.5, height: 40, backgroundColor: colors.border },
-  activeStatValue:    { fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: colors.foreground },
-  activeStatLabel:    { fontSize: typography.size.xs, color: colors.mutedForeground },
-  splitsRow:          { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, paddingHorizontal: spacing.screen, marginBottom: spacing.sm },
-  splitChip:          { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.full },
-  splitChipText:      { fontSize: typography.size.xs, fontWeight: typography.weight.semibold },
-  mapPlaceholder:     { height: 160, backgroundColor: colors.mapSurface, marginHorizontal: spacing.screen, borderRadius: radius.lg, overflow: 'hidden', position: 'relative', marginBottom: spacing.md },
-  mapRoute:           { position: 'absolute', top: 40, left: 30, right: 60, height: 3, backgroundColor: colors.blue, borderRadius: 2 },
-  mapDot:             { position: 'absolute', bottom: 40, right: 40, width: 12, height: 12, borderRadius: 6, backgroundColor: colors.blue, borderWidth: 2, borderColor: colors.white },
-  activeControls:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.xl, paddingBottom: spacing.xxl, paddingTop: spacing.md },
-  controlSide:        { width: 60, alignItems: 'center' },
-  controlSideText:    { fontSize: typography.size.sm, color: colors.mutedForeground },
-  pauseBtn:           { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.blue, alignItems: 'center', justifyContent: 'center' },
-  confirmOverlay:     { flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'flex-end' },
-  confirmSheet:       { width: '100%', backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.md, paddingBottom: spacing.xxl, alignItems: 'center' },
-  confirmTitle:       { fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: colors.foreground },
-  confirmDesc:        { fontSize: typography.size.base, color: colors.mutedForeground },
-  confirmFinishBtn:   { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, width: '100%', height: touchTarget.comfortable, backgroundColor: colors.destructive, borderRadius: radius.full, justifyContent: 'center' },
-  confirmFinishBtnText:{ fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.white },
-  confirmCancelBtn:   { height: touchTarget.comfortable, alignItems: 'center', justifyContent: 'center' },
-  confirmCancelText:  { fontSize: typography.size.base, color: colors.mutedForeground },
-  summaryContent:     { paddingHorizontal: spacing.screen, paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
-  prBanner:           { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderRadius: radius.lg, padding: spacing.md },
-  prBannerText:       { fontSize: typography.size.base, fontWeight: typography.weight.extrabold, color: colors.blueFg },
-  summaryStatsGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  summaryStatCard:    { width: '47%', backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, alignItems: 'center', gap: 4 },
-  summaryStatValue:   { fontSize: typography.size['2xl'], fontWeight: typography.weight.extrabold },
-  summaryStatLabel:   { fontSize: typography.size.xs, color: colors.mutedForeground },
-  splitsCard:         { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, gap: spacing.sm },
-  splitRow:           { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, gap: spacing.md },
-  splitKm:            { width: 36, fontSize: typography.size.sm, color: colors.mutedForeground },
-  splitBar:           { flex: 1, height: 4, backgroundColor: colors.blue + '40', borderRadius: 2 },
-  splitTime:          { width: 48, fontSize: typography.size.sm, fontWeight: typography.weight.bold, textAlign: 'right' },
-  summaryMapPlaceholder:{ height: 160, backgroundColor: colors.mapSurface, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
-  mapPlaceholderText: { fontSize: typography.size.sm, color: colors.mutedForeground },
-  summaryActions:     { flexDirection: 'row', gap: spacing.sm },
-  shareRunBtn:        { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, height: touchTarget.comfortable, backgroundColor: colors.blue, borderRadius: radius.full },
-  shareRunBtnText:    { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.blueFg },
-  doneBtn:            { flex: 1, height: touchTarget.comfortable, backgroundColor: colors.card, borderRadius: radius.full, borderWidth: 0.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  doneBtnText:        { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: colors.foreground },
-})
+type WaliRunStyles = ReturnType<typeof createStyles>
+
+function createStyles(s: SurfaceTokens) {
+  return StyleSheet.create({
+    container:          { flex: 1, backgroundColor: s.background },
+    flex:               { flex: 1 },
+    content:            { paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: spacing.xxl, gap: spacing.md },
+    title:              { fontSize: typography.size['2xl'], fontWeight: typography.weight.bold, color: s.foreground },
+    subtitle:           { fontSize: typography.size.sm, color: s.mutedForeground, marginTop: -spacing.sm },
+    sectionLabel:       { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: s.mutedForeground },
+    modesGrid:          { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+    modeCard:           { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: s.card, borderRadius: radius.full, borderWidth: 0.5, borderColor: s.border, minHeight: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
+    modeCardActive:     { borderColor: colors.blue, backgroundColor: colors.blue + '10', borderWidth: 1.5 },
+    modeLabel:          { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: s.foreground },
+    startBtn:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, height: touchTarget.large, backgroundColor: colors.blue, borderRadius: radius.full },
+    startBtnText:       { fontSize: typography.size.lg, fontWeight: typography.weight.bold, color: colors.blueFg },
+    historyCard:        { flexDirection: 'row', alignItems: 'center', backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, padding: spacing.md },
+    historyLeft:        { flex: 1, gap: 3 },
+    historyDate:        { fontSize: typography.size.xs, color: s.mutedForeground },
+    historyName:        { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: s.foreground },
+    historyRight:       { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    historyTime:        { fontSize: typography.size.base, fontWeight: typography.weight.bold },
+    prBadge:            { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: spacing.xs, paddingVertical: 3, borderRadius: radius.full },
+    prBadgeText:        { fontSize: 10, fontWeight: typography.weight.bold },
+    prerunHeader:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm, paddingTop: spacing.xl, paddingBottom: spacing.sm, borderBottomWidth: 0.5, borderBottomColor: s.border },
+    navTitle:           { fontSize: typography.size.lg, fontWeight: typography.weight.bold, color: s.foreground },
+    iconBtn:            { width: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
+    prerunContent:      { paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: spacing.xxl, gap: spacing.md },
+    prerunMode:         { fontSize: typography.size['2xl'], fontWeight: typography.weight.extrabold, color: colors.blue, textAlign: 'center' },
+    checksList:         { gap: spacing.sm },
+    checkRow:           { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, padding: spacing.md },
+    checkLabel:         { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: s.foreground },
+    checkStatus:        { fontSize: typography.size.sm },
+    warningBox:         { backgroundColor: colors.energy + '10', borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.energy + '30', padding: spacing.md },
+    warningText:        { fontSize: typography.size.sm, color: s.foreground, lineHeight: 20 },
+    activeContainer:    { flex: 1, backgroundColor: colors.runBackground },
+    activeHeader:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: spacing.md },
+    gpsIndicator:       { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.full },
+    gpsDot:             { width: 7, height: 7, borderRadius: 4 },
+    gpsText:            { fontSize: typography.size.xs, fontWeight: typography.weight.bold },
+    activeModeLabel:    { fontSize: typography.size.lg, fontWeight: typography.weight.bold, color: s.foreground },
+    activeStats:        { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.screen },
+    distanceLarge:      { fontSize: 80, fontWeight: typography.weight.extrabold, lineHeight: 88 },
+    distanceUnit:       { fontSize: typography.size.xl, color: s.mutedForeground, marginTop: -spacing.sm },
+    activeStatRow:      { flexDirection: 'row', alignItems: 'center', width: '100%', marginTop: spacing.xl },
+    activeStatCell:     { flex: 1, alignItems: 'center', gap: 3 },
+    activeStatDivider:  { width: 0.5, height: 40, backgroundColor: s.border },
+    activeStatValue:    { fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: s.foreground },
+    activeStatLabel:    { fontSize: typography.size.xs, color: s.mutedForeground },
+    splitsRow:          { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, paddingHorizontal: spacing.screen, marginBottom: spacing.sm },
+    splitChip:          { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.full },
+    splitChipText:      { fontSize: typography.size.xs, fontWeight: typography.weight.semibold },
+    mapPlaceholder:     { height: 160, backgroundColor: colors.mapSurface, marginHorizontal: spacing.screen, borderRadius: radius.lg, overflow: 'hidden', position: 'relative', marginBottom: spacing.md },
+    mapRoute:           { position: 'absolute', top: 40, left: 30, right: 60, height: 3, backgroundColor: colors.blue, borderRadius: 2 },
+    mapDot:             { position: 'absolute', bottom: 40, right: 40, width: 12, height: 12, borderRadius: 6, backgroundColor: colors.blue, borderWidth: 2, borderColor: colors.white },
+    activeControls:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.xl, paddingBottom: spacing.xxl, paddingTop: spacing.md },
+    controlSide:        { width: 60, alignItems: 'center' },
+    controlSideText:    { fontSize: typography.size.sm, color: s.mutedForeground },
+    pauseBtn:           { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.blue, alignItems: 'center', justifyContent: 'center' },
+    confirmOverlay:     { flex: 1, backgroundColor: s.overlay, alignItems: 'center', justifyContent: 'flex-end' },
+    confirmSheet:       { width: '100%', backgroundColor: s.card, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.md, paddingBottom: spacing.xxl, alignItems: 'center' },
+    confirmTitle:       { fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: s.foreground },
+    confirmDesc:        { fontSize: typography.size.base, color: s.mutedForeground },
+    confirmFinishBtn:   { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, width: '100%', height: touchTarget.comfortable, backgroundColor: colors.destructive, borderRadius: radius.full, justifyContent: 'center' },
+    confirmFinishBtnText:{ fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.white },
+    confirmCancelBtn:   { height: touchTarget.comfortable, alignItems: 'center', justifyContent: 'center' },
+    confirmCancelText:  { fontSize: typography.size.base, color: s.mutedForeground },
+    summaryContent:     { paddingHorizontal: spacing.screen, paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
+    prBanner:           { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderRadius: radius.lg, padding: spacing.md },
+    prBannerText:       { fontSize: typography.size.base, fontWeight: typography.weight.extrabold, color: colors.blueFg },
+    summaryStatsGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+    summaryStatCard:    { width: '47%', backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, padding: spacing.md, alignItems: 'center', gap: 4 },
+    summaryStatValue:   { fontSize: typography.size['2xl'], fontWeight: typography.weight.extrabold },
+    summaryStatLabel:   { fontSize: typography.size.xs, color: s.mutedForeground },
+    splitsCard:         { backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, padding: spacing.md, gap: spacing.sm },
+    splitRow:           { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, gap: spacing.md },
+    splitKm:            { width: 36, fontSize: typography.size.sm, color: s.mutedForeground },
+    splitBar:           { flex: 1, height: 4, backgroundColor: colors.blue + '40', borderRadius: 2 },
+    splitTime:          { width: 48, fontSize: typography.size.sm, fontWeight: typography.weight.bold, textAlign: 'right' },
+    summaryMapPlaceholder:{ height: 160, backgroundColor: colors.mapSurface, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
+    mapPlaceholderText: { fontSize: typography.size.sm, color: s.mutedForeground },
+    summaryActions:     { flexDirection: 'row', gap: spacing.sm },
+    shareRunBtn:        { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, height: touchTarget.comfortable, backgroundColor: colors.blue, borderRadius: radius.full },
+    shareRunBtnText:    { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.blueFg },
+    doneBtn:            { flex: 1, height: touchTarget.comfortable, backgroundColor: s.card, borderRadius: radius.full, borderWidth: 0.5, borderColor: s.border, alignItems: 'center', justifyContent: 'center' },
+    doneBtnText:        { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: s.foreground },
+  })
+}

@@ -16,11 +16,16 @@ type Pillar = {
   progress: number; // 0..1 from backend
 };
 
+export type TreeStage = 'wilted' | 'recovering' | 'sprout' | 'growing' | 'thriving' | 'full_vitality';
+
 export type HomeSnapshot = {
   vitality: {
     score: number;
-    treeState: 'wilted' | 'recovering' | 'sprout' | 'growing' | 'thriving' | 'full_vitality';
+    treeState: TreeStage;
+    treeHealth: number; // rolling 7-day mean × 100
     streak: number;
+    longestStreak?: number;
+    freezeTokens?: number;
   };
   pillars: {
     steps: Pillar;

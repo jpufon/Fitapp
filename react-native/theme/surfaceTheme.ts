@@ -59,17 +59,19 @@ function darkSurfacesFromPalette(): SurfaceTokens {
 }
 
 function lightSurfaces(): SurfaceTokens {
+  // "Concrete & Chalk" — warm gritty day mode for hybrid athletes.
+  // Avoids pure white; warm cream + ink + visible borders give weight.
   return {
-    background: '#f7f7f5',
-    backgroundAlt: '#ececea',
-    card: '#ffffff',
-    popover: '#f4f4f2',
-    muted: '#e8e8e6',
-    border: '#e5e7eb',
-    overlay: 'rgba(15, 23, 42, 0.45)',
-    foreground: '#0f172a',
-    mutedForeground: '#64748b',
-    secondary: '#f4f4f2',
+    background: '#ECE6D8',
+    backgroundAlt: '#DDD5C2',
+    card: '#F4EFE3',
+    popover: '#E6DFCC',
+    muted: '#D8D1BD',
+    border: '#B8AE94',
+    overlay: 'rgba(26, 20, 16, 0.45)',
+    foreground: '#1A1410',
+    mutedForeground: '#5C534A',
+    secondary: '#E6DFCC',
   };
 }
 

@@ -7,6 +7,9 @@ import { z } from 'zod';
 import { requireAuth } from '../lib/auth.js';
 import { prisma } from '../lib/prisma.js';
 import { dateAtMidnight } from '../lib/dailyScore.js';
+import { rateLimit } from '../lib/rateLimit.js';
+
+const writeDefault = rateLimit('write:default', 60, 60);
 
 // ── Schemas ────────────────────────────────────────────────────────────────
 
@@ -86,7 +89,7 @@ async function mySquadIds(userId: string): Promise<string[]> {
 
 export async function arenaRoutes(app: FastifyInstance) {
   // ── POST /squads — create a squad, owner becomes member ─────────────────
-  app.post('/squads', { preHandler: requireAuth }, async (request, reply) => {
+  app.post('/squads', { preHandler: [requireAuth, writeDefault] }, async (request, reply) => {
     const parsed = CreateSquadSchema.safeParse(request.body ?? {});
     if (!parsed.success) {
       return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.flatten() });
@@ -112,7 +115,7 @@ export async function arenaRoutes(app: FastifyInstance) {
   });
 
   // ── POST /squads/join — join via invite code ────────────────────────────
-  app.post('/squads/join', { preHandler: requireAuth }, async (request, reply) => {
+  app.post('/squads/join', { preHandler: [requireAuth, writeDefault] }, async (request, reply) => {
     const parsed = JoinSquadSchema.safeParse(request.body ?? {});
     if (!parsed.success) {
       return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.flatten() });
@@ -136,7 +139,7 @@ export async function arenaRoutes(app: FastifyInstance) {
   // ── DELETE /squads/:id/members/me — leave squad ─────────────────────────
   app.delete<{ Params: { id: string } }>(
     '/squads/:id/members/me',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, writeDefault] },
     async (request, reply) => {
       const userId = request.user!.id;
       await prisma.squadMember.deleteMany({
@@ -342,7 +345,7 @@ export async function arenaRoutes(app: FastifyInstance) {
   // ── POST /feed/:id/reactions — idempotent reaction add ──────────────────
   app.post<{ Params: { id: string } }>(
     '/feed/:id/reactions',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, writeDefault] },
     async (request, reply) => {
       const parsed = ReactionBodySchema.safeParse(request.body ?? {});
       if (!parsed.success) {
@@ -375,7 +378,7 @@ export async function arenaRoutes(app: FastifyInstance) {
   // ── DELETE /feed/:id/reactions — toggle off (default type=flame) ────────
   app.delete<{ Params: { id: string }; Querystring: { type?: string } }>(
     '/feed/:id/reactions',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, writeDefault] },
     async (request, reply) => {
       const userId = request.user!.id;
       const type = request.query.type ?? 'flame';

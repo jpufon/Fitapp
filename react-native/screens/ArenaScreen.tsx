@@ -15,14 +15,14 @@ import {
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, borderRadius, typography } from '../theme';
+import type { SurfaceTokens } from '../theme/surfaceTheme';
+import { useWalifitTheme } from '../theme/ThemeProvider';
 import {
   useArenaFeed,
   useMySquads,
   useReactToFeed,
   useSquadLeaderboard,
   type FeedItem,
-  type LeaderboardEntry,
-  type Squad,
 } from '../hooks/useArenaData';
 
 type ArenaTab = 'feed' | 'squads' | 'leaderboard';
@@ -30,6 +30,8 @@ type TabState = 'loading' | 'success' | 'empty' | 'error';
 
 export default function ArenaScreen() {
   const insets = useSafeAreaInsets();
+  const { surfaces } = useWalifitTheme();
+  const styles = useMemo(() => createStyles(surfaces), [surfaces]);
   const [activeTab, setActiveTab] = useState<ArenaTab>('feed');
 
   const feedQuery = useArenaFeed();
@@ -76,18 +78,6 @@ export default function ArenaScreen() {
     return 'success';
   }, [leaderboardQuery.data, leaderboardQuery.isError, leaderboardQuery.isLoading]);
 
-  const refreshActiveTab = async () => {
-    if (activeTab === 'feed') {
-      await feedQuery.refetch();
-      return;
-    }
-    if (activeTab === 'squads') {
-      await squadsQuery.refetch();
-      return;
-    }
-    await leaderboardQuery.refetch();
-  };
-
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
@@ -96,9 +86,9 @@ export default function ArenaScreen() {
       </View>
 
       <View style={styles.tabBar}>
-        <TabButton icon={Trophy} label="PR Feed" active={activeTab === 'feed'} onPress={() => setActiveTab('feed')} />
-        <TabButton icon={Users} label="Squads" active={activeTab === 'squads'} onPress={() => setActiveTab('squads')} />
-        <TabButton icon={TrendingUp} label="Leaderboard" active={activeTab === 'leaderboard'} onPress={() => setActiveTab('leaderboard')} />
+        <TabButton icon={Trophy} label="PR Feed" active={activeTab === 'feed'} onPress={() => setActiveTab('feed')} styles={styles} />
+        <TabButton icon={Users} label="Squads" active={activeTab === 'squads'} onPress={() => setActiveTab('squads')} styles={styles} />
+        <TabButton icon={TrendingUp} label="Leaderboard" active={activeTab === 'leaderboard'} onPress={() => setActiveTab('leaderboard')} styles={styles} />
       </View>
 
       {activeTab === 'feed' ? (
@@ -110,6 +100,8 @@ export default function ArenaScreen() {
           onRetry={() => {
             void feedQuery.refetch();
           }}
+          styles={styles}
+          surfaces={surfaces}
         />
       ) : null}
 
@@ -120,6 +112,7 @@ export default function ArenaScreen() {
           onRetry={() => {
             void squadsQuery.refetch();
           }}
+          styles={styles}
         />
       ) : null}
 
@@ -130,6 +123,7 @@ export default function ArenaScreen() {
           onRetry={() => {
             void leaderboardQuery.refetch();
           }}
+          styles={styles}
         />
       ) : null}
     </View>
@@ -142,12 +136,16 @@ function PRFeed({
   isReacting,
   onReact,
   onRetry,
+  styles,
+  surfaces,
 }: {
   state: TabState;
   query: ReturnType<typeof useArenaFeed>;
   isReacting: boolean;
   onReact: (feedId: string) => void;
   onRetry: () => void;
+  styles: ArenaStyles;
+  surfaces: SurfaceTokens;
 }) {
   const renderItem = ({ item }: { item: FeedItem }) => {
     const accentColor = item.isRun
@@ -155,7 +153,7 @@ function PRFeed({
       : item.eventType === 'Streak Milestone'
         ? colors.energy
         : item.eventType === 'Workout Complete'
-          ? colors.mutedForeground
+          ? surfaces.mutedForeground
           : colors.primary;
 
     return (
@@ -192,11 +190,11 @@ function PRFeed({
                 onPress={() => onReact(item.id)}
                 disabled={query.isOfflineReadOnly || isReacting}
               >
-                <Flame color={colors.mutedForeground} size={15} strokeWidth={1.75} />
+                <Flame color={surfaces.mutedForeground} size={15} strokeWidth={1.75} />
                 <Text style={styles.reactionCount}>{item.reactions}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.reactionBtn} disabled>
-                <MessageCircle color={colors.mutedForeground} size={15} strokeWidth={1.75} />
+                <MessageCircle color={surfaces.mutedForeground} size={15} strokeWidth={1.75} />
                 <Text style={styles.reactionCount}>
                   {query.isOfflineReadOnly ? 'Read-only offline' : 'React'}
                 </Text>
@@ -234,7 +232,7 @@ function PRFeed({
       ListHeaderComponent={
         <View style={styles.tabContent}>
           {query.isOfflineFallback || query.isOfflineReadOnly ? (
-            <InlineBanner message="Showing cached feed data while offline." />
+            <InlineBanner message="Showing cached feed data while offline." styles={styles} />
           ) : null}
           <View style={styles.feedHeader}>
             <Text style={styles.sectionTitle}>Recent Activity</Text>
@@ -253,12 +251,13 @@ function PRFeed({
       }
       ListEmptyComponent={
         state === 'loading' ? (
-          <ArenaSkeleton type="feed" />
+          <ArenaSkeleton type="feed" styles={styles} />
         ) : state === 'empty' ? (
           <FeedbackCard
             icon={Sparkles}
             title="No PR feed yet"
             message="Once your squad starts training, auto-generated achievements will show up here."
+            styles={styles}
           />
         ) : state === 'error' ? (
           <FeedbackCard
@@ -268,6 +267,7 @@ function PRFeed({
             message={query.error instanceof Error ? query.error.message : 'Please try again.'}
             actionLabel="Retry"
             onPress={onRetry}
+            styles={styles}
           />
         ) : null
       }
@@ -279,10 +279,12 @@ function SquadsTab({
   state,
   query,
   onRetry,
+  styles,
 }: {
   state: TabState;
   query: ReturnType<typeof useMySquads>;
   onRetry: () => void;
+  styles: ArenaStyles;
 }) {
   const squads = query.data ?? [];
 
@@ -303,10 +305,10 @@ function SquadsTab({
     >
       <View style={styles.tabContent}>
         <View style={styles.squadNavGrid}>
-          <SquadNavCard icon={Users}    label="Friends"    color={colors.primary} onPress={() => {}} />
-          <SquadNavCard icon={Trophy}   label="Challenges" color={colors.energy}  onPress={() => {}} />
-          <SquadNavCard icon={Award}    label="Badges"     color={colors.purple}  onPress={() => {}} />
-          <SquadNavCard icon={Dumbbell} label="Sessions"   color={colors.blue}    onPress={() => {}} />
+          <SquadNavCard icon={Users}    label="Friends"    color={colors.primary} onPress={() => {}} styles={styles} />
+          <SquadNavCard icon={Trophy}   label="Challenges" color={colors.energy}  onPress={() => {}} styles={styles} />
+          <SquadNavCard icon={Award}    label="Badges"     color={colors.purple}  onPress={() => {}} styles={styles} />
+          <SquadNavCard icon={Dumbbell} label="Sessions"   color={colors.blue}    onPress={() => {}} styles={styles} />
         </View>
 
         <View style={styles.feedHeader}>
@@ -317,7 +319,7 @@ function SquadsTab({
           </TouchableOpacity>
         </View>
 
-        {state === 'loading' ? <ArenaSkeleton type="squads" /> : null}
+        {state === 'loading' ? <ArenaSkeleton type="squads" styles={styles} /> : null}
 
         {state === 'error' ? (
           <FeedbackCard
@@ -327,6 +329,7 @@ function SquadsTab({
             message={query.error instanceof Error ? query.error.message : 'Please try again.'}
             actionLabel="Retry"
             onPress={onRetry}
+            styles={styles}
           />
         ) : null}
 
@@ -337,6 +340,7 @@ function SquadsTab({
             message="You’re new here. Invite friends and create your first squad to unlock the social layer."
             actionLabel="Invite Squad"
             onPress={() => {}}
+            styles={styles}
           />
         ) : null}
 
@@ -396,10 +400,12 @@ function LeaderboardTab({
   state,
   query,
   onRetry,
+  styles,
 }: {
   state: TabState;
   query: ReturnType<typeof useSquadLeaderboard>;
   onRetry: () => void;
+  styles: ArenaStyles;
 }) {
   const leaderboard = query.data ?? [];
   const medalColors: Record<number, string> = { 1: colors.energy, 2: colors.silverMedal, 3: colors.bronzeMedal };
@@ -423,7 +429,7 @@ function LeaderboardTab({
         <Text style={styles.sectionTitle}>Squad Leaderboard</Text>
         <Text style={styles.leaderboardSub}>Based on this week's vitality scores</Text>
 
-        {state === 'loading' ? <ArenaSkeleton type="leaderboard" /> : null}
+        {state === 'loading' ? <ArenaSkeleton type="leaderboard" styles={styles} /> : null}
 
         {state === 'error' ? (
           <FeedbackCard
@@ -433,6 +439,7 @@ function LeaderboardTab({
             message={query.error instanceof Error ? query.error.message : 'Please try again.'}
             actionLabel="Retry"
             onPress={onRetry}
+            styles={styles}
           />
         ) : null}
 
@@ -441,6 +448,7 @@ function LeaderboardTab({
             icon={Trophy}
             title="No leaderboard yet"
             message="Once your squad starts logging workouts, rankings will appear here."
+            styles={styles}
           />
         ) : null}
 
@@ -482,8 +490,8 @@ function LeaderboardTab({
   );
 }
 
-function SquadNavCard({ icon: Icon, label, color, onPress }: {
-  icon: React.ElementType; label: string; color: string; onPress: () => void;
+function SquadNavCard({ icon: Icon, label, color, onPress, styles }: {
+  icon: React.ElementType; label: string; color: string; onPress: () => void; styles: ArenaStyles;
 }) {
   return (
     <TouchableOpacity style={styles.squadNavCard} onPress={onPress} activeOpacity={0.7}>
@@ -500,23 +508,26 @@ function TabButton({
   label,
   active,
   onPress,
+  styles,
 }: {
   icon: React.ElementType;
   label: string;
   active: boolean;
   onPress: () => void;
+  styles: ArenaStyles;
 }) {
+  const { surfaces } = useWalifitTheme();
   return (
     <TouchableOpacity style={[styles.tab, active && styles.tabActive]} onPress={onPress} activeOpacity={0.7}>
-      <Icon color={active ? colors.primary : colors.mutedForeground} size={14} strokeWidth={1.75} />
-      <Text style={[styles.tabLabel, { color: active ? colors.primary : colors.mutedForeground }]}>
+      <Icon color={active ? colors.primary : surfaces.mutedForeground} size={14} strokeWidth={1.75} />
+      <Text style={[styles.tabLabel, { color: active ? colors.primary : surfaces.mutedForeground }]}>
         {label}
       </Text>
     </TouchableOpacity>
   );
 }
 
-function InlineBanner({ message }: { message: string }) {
+function InlineBanner({ message, styles }: { message: string; styles: ArenaStyles }) {
   return (
     <View style={styles.inlineBanner}>
       <CloudOff size={16} color={colors.energy} strokeWidth={1.75} />
@@ -532,6 +543,7 @@ function FeedbackCard({
   message,
   actionLabel,
   onPress,
+  styles,
 }: {
   icon: React.ElementType;
   iconColor?: string;
@@ -539,6 +551,7 @@ function FeedbackCard({
   message: string;
   actionLabel?: string;
   onPress?: () => void;
+  styles: ArenaStyles;
 }) {
   return (
     <View style={styles.feedbackCard}>
@@ -554,7 +567,7 @@ function FeedbackCard({
   );
 }
 
-function ArenaSkeleton({ type }: { type: 'feed' | 'squads' | 'leaderboard' }) {
+function ArenaSkeleton({ type, styles }: { type: 'feed' | 'squads' | 'leaderboard'; styles: ArenaStyles }) {
   const count = type === 'feed' ? 3 : type === 'squads' ? 2 : 4;
 
   return (
@@ -566,16 +579,19 @@ function ArenaSkeleton({ type }: { type: 'feed' | 'squads' | 'leaderboard' }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+type ArenaStyles = ReturnType<typeof createStyles>;
+
+function createStyles(s: SurfaceTokens) {
+  return StyleSheet.create({
+  container: { flex: 1, backgroundColor: s.background },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.sm },
-  title: { fontSize: typography.fontSize['2xl'], fontWeight: typography.fontWeight.bold, color: colors.foreground },
-  subtitle: { fontSize: typography.fontSize.sm, color: colors.mutedForeground, marginTop: 2 },
+  title: { fontSize: typography.fontSize['2xl'], fontWeight: typography.fontWeight.bold, color: s.foreground },
+  subtitle: { fontSize: typography.fontSize.sm, color: s.mutedForeground, marginTop: 2 },
   tabBar: {
     flexDirection: 'row',
     marginHorizontal: spacing.lg,
     padding: 4,
-    backgroundColor: colors.secondary,
+    backgroundColor: s.secondary,
     borderRadius: borderRadius.xl,
     marginBottom: spacing.md,
   },
@@ -589,20 +605,20 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     minHeight: 44,
   },
-  tabActive: { backgroundColor: colors.card },
+  tabActive: { backgroundColor: s.card },
   tabLabel: { fontSize: 12, fontWeight: typography.fontWeight.semibold },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: spacing.xxl },
   listContent: { paddingBottom: spacing.xxl },
   tabContent: { paddingHorizontal: spacing.lg, gap: spacing.sm },
   feedHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sectionTitle: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: colors.foreground },
+  sectionTitle: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: s.foreground },
   filterText: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold },
   feedCard: {
-    backgroundColor: colors.card,
+    backgroundColor: s.card,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: s.border,
     padding: spacing.md,
     marginHorizontal: spacing.lg,
     marginBottom: spacing.sm,
@@ -613,18 +629,18 @@ const styles = StyleSheet.create({
   feedContent: { flex: 1, gap: spacing.sm },
   feedMeta: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   feedNameRow: { gap: 4 },
-  feedUser: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold, color: colors.foreground },
+  feedUser: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold, color: s.foreground },
   eventBadge: { alignSelf: 'flex-start', paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: 999 },
   eventBadgeText: { fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.semibold },
-  feedTime: { fontSize: typography.fontSize.xs, color: colors.mutedForeground },
-  statBox: { backgroundColor: colors.secondary, borderRadius: borderRadius.md, padding: spacing.sm, gap: 3 },
-  statBoxLabel: { fontSize: typography.fontSize.xs, color: colors.mutedForeground },
+  feedTime: { fontSize: typography.fontSize.xs, color: s.mutedForeground },
+  statBox: { backgroundColor: s.secondary, borderRadius: borderRadius.md, padding: spacing.sm, gap: 3 },
+  statBoxLabel: { fontSize: typography.fontSize.xs, color: s.mutedForeground },
   statBoxValues: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   statBoxValue: { fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold },
   statBoxDelta: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold },
   reactionsRow: { flexDirection: 'row', gap: spacing.lg },
   reactionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  reactionCount: { fontSize: typography.fontSize.sm, color: colors.mutedForeground },
+  reactionCount: { fontSize: typography.fontSize.sm, color: s.mutedForeground },
   joinBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -636,50 +652,50 @@ const styles = StyleSheet.create({
   },
   joinBtnText: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colors.black },
   squadCard: {
-    backgroundColor: colors.card,
+    backgroundColor: s.card,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: s.border,
     padding: spacing.md,
     gap: spacing.sm,
   },
   squadTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   squadInfo: { gap: 3 },
-  squadName: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: colors.foreground },
-  squadType: { fontSize: typography.fontSize.sm, color: colors.mutedForeground },
+  squadName: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: s.foreground },
+  squadType: { fontSize: typography.fontSize.sm, color: s.mutedForeground },
   rankBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: 999 },
   rankText: { fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold },
   squadStats: { flexDirection: 'row' },
   squadStat: { flex: 1, gap: 3 },
-  squadStatLabel: { fontSize: typography.fontSize.xs, color: colors.mutedForeground },
-  squadStatValue: { fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold, color: colors.foreground },
-  healthBarTrack: { height: 6, backgroundColor: colors.muted, borderRadius: 999, overflow: 'hidden' },
+  squadStatLabel: { fontSize: typography.fontSize.xs, color: s.mutedForeground },
+  squadStatValue: { fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold, color: s.foreground },
+  healthBarTrack: { height: 6, backgroundColor: s.muted, borderRadius: 999, overflow: 'hidden' },
   healthBarFill: { height: '100%', borderRadius: 999 },
   createSquadCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderRadius: borderRadius.lg, borderWidth: 1, padding: spacing.md },
   createSquadIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   createSquadText: { gap: 3 },
-  createSquadTitle: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold, color: colors.foreground },
-  createSquadSub: { fontSize: typography.fontSize.sm, color: colors.mutedForeground },
-  leaderboardSub: { fontSize: typography.fontSize.sm, color: colors.mutedForeground, marginTop: -4, marginBottom: spacing.sm },
+  createSquadTitle: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold, color: s.foreground },
+  createSquadSub: { fontSize: typography.fontSize.sm, color: s.mutedForeground },
+  leaderboardSub: { fontSize: typography.fontSize.sm, color: s.mutedForeground, marginTop: -4, marginBottom: spacing.sm },
   leaderCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.card,
+    backgroundColor: s.card,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: s.border,
     padding: spacing.md,
     marginBottom: spacing.sm,
   },
   rankCell: { width: 28, alignItems: 'center' },
-  rankNumber: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: colors.mutedForeground },
+  rankNumber: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: s.mutedForeground },
   leaderInfo: { flex: 1, gap: 2 },
-  leaderName: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold, color: colors.foreground },
-  leaderStreak: { fontSize: typography.fontSize.xs, color: colors.mutedForeground },
+  leaderName: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold, color: s.foreground },
+  leaderStreak: { fontSize: typography.fontSize.xs, color: s.mutedForeground },
   scoreCell: { alignItems: 'flex-end', gap: 1 },
   scoreValue: { fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.bold },
-  scoreLabel: { fontSize: typography.fontSize.xs, color: colors.mutedForeground },
+  scoreLabel: { fontSize: typography.fontSize.xs, color: s.mutedForeground },
   inlineBanner: {
     minHeight: 44,
     flexDirection: 'row',
@@ -695,10 +711,10 @@ const styles = StyleSheet.create({
   inlineBannerText: { flex: 1, fontSize: typography.fontSize.sm, color: colors.energy, fontWeight: typography.fontWeight.medium },
   feedbackCard: {
     alignItems: 'center',
-    backgroundColor: colors.card,
+    backgroundColor: s.card,
     borderRadius: borderRadius.xxl,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: s.border,
     padding: spacing.xl,
     gap: spacing.sm,
     marginHorizontal: spacing.lg,
@@ -706,13 +722,13 @@ const styles = StyleSheet.create({
   },
   feedbackTitle: {
     fontSize: typography.fontSize.xl,
-    color: colors.foreground,
+    color: s.foreground,
     fontWeight: typography.fontWeight.bold,
     textAlign: 'center',
   },
   feedbackMessage: {
     fontSize: typography.fontSize.base,
-    color: colors.mutedForeground,
+    color: s.mutedForeground,
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -729,16 +745,17 @@ const styles = StyleSheet.create({
   feedbackButtonText: { fontSize: typography.fontSize.base, color: colors.black, fontWeight: typography.fontWeight.bold },
   skeletonCard: {
     height: 132,
-    backgroundColor: colors.card,
+    backgroundColor: s.card,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: s.border,
   },
   footerLoader: {
     paddingVertical: spacing.lg,
   },
   squadNavGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  squadNavCard: { flexBasis: '48%', flexGrow: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.card, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.md, minHeight: 48 },
+  squadNavCard: { flexBasis: '48%', flexGrow: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: s.card, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: s.border, padding: spacing.md, minHeight: 48 },
   squadNavIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  squadNavLabel: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold, color: colors.foreground },
-});
+  squadNavLabel: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.bold, color: s.foreground },
+  });
+}
