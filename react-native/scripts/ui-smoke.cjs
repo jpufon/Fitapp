@@ -125,9 +125,25 @@ const mockExercises = [
     name: 'Bench Press',
     category: 'strength',
     primaryMuscles: ['Chest'],
+    secondaryMuscles: [],
     equipment: ['Barbell'],
   },
 ];
+
+function smokeFilterExercises(exercises, opts) {
+  const q = opts.query?.trim().toLowerCase() ?? '';
+  const muscle = opts.muscle && opts.muscle !== 'All' ? opts.muscle : null;
+  const equipment = opts.equipment && opts.equipment !== 'All' ? opts.equipment : null;
+  if (!q && !muscle && !equipment) return exercises;
+  return exercises.filter((ex) => {
+    if (q && !ex.name.toLowerCase().includes(q)) return false;
+    if (muscle && !ex.primaryMuscles.includes(muscle) && !ex.secondaryMuscles.includes(muscle)) {
+      return false;
+    }
+    if (equipment && !ex.equipment.includes(equipment)) return false;
+    return true;
+  });
+}
 
 const originalLoad = Module._load;
 Module._load = function patchedLoad(request, parent, isMain) {
@@ -237,8 +253,17 @@ Module._load = function patchedLoad(request, parent, isMain) {
   if (request.endsWith('/hooks/useExerciseLibrary') || request === '../hooks/useExerciseLibrary') {
     return {
       useExerciseLibrary: () => ({ data: mockExercises, isLoading: false }),
-      filterExercises: (items, { query }) =>
-        items.filter((item) => item.name.toLowerCase().includes((query || '').toLowerCase())),
+      filterExercises: smokeFilterExercises,
+      useFilteredExercises: (exercises, opts, options) => {
+        const filtered = smokeFilterExercises(exercises ?? [], {
+          query: opts.query,
+          muscle: opts.muscle,
+          equipment: opts.equipment,
+        });
+        const max = options?.maxResults;
+        return max != null ? filtered.slice(0, max) : filtered;
+      },
+      useMuscleGroups: (_exercises) => ['All', 'Chest'],
     };
   }
 
