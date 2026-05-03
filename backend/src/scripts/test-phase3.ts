@@ -128,8 +128,9 @@ async function main() {
   results.push(
     await step('POST /nutrition/simple/:date sets pillars', async () => {
       const res = await jsonReq('POST', `/nutrition/simple/${today}`, token, {
-        proteinG: 120,
-        waterMl: 2000,
+        clientId: `test-phase3-${Date.now()}`,
+        proteinDeltaG: 120,
+        waterDeltaMl: 2000,
         stepsCount: 9000,
       });
       if (res.status !== 200) throw new Error(`status ${res.status}: ${JSON.stringify(res.body)}`);

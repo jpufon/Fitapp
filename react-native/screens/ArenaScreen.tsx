@@ -21,8 +21,6 @@ import {
   useReactToFeed,
   useSquadLeaderboard,
   type FeedItem,
-  type LeaderboardEntry,
-  type Squad,
 } from '../hooks/useArenaData';
 
 type ArenaTab = 'feed' | 'squads' | 'leaderboard';
@@ -75,18 +73,6 @@ export default function ArenaScreen() {
     }
     return 'success';
   }, [leaderboardQuery.data, leaderboardQuery.isError, leaderboardQuery.isLoading]);
-
-  const refreshActiveTab = async () => {
-    if (activeTab === 'feed') {
-      await feedQuery.refetch();
-      return;
-    }
-    if (activeTab === 'squads') {
-      await squadsQuery.refetch();
-      return;
-    }
-    await leaderboardQuery.refetch();
-  };
 
   return (
     <View style={styles.container}>

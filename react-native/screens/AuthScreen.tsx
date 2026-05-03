@@ -3,13 +3,13 @@
 // Auth via Supabase: Email + Apple Sign In + Google Sign In
 // Apple Sign In is MANDATORY when Google is offered (App Store rule)
 
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity,
   ScrollView, KeyboardAvoidingView, Platform, StyleSheet, Linking,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Eye, EyeOff, Apple, Mail, ArrowLeft, ChevronRight } from 'lucide-react-native'
+import { Eye, EyeOff, Apple, Mail, ArrowLeft } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
 import { hasSupabaseConfig, supabase } from '../utils/supabase'
 

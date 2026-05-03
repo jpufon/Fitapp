@@ -4,15 +4,15 @@
 import type { FastifyInstance } from 'fastify';
 import { requireAuth } from '../lib/auth.js';
 import { prisma } from '../lib/prisma.js';
-import { dateAtMidnight } from '../lib/dailyScore.js';
+import { dateAtMidnightForUser } from '../lib/dailyScore.js';
 
 export async function homeRoutes(app: FastifyInstance) {
   app.get('/home', { preHandler: requireAuth }, async (request, reply) => {
     const userId = request.user!.id;
-    const today = dateAtMidnight();
+    const today = await dateAtMidnightForUser(userId);
     const dayStart = new Date(today.getTime());
 
-    const [user, vitalityState, dailyScore, recent, workout] = await Promise.all([
+    const [user, vitalityState, dailyScore, workout] = await Promise.all([
       prisma.user.findUnique({
         where: { id: userId },
         select: {
@@ -26,11 +26,6 @@ export async function homeRoutes(app: FastifyInstance) {
       prisma.dailyScore.findUnique({
         where: { userId_date: { userId, date: today } },
       }),
-      prisma.dailyScore.findMany({
-        where: { userId, date: { lte: today } },
-        orderBy: { date: 'desc' },
-        take: 365,
-      }),
       prisma.workoutLog.findFirst({
         where: { userId, startedAt: { gte: dayStart } },
         orderBy: { startedAt: 'desc' },
@@ -39,22 +34,15 @@ export async function homeRoutes(app: FastifyInstance) {
 
     if (!user) return reply.code(404).send({ error: 'user_not_found' });
 
-    let streak = 0;
-    let cursor = today.getTime();
-    const oneDayMs = 24 * 60 * 60 * 1000;
-    for (const row of recent) {
-      if (row.date.getTime() !== cursor) break;
-      if (row.totalScore < 0.5) break;
-      streak += 1;
-      cursor -= oneDayMs;
-    }
-
     return reply.send({
       vitality: {
         score: dailyScore?.totalScore ?? 0,
-        treeState: dailyScore?.treeState ?? vitalityState?.treeStage ?? 'sprout',
-        streak: vitalityState?.streak ?? streak,
-        longestStreak: vitalityState?.longestStreak ?? streak,
+        // Rolling 7-day stage drives the home tree (WF-020). The per-day
+        // dailyScore.treeState is the Calendar dot snapshot — different read.
+        treeState: vitalityState?.treeStage ?? dailyScore?.treeState ?? 'sprout',
+        treeHealth: vitalityState?.treeHealth ?? 0,
+        streak: vitalityState?.streak ?? 0,
+        longestStreak: vitalityState?.longestStreak ?? 0,
         freezeTokens: vitalityState?.freezeTokens ?? 0,
       },
       pillars: {

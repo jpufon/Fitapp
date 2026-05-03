@@ -12,6 +12,7 @@
 // must never penalise the tree.
 
 import { prisma } from './prisma.js';
+import { recomputeTreeHealth } from './treeHealth.js';
 
 export const STREAK_THRESHOLD = 0.5;
 const GRACE_HOURS = 2;
@@ -108,8 +109,8 @@ export type StreakResult = {
 //   • is a rest day with no logged activity       → streak continues (WF-022)
 //   • is a training day that fell short / missing → streak breaks
 //
-// We do NOT auto-consume freeze tokens here — that's a separate user action
-// landing in Sprint 3 (WF-021). For now we surface freezeTokens read-only.
+// Freeze tokens are surfaced read-only here; awarding + consumption happens
+// in persistStreak (WF-021).
 export async function recomputeStreak(userId: string): Promise<StreakResult> {
   const [user, vitalityState] = await Promise.all([
     prisma.user.findUnique({
@@ -181,17 +182,51 @@ export async function recomputeStreak(userId: string): Promise<StreakResult> {
   };
 }
 
+// Freeze-token milestones — Duolingo-style inventory. Tokens are re-earnable
+// after a streak break; the wallet is capped so a year-long streak can't
+// hoard freezes and trivialise the streak.
+export const FREEZE_MILESTONES = [7, 30, 60, 100] as const;
+export const FREEZE_TOKEN_CAP = 3;
+
 // Persist the result to VitalityState. Call this after any score-changing
-// mutation (workout finish, nutrition log, vitality recompute).
+// mutation (workout finish, nutrition log, vitality recompute). Awards new
+// freeze tokens when a milestone is crossed for the first time since the
+// last break.
 export async function persistStreak(userId: string): Promise<StreakResult> {
   const result = await recomputeStreak(userId);
+
+  const state = await prisma.vitalityState.findUnique({
+    where: { userId },
+    select: { freezeTokens: true, lastFreezeAwardedStreak: true },
+  });
+  const previousAwarded = state?.lastFreezeAwardedStreak ?? 0;
+  const previousTokens = state?.freezeTokens ?? 0;
+
+  // Reset the awarded high-water mark when the streak has dropped below it
+  // (a break occurred). Milestones become re-earnable.
+  let nextAwarded = result.streak < previousAwarded ? 0 : previousAwarded;
+  let tokensToAdd = 0;
+  for (const milestone of FREEZE_MILESTONES) {
+    if (result.streak >= milestone && milestone > nextAwarded) {
+      nextAwarded = milestone;
+      tokensToAdd += 1;
+    }
+  }
+  const nextTokens = Math.min(FREEZE_TOKEN_CAP, previousTokens + tokensToAdd);
+
   await prisma.vitalityState.update({
     where: { userId },
     data: {
       streak: result.streak,
       longestStreak: result.longestStreak,
       lastActiveDate: result.lastActiveDate,
+      freezeTokens: nextTokens,
+      lastFreezeAwardedStreak: nextAwarded,
     },
   });
-  return result;
+
+  // Roll the 7-day tree health window forward off the freshly-persisted streak.
+  await recomputeTreeHealth(userId);
+
+  return { ...result, freezeTokens: nextTokens };
 }

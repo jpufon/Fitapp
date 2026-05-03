@@ -3,10 +3,10 @@
 // Notifications, Account, Delete Confirm, Data Export, Legal, About
 // Apple App Store: account deletion is a hard requirement
 
-import React, { useState } from 'react'
+import { useState } from 'react'
 import {
   Alert, Linking, View, Text, TextInput, TouchableOpacity, ScrollView,
-  Switch, StyleSheet, Modal,
+  Switch, StyleSheet,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import {

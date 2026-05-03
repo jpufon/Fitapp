@@ -3,8 +3,8 @@
 // Haptic at 10s remaining, audio + haptic at 0s
 // +/- 15s adjustments, skip, pause
 
-import React, { useState, useEffect, useRef } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Animated } from 'react-native'
+import { useState, useEffect, useRef } from 'react'
+import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native'
 import { X, Plus, Minus, SkipForward, ChevronUp } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
 
@@ -93,9 +93,7 @@ interface RestTimerFullScreenProps {
 export function RestTimerFullScreen({ visible, onCollapse, onComplete }: RestTimerFullScreenProps) {
   const [seconds, setSeconds] = useState(DEFAULT_REST_S)
   const [running, setRunning] = useState(true)
-  const [total]               = useState(DEFAULT_REST_S)
   const timerRef              = useRef<ReturnType<typeof setInterval> | null>(null)
-  const ringAnim              = useRef(new Animated.Value(1)).current
 
   useEffect(() => {
     if (!running) { if (timerRef.current) clearInterval(timerRef.current); return }
@@ -112,7 +110,6 @@ export function RestTimerFullScreen({ visible, onCollapse, onComplete }: RestTim
   const mins    = Math.floor(seconds / 60)
   const secs    = seconds % 60
   const display = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
-  const pct     = seconds / total
 
   // Preset options
   const PRESETS = [60, 90, 120, 180]

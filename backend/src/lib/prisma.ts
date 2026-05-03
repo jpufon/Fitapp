@@ -6,10 +6,13 @@ declare global {
   var __prisma: PrismaClient | undefined;
 }
 
+// PRISMA_DEBUG=1 turns on query-level logging when you want it; default dev is
+// quiet so test scripts and the dev server don't drown stdout.
+const queryLogEnabled = process.env.PRISMA_DEBUG === '1';
 export const prisma =
   global.__prisma ??
   new PrismaClient({
-    log: config.isDev ? ['query', 'warn', 'error'] : ['warn', 'error'],
+    log: queryLogEnabled ? ['query', 'warn', 'error'] : ['warn', 'error'],
   });
 
 if (config.isDev) {

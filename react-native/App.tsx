@@ -16,7 +16,7 @@ import {
   Trophy,
 } from 'lucide-react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { colors, spacing, typography } from './theme';
 import type { WorkoutSummary } from './lib/workouts';
 import { apiQuery, hasApiConfig } from './lib/api';
@@ -233,7 +233,7 @@ export default function App() {
   useSyncBootstrap();
 
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
       <StatusBar style="light" />
       <QueryClientProvider client={queryClient}>
         <NavigationContainer>

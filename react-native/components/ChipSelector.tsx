@@ -1,6 +1,5 @@
-import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { borderRadius, colors, spacing, typography } from '../theme';
+import { colors, spacing, typography } from '../theme';
 
 interface ChipSelectorProps {
   options: string[];

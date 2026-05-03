@@ -217,24 +217,6 @@ export default function HomeScreen() {
     setCachedJson<WaterUnit>(WATER_UNIT_KEY, unit);
   };
 
-  const saveWaterCurrent = (value: string) => {
-    const parsed = parsePositiveInt(value);
-    if (parsed == null) {
-      Alert.alert('Check water amount', 'Enter a valid water total for today.');
-      return;
-    }
-    logNutrition.mutate({ waterMl: waterToMl(parsed, waterUnit) });
-  };
-
-  const saveProteinCurrent = (value: string) => {
-    const parsed = parsePositiveInt(value);
-    if (parsed == null) {
-      Alert.alert('Check protein amount', 'Enter a valid protein total for today.');
-      return;
-    }
-    logNutrition.mutate({ proteinG: parsed });
-  };
-
   const saveTargets = () => {
     const waterGoal = parsePositiveInt(draft.waterGoal);
     const proteinGoal = parsePositiveInt(draft.proteinGoal);
@@ -250,18 +232,15 @@ export default function HomeScreen() {
     });
   };
 
+  // Amount is in the user's chosen water unit (ml or oz); backend always
+  // takes ml, so convert before sending. Backend echoes the new total via
+  // /home invalidation — no optimistic client sum.
   const addWater = (amount: number) => {
-    const current = parsePositiveInt(draft.waterCurrent) ?? 0;
-    const next = current + amount;
-    setDraft((currentDraft) => ({ ...currentDraft, waterCurrent: String(next) }));
-    logNutrition.mutate({ waterMl: waterToMl(next, waterUnit) });
+    logNutrition.mutate({ waterDeltaMl: waterToMl(amount, waterUnit) });
   };
 
   const addProtein = (amount: number) => {
-    const current = parsePositiveInt(draft.proteinCurrent) ?? 0;
-    const next = current + amount;
-    setDraft((currentDraft) => ({ ...currentDraft, proteinCurrent: String(next) }));
-    logNutrition.mutate({ proteinG: next });
+    logNutrition.mutate({ proteinDeltaG: amount });
   };
 
   const handleStartWorkout = () => {
@@ -367,6 +346,7 @@ export default function HomeScreen() {
             <View style={styles.treeContainer}>
               <VitalityTree
                 score={vitalityScore}
+                treeStage={snap?.vitality.treeState}
                 todayScore={{
                   hydration: nutrition.hydration.progress,
                   protein: nutrition.protein.progress,
@@ -429,9 +409,7 @@ export default function HomeScreen() {
                       isExpanded={expandedEditor === 'water'}
                       onToggleExpanded={() => setExpandedEditor((current) => current === 'water' ? null : 'water')}
                       keyboardType="number-pad"
-                      onChangeValue={(value) => setDraft((current) => ({ ...current, waterCurrent: value }))}
                       onChangeGoal={(value) => setDraft((current) => ({ ...current, waterGoal: value }))}
-                      onSaveValue={saveWaterCurrent}
                       onSaveGoal={saveTargets}
                       quickActions={waterUnit === 'oz' ? [
                         { label: '+8 oz', onPress: () => addWater(8) },
@@ -453,9 +431,7 @@ export default function HomeScreen() {
                       isExpanded={expandedEditor === 'protein'}
                       onToggleExpanded={() => setExpandedEditor((current) => current === 'protein' ? null : 'protein')}
                       keyboardType="number-pad"
-                      onChangeValue={(value) => setDraft((current) => ({ ...current, proteinCurrent: value }))}
                       onChangeGoal={(value) => setDraft((current) => ({ ...current, proteinGoal: value }))}
-                      onSaveValue={saveProteinCurrent}
                       onSaveGoal={saveTargets}
                       quickActions={[
                         { label: '+20 g', onPress: () => addProtein(20) },
@@ -556,9 +532,7 @@ function EditableProgressCard({
   isExpanded,
   onToggleExpanded,
   keyboardType,
-  onChangeValue,
   onChangeGoal,
-  onSaveValue,
   onSaveGoal,
   quickActions,
   disabled,
@@ -573,9 +547,7 @@ function EditableProgressCard({
   isExpanded: boolean;
   onToggleExpanded: () => void;
   keyboardType: 'number-pad';
-  onChangeValue: (value: string) => void;
   onChangeGoal: (value: string) => void;
-  onSaveValue: (value: string) => void;
   onSaveGoal: () => void;
   quickActions: Array<{ label: string; onPress: () => void }>;
   disabled?: boolean;
@@ -614,17 +586,9 @@ function EditableProgressCard({
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Consumed</Text>
               <View style={styles.valueInputWrap}>
-                <TextInput
-                  value={value}
-                  onChangeText={onChangeValue}
-                  onSubmitEditing={() => onSaveValue(value)}
-                  onBlur={() => onSaveValue(value)}
-                  keyboardType={keyboardType}
-                  returnKeyType="done"
-                  editable={!disabled}
-                  selectTextOnFocus
-                  style={[styles.valueInput, { color }]}
-                />
+                <Text style={[styles.valueInput, { color }]} accessibilityLabel={`${label} consumed`}>
+                  {value || '0'}
+                </Text>
                 <Text style={styles.inputUnit}>{unit}</Text>
               </View>
             </View>

@@ -2,14 +2,14 @@
 // TreeDetailScreen, StreakModal, TreeAtRiskModal,
 // ExerciseDetailScreen, ExerciseLibraryScreen, OfflineSyncComponents
 
-import React, { useState } from 'react'
+import { useState } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   StyleSheet, Modal,
 } from 'react-native'
 import {
-  Trees, Flame, AlertTriangle, Search, ChevronRight,
-  Wifi, WifiOff, RefreshCw, X, Play, Info,
+  AlertTriangle, Search, ChevronRight,
+  WifiOff, RefreshCw, X, Info,
 } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
 import { useExerciseLibrary, useMuscleGroups, useFilteredExercises, type Exercise } from '../hooks/useExerciseLibrary'

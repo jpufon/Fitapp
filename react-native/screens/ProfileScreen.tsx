@@ -12,7 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   Sparkles, TrendingUp, Bell, User, Shield,
-  Settings, CloudOff, ChevronRight, LogOut, AlertCircle, Home as HomeIcon,
+  CloudOff, ChevronRight, LogOut, AlertCircle, Home as HomeIcon,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, borderRadius, typography } from '../theme';

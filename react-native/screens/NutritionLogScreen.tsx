@@ -5,15 +5,17 @@
 import React, { useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Footprints, Droplets, Beef, Info } from 'lucide-react-native'
+import { useNavigation } from '@react-navigation/native'
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { ArrowLeft, Footprints, Droplets, Beef, Info } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
 import { useLogNutrition } from '../hooks/useMutations'
+import type { RootStackParamList } from '../App'
 
 type NutritionTab = 'protein' | 'hydration' | 'steps'
 
 const PROTEIN_PRESETS = [10, 25, 40, 60]
 const WATER_PRESETS_ML = [250, 500, 750]
-const GLASSES_PER_DAY   = 8
 const ML_PER_GLASS      = 250
 
 const MOCK_TODAY = {
@@ -38,14 +40,26 @@ const MOCK_TODAY = {
 }
 
 export default function NutritionLogScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const [tab, setTab] = useState<NutritionTab>('protein')
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Nutrition</Text>
-        <Text style={styles.date}>Today, Apr 20</Text>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Back to home"
+        >
+          <ArrowLeft size={20} color={colors.foreground} strokeWidth={1.75} />
+        </TouchableOpacity>
+        <View style={styles.headerTitle}>
+          <Text style={styles.title}>Nutrition</Text>
+          <Text style={styles.date}>Today, Apr 20</Text>
+        </View>
+        <View style={styles.headerSpacer} />
       </View>
 
       {/* Tab bar */}
@@ -74,11 +88,8 @@ function ProteinTab() {
   const pct  = Math.min((total / goal) * 100, 100)
 
   const add = (amount: number) => {
-    setTotal((current) => {
-      const next = Math.min(current + amount, 999)
-      logNutrition.mutate({ proteinG: next })
-      return next
-    })
+    setTotal((current) => Math.min(current + amount, 999))
+    logNutrition.mutate({ proteinDeltaG: amount })
   }
 
   return (
@@ -163,11 +174,8 @@ function HydrationTab() {
   const pct = Math.min((waterMl / goal) * 100, 100)
 
   const addAmount = (ml: number) => {
-    setWaterMl((current) => {
-      const next = Math.min(current + ml, 9999)
-      logNutrition.mutate({ waterMl: next })
-      return next
-    })
+    setWaterMl((current) => Math.min(current + ml, 9999))
+    logNutrition.mutate({ waterDeltaMl: ml })
   }
   const addGlass = () => addAmount(ML_PER_GLASS)
 
@@ -311,7 +319,10 @@ function formatLocalDate(date: Date): string {
 
 const styles = StyleSheet.create({
   container:       { flex: 1, backgroundColor: colors.background },
-  header:          { paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: spacing.sm, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  header:          { paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: spacing.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  backButton:      { width: touchTarget.min, height: touchTarget.min, borderRadius: radius.full, backgroundColor: colors.secondary, alignItems: 'center', justifyContent: 'center' },
+  headerTitle:     { flex: 1, alignItems: 'center' },
+  headerSpacer:    { width: touchTarget.min, height: touchTarget.min },
   title:           { fontSize: typography.size['2xl'], fontWeight: typography.weight.bold, color: colors.foreground },
   date:            { fontSize: typography.size.sm, color: colors.mutedForeground },
   tabBar:          { flexDirection: 'row', marginHorizontal: spacing.screen, padding: 4, backgroundColor: colors.secondary, borderRadius: radius.xl, marginBottom: spacing.md },

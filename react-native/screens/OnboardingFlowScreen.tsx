@@ -4,7 +4,7 @@
 // Each step persists locally to MMKV and PATCHes the server (queued if offline).
 // Fires Wali AI cold-start 1.5s after onboardingComplete = true (backend).
 
-import React, { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,

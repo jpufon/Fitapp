@@ -8,8 +8,8 @@ import {
   Alert, View, Text, ScrollView, TouchableOpacity,
   TextInput, StyleSheet, Modal,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { X, Plus, ChevronDown, Calculator, Check, MoreHorizontal, Zap, Dumbbell, Timer, Repeat } from 'lucide-react-native'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { X, Plus, Calculator, Check, MoreHorizontal, Dumbbell, Timer, Repeat } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { RootStackParamList } from '../App'
@@ -70,10 +70,11 @@ type SaveState = 'idle' | 'starting' | 'ready' | 'queued' | 'error'
 export default function ActiveWorkoutScreen({ navigation, route }: Props) {
   const workout = route.params.workout
   const onDiscard = () => navigation.goBack()
+  const insets = useSafeAreaInsets()
 
   const unitSystem = useUnitSystem()
   const [exercises, setExercises]   = useState<Exercise[]>(MOCK_WORKOUT)
-  const [elapsed, setElapsed]       = useState('00:43:12')
+  const [elapsed]                   = useState('00:43:12')
   const [showPlates, setShowPlates] = useState(false)
   // Default plate-calc target depends on unit system (~100kg or ~225lb).
   const [plateTarget, setPlateTarget] = useState(unitSystem === 'imperial' ? '225' : '100')
@@ -245,7 +246,11 @@ export default function ActiveWorkoutScreen({ navigation, route }: Props) {
       ) : null}
 
       {/* Exercise list */}
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+      >
         {exercises.map((exercise) => (
           <ExerciseCard
             key={exercise.id}
@@ -266,7 +271,7 @@ export default function ActiveWorkoutScreen({ navigation, route }: Props) {
       </ScrollView>
 
       {/* Bottom bar */}
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(spacing.xl, insets.bottom + spacing.sm) }]}>
         <TouchableOpacity style={styles.discardBtn} onPress={onDiscard}>
           <X color={colors.destructive} size={16} strokeWidth={2} />
           <Text style={[styles.discardBtnText, { color: colors.destructive }]}>Discard</Text>

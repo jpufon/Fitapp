@@ -2,7 +2,7 @@
 // Missing Arena screens: Friends, Add Friend, Friend Profile,
 // Group Sessions, Create Session, Challenges, Badges, DMs
 
-import React, { useState } from 'react'
+import { useState } from 'react'
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
   StyleSheet, Modal,

@@ -7,12 +7,14 @@
 // backend (which validates incoming bodies). Mobile sends, backend validates.
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { randomUUID } from 'expo-crypto';
 import type {
   StartWorkoutBody,
   LogSetBody,
   FinishWorkoutBody,
   LogNutritionBody,
   RecomputeVitalityBody,
+  UseFreezeBody,
 } from 'walifit-shared';
 import { apiMutate } from '../lib/api';
 
@@ -22,7 +24,12 @@ export type {
   FinishWorkoutBody,
   LogNutritionBody,
   RecomputeVitalityBody,
+  UseFreezeBody,
 };
+
+// Body shape callers pass to useLogNutrition. The hook mints `clientId`
+// internally so the offline queue replays a stable idempotency key.
+export type LogNutritionInput = Omit<LogNutritionBody, 'clientId'>;
 
 export type UpdateDailyTargetsBody = {
   proteinTargetG?: number;
@@ -80,11 +87,11 @@ export function useFinishWorkout(workoutId: string) {
 export function useLogNutrition(date: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: LogNutritionBody) =>
+    mutationFn: (input: LogNutritionInput) =>
       apiMutate<{ dailyScore: unknown }>({
         method: 'POST',
         path: `/nutrition/simple/${date}`,
-        body,
+        body: { ...input, clientId: randomUUID() } satisfies LogNutritionBody,
       }),
     onSuccess: () => invalidateHome(qc),
   });
@@ -115,6 +122,21 @@ export function useRecomputeVitality() {
         method: 'POST',
         path: '/vitality/recompute',
         body: body ?? {},
+      }),
+    onSuccess: () => invalidateHome(qc),
+  });
+}
+
+// ─── POST /vitality/freeze — burn one freeze token to protect a date ──────
+
+export function useUseFreezeToken() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UseFreezeBody) =>
+      apiMutate<{ burned: boolean; streak: number; freezeTokens: number }>({
+        method: 'POST',
+        path: '/vitality/freeze',
+        body,
       }),
     onSuccess: () => invalidateHome(qc),
   });

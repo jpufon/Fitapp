@@ -1,6 +1,5 @@
 // DEV ONLY — REMOVE BEFORE PRODUCTION BUILD
 
-import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';

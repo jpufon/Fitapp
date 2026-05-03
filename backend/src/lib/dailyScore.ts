@@ -1,49 +1,61 @@
 // Upsert + recompute a DailyScore row for a given user/date.
-// Pass any of the pillar values to update them. Server computes scores + tree state.
+// Protein/water are read from SimpleNutritionLog (the materialized SUM of the
+// NutritionEntry ledger). Steps + isRestDay come straight from the caller.
+// Accepts an optional Prisma transaction client so it can compose with
+// applyNutritionDelta in a single $transaction.
 
+import { Prisma } from '@prisma/client';
 import { prisma } from './prisma.js';
 import { computeScore } from './score.js';
 import { currentDayKeyWithGrace, dayKeyToDbDate } from './streakEngine.js';
 
 export type DailyScoreUpdate = {
   stepsCount?: number;
-  proteinG?: number;
-  waterMl?: number;
   isRestDay?: boolean;
 };
+
+type Db = Prisma.TransactionClient | typeof prisma;
 
 export async function upsertDailyScore(
   userId: string,
   date: Date, // expected: midnight in user's timezone, but Date here is fine for V1
   update: DailyScoreUpdate,
+  tx?: Prisma.TransactionClient,
 ) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      stepsGoal: true,
-      proteinTargetG: true,
-      waterTargetMl: true,
-    },
-  });
-  if (!user) throw new Error('user_not_found');
+  const db: Db = tx ?? prisma;
 
-  const existing = await prisma.dailyScore.findUnique({
-    where: { userId_date: { userId, date } },
-  });
+  const [user, existing, nutrition] = await Promise.all([
+    db.user.findUnique({
+      where: { id: userId },
+      select: {
+        stepsGoal: true,
+        proteinTargetG: true,
+        waterTargetMl: true,
+      },
+    }),
+    db.dailyScore.findUnique({
+      where: { userId_date: { userId, date } },
+    }),
+    db.simpleNutritionLog.findUnique({
+      where: { userId_date: { userId, date } },
+      select: { proteinG: true, waterMl: true },
+    }),
+  ]);
+  if (!user) throw new Error('user_not_found');
 
   const merged = {
     stepsCount: update.stepsCount ?? existing?.stepsCount ?? 0,
     stepsGoal: existing?.stepsGoal ?? user.stepsGoal,
-    proteinG: update.proteinG ?? existing?.proteinG ?? 0,
+    proteinG: nutrition?.proteinG ?? existing?.proteinG ?? 0,
     proteinTargetG: existing?.proteinTargetG ?? user.proteinTargetG,
-    waterMl: update.waterMl ?? existing?.waterMl ?? 0,
+    waterMl: nutrition?.waterMl ?? existing?.waterMl ?? 0,
     waterTargetMl: existing?.waterTargetMl ?? user.waterTargetMl,
     isRestDay: update.isRestDay ?? existing?.isRestDay ?? false,
   };
 
   const computed = computeScore(merged);
 
-  return prisma.dailyScore.upsert({
+  return db.dailyScore.upsert({
     where: { userId_date: { userId, date } },
     update: {
       ...merged,

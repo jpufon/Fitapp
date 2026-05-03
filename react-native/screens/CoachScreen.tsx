@@ -3,7 +3,7 @@
 // Contractor builds UI only — AI responses are mocked during development
 // Streaming responses render token-by-token
 
-import React, { useState, useRef } from 'react'
+import { useState, useRef } from 'react'
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform, Image,
