@@ -19,17 +19,26 @@ Fitapp/
 │   ├── components/
 │   ├── theme.ts
 │   └── global.css
+├── backend/
+│   ├── src/
+│   └── prisma/
+├── packages/
+│   └── shared/        ← walifit-shared (Zod schemas, types)
 ├── docs/
 ├── guidelines/
+├── security/
 ├── README.md
 ├── DESIGN.md
 └── CLAUDE.md
 ```
 
+Reference docs:
+
+- `docs/API_CONTRACT.md` — every backend route, request, response, and mobile hook.
+
 Planned documentation that is intentionally deferred:
 
-- `docs/backend-architecture.md`
-- `docs/api-contracts.md`
+- `docs/backend-architecture.md` — backend code exists (`backend/` Phases 1–4 done) but a standalone architecture doc has not been written yet.
 
 ## Core Principles
 
@@ -98,7 +107,7 @@ Before adding a file:
 ## Documentation Rules
 
 - Keep architecture docs aligned with the repo as it actually exists.
-- Do not document backend modules that are not yet present in the repository as if they already exist.
+- Do not document deferred subsystems as if they already exist; label planned work clearly.
 - When planned systems are mentioned, label them clearly as future work.
 
 ## Working Standard

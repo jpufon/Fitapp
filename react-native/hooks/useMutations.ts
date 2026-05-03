@@ -24,6 +24,12 @@ export type {
   RecomputeVitalityBody,
 };
 
+export type UpdateDailyTargetsBody = {
+  proteinTargetG?: number;
+  waterTargetMl?: number;
+  stepsGoal?: number;
+};
+
 function invalidateHome(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ['home', 'snapshot'] });
 }
@@ -78,6 +84,21 @@ export function useLogNutrition(date: string) {
       apiMutate<{ dailyScore: unknown }>({
         method: 'POST',
         path: `/nutrition/simple/${date}`,
+        body,
+      }),
+    onSuccess: () => invalidateHome(qc),
+  });
+}
+
+// ─── PATCH /users/me — daily targets ───────────────────────────────────────
+
+export function useUpdateDailyTargets() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UpdateDailyTargetsBody) =>
+      apiMutate<{ user: unknown }>({
+        method: 'PATCH',
+        path: '/users/me',
         body,
       }),
     onSuccess: () => invalidateHome(qc),

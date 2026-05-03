@@ -155,16 +155,16 @@ Filter by Sprint, Feature, Priority, or Status. Story points use Fibonacci.
 ## Sprint 1
 
 ### WF-001 — Monorepo Foundation (P0, 5 SP)
-**Feature:** Onboarding & Profile · **Epic:** Foundation · **Status:** Not Started
+**Feature:** Onboarding & Profile · **Epic:** Foundation · **Status:** Done
 
 **User Story:** As a developer, I want a monorepo set up with Railway + PostgreSQL + Prisma so backend, mobile, and shared packages share code cleanly.
 
-**Acceptance Criteria:** pnpm workspaces; @walifit/shared compiles; Railway deploys backend; Prisma migrates clean to Postgres.
+**Acceptance Criteria:** npm workspaces; walifit-shared compiles; Railway deploys backend; Prisma migrates clean to Postgres.
 
 **Notes:** Phase 1 foundation.
 
 ### WF-002 — Complete Prisma Schema (P0, 3 SP)
-**Feature:** Onboarding & Profile · **Epic:** Foundation · **Dependencies:** WF-001 · **Status:** Not Started
+**Feature:** Onboarding & Profile · **Epic:** Foundation · **Dependencies:** WF-001 · **Status:** Done
 
 **User Story:** As a developer, I want the COMPLETE Prisma schema in place day one — including 5 run fields on WorkoutLog and 2 fields on Squad — so no live migrations are needed later.
 
@@ -173,7 +173,7 @@ Filter by Sprint, Feature, Priority, or Status. Story points use Fibonacci.
 **Notes:** Tech Arch hard requirement: do this BEFORE writing any other code.
 
 ### WF-003 — Email Auth (P0, 5 SP)
-**Feature:** Onboarding & Profile · **Epic:** Auth · **Dependencies:** WF-001 · **Status:** Not Started
+**Feature:** Onboarding & Profile · **Epic:** Auth · **Dependencies:** WF-001 · **Status:** Done
 
 **User Story:** As a user, I want to sign up and log in with email so I can access waliFit.
 
@@ -182,14 +182,14 @@ Filter by Sprint, Feature, Priority, or Status. Story points use Fibonacci.
 **Notes:** Portable so we can swap providers later.
 
 ### WF-004 — Onboarding Flow (P0, 5 SP)
-**Feature:** Onboarding & Profile · **Epic:** Onboarding · **Dependencies:** WF-003 · **Status:** Not Started
+**Feature:** Onboarding & Profile · **Epic:** Onboarding · **Dependencies:** WF-003 · **Status:** Done
 
 **User Story:** As a user, I want to pick my goal, training days, and equipment in under 3 minutes so the app can personalise my experience.
 
 **Acceptance Criteria:** Goal (strength/conditioning/fat loss/muscle gain/hybrid). Experience level. Training days multiselect. Session length. Equipment multiselect. Optional bodyweight, dietary pattern, injuries. <3 min completion.
 
 ### WF-005 — Persistent Onboarding State (P0, 3 SP)
-**Feature:** Onboarding & Profile · **Epic:** Onboarding · **Dependencies:** WF-004 · **Status:** Not Started
+**Feature:** Onboarding & Profile · **Epic:** Onboarding · **Dependencies:** WF-004 · **Status:** Done
 
 **User Story:** As a user, I want my onboarding progress saved per step so I can close the app mid-flow and resume where I left off.
 
@@ -198,7 +198,7 @@ Filter by Sprint, Feature, Priority, or Status. Story points use Fibonacci.
 **Notes:** Tech Arch §5.
 
 ### WF-006 — Units Preference Card (P0, 3 SP)
-**Feature:** Onboarding & Profile · **Epic:** Units · **Dependencies:** WF-004 · **Status:** Not Started
+**Feature:** Onboarding & Profile · **Epic:** Units · **Dependencies:** WF-004 · **Status:** Done
 
 **User Story:** As a user, I want to choose kg or lbs in onboarding (as a card selector, not a toggle) so the app immediately matches my mental model.
 
@@ -207,16 +207,16 @@ Filter by Sprint, Feature, Priority, or Status. Story points use Fibonacci.
 **Notes:** Default US→lbs, else→kg.
 
 ### WF-007 — Multimodal Profile Import (P1, 5 SP)
-**Feature:** Onboarding & Profile · **Epic:** Onboarding · **Dependencies:** WF-004 · **Status:** Not Started
+**Feature:** Onboarding & Profile · **Epic:** Onboarding · **Dependencies:** WF-004 · **Status:** In Progress
 
 **User Story:** As a user, I want to upload a screenshot from Hevy/Strong/MFP/Strava and have my profile pre-filled.
 
 **Acceptance Criteria:** Gemini Vision parses PRs/bodyweight/frequency/goals/recent workouts. User reviews before confirm. Skip always visible. <60s end-to-end.
 
-**Notes:** Stretch — could slip to Sprint 2 if time tight.
+**Notes:** Stretch — could slip to Sprint 2 if time tight. UI placeholder shipped (`OnboardingFlowScreen.tsx` ImportStep simulates parse); backend Gemini Vision integration pending until `backend/src/waliAI/` scaffolds in Sprint 4.
 
 ### WF-008 — Exercise Library (P0, 5 SP)
-**Feature:** Hybrid Performance Engine · **Epic:** Exercise Library · **Dependencies:** WF-002 · **Status:** Not Started
+**Feature:** Hybrid Performance Engine · **Epic:** Exercise Library · **Dependencies:** WF-002 · **Status:** Done
 
 **User Story:** As a user, I want a searchable exercise library so I can find any movement.
 
@@ -225,7 +225,7 @@ Filter by Sprint, Feature, Priority, or Status. Story points use Fibonacci.
 **Notes:** Pull from wger seed script.
 
 ### WF-009 — Workout Logging (P0, 8 SP)
-**Feature:** Hybrid Performance Engine · **Epic:** Workout Logging · **Dependencies:** WF-002, WF-008 · **Status:** Not Started
+**Feature:** Hybrid Performance Engine · **Epic:** Workout Logging · **Dependencies:** WF-002, WF-008 · **Status:** Done
 
 **User Story:** As a user, I want to log a strength set with reps, weight, and RPE so my workout history is captured accurately.
 
@@ -234,7 +234,7 @@ Filter by Sprint, Feature, Priority, or Status. Story points use Fibonacci.
 **Notes:** Core flow — feeds tree activity pillar.
 
 ### WF-010 — Daily Targets (P0, 2 SP)
-**Feature:** Onboarding & Profile · **Epic:** Targets · **Dependencies:** WF-006 · **Status:** Not Started
+**Feature:** Onboarding & Profile · **Epic:** Targets · **Dependencies:** WF-006 · **Status:** Done
 
 **User Story:** As a user, I want a daily protein target and water target set during onboarding so the tree has goals to score against.
 
@@ -243,14 +243,14 @@ Filter by Sprint, Feature, Priority, or Status. Story points use Fibonacci.
 ## Sprint 2
 
 ### WF-011 — Custom Workout Builder (P0, 5 SP)
-**Feature:** Hybrid Performance Engine · **Epic:** Custom Workout Builder · **Dependencies:** WF-008 · **Status:** Not Started
+**Feature:** Hybrid Performance Engine · **Epic:** Custom Workout Builder · **Dependencies:** WF-008 · **Status:** Done
 
 **User Story:** As a user, I want to build custom workouts from scratch with sets, reps, rest, and intervals so I can structure my own training.
 
 **Acceptance Criteria:** Builder screen. Add exercises from library or create ad hoc. Set reps/rest/intervals per exercise. Mix strength + conditioning. Save / duplicate / edit templates.
 
 ### WF-012 — Plate Math Calculator (P0, 3 SP)
-**Feature:** Hybrid Performance Engine · **Epic:** Plate Math · **Dependencies:** WF-006 · **Status:** Not Started
+**Feature:** Hybrid Performance Engine · **Epic:** Plate Math · **Dependencies:** WF-006 · **Status:** Done
 
 **User Story:** As a user lifting in the gym, I want a plate calculator so I know what to load for any target weight.
 
@@ -259,28 +259,28 @@ Filter by Sprint, Feature, Priority, or Status. Story points use Fibonacci.
 **Notes:** calculatePlates() in @walifit/shared.
 
 ### WF-013 — Conditioning Logging (P0, 5 SP)
-**Feature:** Hybrid Performance Engine · **Epic:** Conditioning · **Dependencies:** WF-009 · **Status:** Not Started
+**Feature:** Hybrid Performance Engine · **Epic:** Conditioning · **Dependencies:** WF-009 · **Status:** Done
 
 **User Story:** As a hybrid athlete, I want to log timed and rounds-based conditioning so my full training is captured (not just barbell work).
 
 **Acceptance Criteria:** Timer-based work/rest format. Rounds-based logging. Basic HIIT. Sessions appear in workout history.
 
 ### WF-014 — Calendar Daily View (P0, 5 SP)
-**Feature:** waliFit Calendar · **Epic:** Daily View · **Dependencies:** WF-008, WF-009 · **Status:** Not Started
+**Feature:** waliFit Calendar · **Epic:** Daily View · **Dependencies:** WF-008, WF-009 · **Status:** Done
 
 **User Story:** As a user, I want a daily view showing today's workout, nutrition targets, and tree status so I have a single home for the day.
 
 **Acceptance Criteria:** Today's scheduled workout/run. Training day vs rest day clearly labelled. Hydration progress + protein progress. Tree status + today's score.
 
 ### WF-015 — Calendar Weekly + Monthly (P0, 5 SP)
-**Feature:** waliFit Calendar · **Epic:** Weekly + Monthly · **Dependencies:** WF-014 · **Status:** Not Started
+**Feature:** waliFit Calendar · **Epic:** Weekly + Monthly · **Dependencies:** WF-014 · **Status:** Done
 
 **User Story:** As a user, I want weekly and monthly views to see my training rhythm and streak runs at a glance.
 
 **Acceptance Criteria:** Weekly: training vs rest days, completed vs upcoming, streak continuity, nutrition consistency dots. Monthly: colour-coded states (completed/rest/missed/upcoming), streak runs, PR history browsable by date.
 
 ### WF-016 — Time Linking & Timezone Logic (P0, 5 SP)
-**Feature:** waliFit Calendar · **Epic:** Time Linking · **Dependencies:** WF-014, WF-015 · **Status:** Not Started
+**Feature:** waliFit Calendar · **Epic:** Time Linking · **Dependencies:** WF-014, WF-015 · **Status:** Done
 
 **User Story:** As a developer, I want plans/logs/streaks anchored to real dates with timezone-aware logic so the calendar doesn't misfire across timezones or DST.
 

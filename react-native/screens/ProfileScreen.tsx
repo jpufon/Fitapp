@@ -26,7 +26,7 @@ type ScreenState = 'loading' | 'success' | 'error';
 const SETTINGS_ITEMS: Array<{
   id: keyof Pick<
     RootStackParamList,
-    'WaliAI' | 'Analytics' | 'Notifications' | 'AccountSettings' | 'PrivacyLegal'
+    'WaliAI' | 'Analytics' | 'Notifications' | 'Settings' | 'PrivacyLegal'
   >;
   icon: React.ElementType;
   label: string;
@@ -55,7 +55,7 @@ const SETTINGS_ITEMS: Array<{
     color: colors.energy,
   },
   {
-    id: 'AccountSettings',
+    id: 'Settings',
     icon: User,
     label: 'Account Settings',
     description: 'Profile, units, targets',
@@ -182,13 +182,6 @@ export default function ProfileScreen() {
               onPress={() => navigation.navigate('MainTabs')}
             >
               <HomeIcon color={colors.primary} size={20} strokeWidth={1.75} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.settingsBtn}
-              accessibilityLabel="Settings"
-              onPress={() => navigation.navigate('Settings')}
-            >
-              <Settings color={colors.foreground} size={20} strokeWidth={1.75} />
             </TouchableOpacity>
           </View>
         </View>
