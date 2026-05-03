@@ -10,6 +10,7 @@
 
 import { useMemo } from 'react';
 import { useCachedQuery } from './useCachedQuery';
+import { useDebouncedValue } from './useDebouncedValue';
 import { apiQuery, hasApiConfig } from '../lib/api';
 import { getCachedJson, setCachedJson, storage } from '../lib/storage';
 
@@ -232,4 +233,46 @@ export function filterExercises(
     if (equipment && !ex.equipment.includes(equipment)) return false;
     return true;
   });
+}
+
+export type FilteredExerciseOpts = {
+  query: string;
+  muscle?: string;
+  equipment?: string;
+};
+
+export type UseFilteredExercisesOptions = {
+  /** Delay before applying text search (muscle/equipment apply immediately). Default 220ms. */
+  debounceMs?: number;
+  /** When set, only the first N matches are returned (e.g. modal pickers). */
+  maxResults?: number;
+};
+
+/**
+ * Debounced, memoized exercise filtering — keeps screens aligned with
+ * `docs/search-filter-architecture.md` (debounce text, memoize list, cap pickers).
+ */
+export function useFilteredExercises(
+  exercises: Exercise[] | undefined,
+  opts: FilteredExerciseOpts,
+  options?: UseFilteredExercisesOptions,
+): Exercise[] {
+  const debounceMs = options?.debounceMs ?? 220;
+  const maxResults = options?.maxResults;
+  const debouncedQuery = useDebouncedValue(opts.query, debounceMs);
+
+  const filtered = useMemo(
+    () =>
+      filterExercises(exercises ?? [], {
+        query: debouncedQuery,
+        muscle: opts.muscle,
+        equipment: opts.equipment,
+      }),
+    [exercises, debouncedQuery, opts.muscle, opts.equipment],
+  );
+
+  return useMemo(
+    () => (maxResults != null ? filtered.slice(0, maxResults) : filtered),
+    [filtered, maxResults],
+  );
 }

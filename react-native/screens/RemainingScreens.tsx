@@ -12,7 +12,7 @@ import {
   Wifi, WifiOff, RefreshCw, X, Play, Info,
 } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
-import { useExerciseLibrary, useMuscleGroups, filterExercises, type Exercise } from '../hooks/useExerciseLibrary'
+import { useExerciseLibrary, useMuscleGroups, useFilteredExercises, type Exercise } from '../hooks/useExerciseLibrary'
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -217,7 +217,7 @@ export function ExerciseLibraryScreen({
   const { data, isLoading, error, refetch } = useExerciseLibrary()
   const exercises  = data ?? []
   const groups     = useMuscleGroups(data)
-  const filtered   = filterExercises(exercises, { query, muscle })
+  const filtered   = useFilteredExercises(data, { query, muscle }, { debounceMs: 220 })
 
   return (
     <View style={styles.container}>

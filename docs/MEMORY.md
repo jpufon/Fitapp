@@ -35,6 +35,7 @@ Last updated: 2026-05-02 (backend/shared + v3.0 tokens).
 │   └── src/
 ├── docs/
 │   ├── MEMORY.md                      ← this file
+│   ├── search-filter-architecture.md  ← search / filter / list perf & layering
 │   ├── DECISIONS.md                   ← product & technical decisions log
 │   ├── walifit-PROMPTS.md             ← Claude Code prompt templates
 │   ├── walifit-SCREEN-PROMPTS-v2.md   ← per-screen prompts (v2)

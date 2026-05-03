@@ -90,6 +90,11 @@ Before adding a file:
 2. If a new file is needed, place it in the most specific existing directory.
 3. Name files by feature intent, not by temporary implementation detail.
 
+## Search, filters & large lists
+
+- Follow **`docs/search-filter-architecture.md`** for where debouncing, memoization, and client vs server search belong in the **Screens → Hooks → lib** stack.
+- Reuse **`useDebouncedValue`** and **`useFilteredExercises`** (exercise catalogue) before inventing ad hoc debounce/filter logic in screens.
+
 ## Documentation Rules
 
 - Keep architecture docs aligned with the repo as it actually exists.

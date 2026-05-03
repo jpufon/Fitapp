@@ -41,6 +41,10 @@ Before making changes:
 - Preserve the current app visual language unless the task explicitly asks for redesign.
 - Reuse shared components when the same UI pattern appears in multiple places.
 
+## Search and list filtering
+
+- For searchable lists (especially large in-memory sets like the exercise library), use **`useDebouncedValue`** + **`useFilteredExercises`** or the same pattern: debounce free text, memoize derived arrays. See **`docs/search-filter-architecture.md`**.
+
 ## State and Data Rules
 
 - Use TanStack Query for remote/server state.

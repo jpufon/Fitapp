@@ -3,7 +3,7 @@
 // archive. Conditioning slots reuse the same row but expose interval/rounds
 // fields when the user picks that mode.
 
-import React, { useMemo, useState } from 'react'
+import React, { useState } from 'react'
 import {
   Alert, View, Text, ScrollView, TextInput, TouchableOpacity,
   StyleSheet, Modal, Pressable,
@@ -21,7 +21,7 @@ import {
   type WorkoutTemplate, type TemplateExercise,
 } from '../hooks/useWorkoutTemplates'
 import {
-  useExerciseLibrary, filterExercises, type Exercise,
+  useExerciseLibrary, useFilteredExercises, type Exercise,
 } from '../hooks/useExerciseLibrary'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WorkoutBuilder'>
@@ -354,10 +354,7 @@ function ExercisePicker({
   const [query, setQuery] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
-  const filtered = useMemo(
-    () => filterExercises(data ?? [], { query }),
-    [data, query],
-  )
+  const filtered = useFilteredExercises(data, { query }, { debounceMs: 200, maxResults: 200 })
 
   const toggle = (id: string) => {
     setSelectedIds((curr) => {
@@ -408,7 +405,7 @@ function ExercisePicker({
         ) : filtered.length === 0 ? (
           <Text style={styles.stateText}>No matches.</Text>
         ) : (
-          filtered.slice(0, 200).map((ex) => {
+          filtered.map((ex) => {
             const isSelected = selectedIds.has(ex.id)
             return (
               <Pressable
