@@ -1,0 +1,11 @@
+{
+  "name": "Fitapp",
+  "private": true,
+  "scripts": {
+    "secretlint": "secretlint \"**/*\""
+  },
+  "devDependencies": {
+    "@secretlint/secretlint-rule-preset-recommend": "^12.3.1",
+    "secretlint": "^12.3.1"
+  }
+}

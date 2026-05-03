@@ -19,6 +19,20 @@ curl http://localhost:4000/healthz
 # → {"status":"ok","env":"development","time":"..."}
 ```
 
+## Local sandbox (Docker Postgres)
+
+For **stability** (repeatable DB) and **security** (no prod data, localhost-only DB, separate env file), use the sandbox under `../sandbox/`. See [`../sandbox/README.md`](../sandbox/README.md) for full steps. Short version:
+
+```bash
+cp ../sandbox/credentials.env.example ../sandbox/credentials.env
+cp ../sandbox/backend.env.example ../sandbox/backend.env
+# Edit both files — DB password must match; set staging Supabase keys in backend.env
+
+npm run sandbox:up
+npm run prisma:sandbox:deploy
+npm run dev:sandbox    # listens on PORT from backend.env (default 4001)
+```
+
 ## Required environment variables
 
 See `.env.example` for the full list. Minimum to boot the server:

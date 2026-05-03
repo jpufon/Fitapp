@@ -83,6 +83,17 @@ Schemas: `packages/shared/src/schemas/workout.ts`.
 
 ---
 
+## Exercise catalog (`backend/src/routes/exercises.ts`)
+
+Read-only `Exercise` rows (seeded locally, e.g. wger). Mobile uses **`GET /exercises/catalog`** to detect changes, then either **delta** (`?updatedAfter=`) or **full paged** `GET /exercises` — see `react-native/hooks/useExerciseLibrary.ts`.
+
+| Method | Path | Auth | Query / body | Response | Mobile caller |
+|---|---|---|---|---|---|
+| `GET` | `/exercises/catalog` | ✅ | — | `{ total, catalogVersion }` — `catalogVersion` is `max(updatedAt)` over all rows | `useExerciseLibrary` |
+| `GET` | `/exercises` | ✅ | `q`, `category`, `muscle`, `equipment` (filters); `limit` (default 1000, max 3000); `offset` (0…100000); `updatedAfter` (ISO8601, strict `updatedAt >` ) | `{ items: Exercise[], count, catalogVersion, hasMore, offset, limit, version }` — `version` mirrors `catalogVersion` for older clients | `useExerciseLibrary` |
+
+---
+
 ## Calendar (`backend/src/routes/calendar.ts`)
 
 | Method | Path | Auth | Body / Query | Response | Mobile caller |

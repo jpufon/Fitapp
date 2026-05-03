@@ -24,6 +24,8 @@ android/.gradle/
 .env
 .env.*
 !.env.example
+sandbox/credentials.env
+sandbox/backend.env
 *.pem
 *.p12
 *.mobileprovision

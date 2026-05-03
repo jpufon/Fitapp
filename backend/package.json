@@ -5,6 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "dev:bg": "tsx src/server.ts",
+    "dev:sandbox": "dotenv -e ../sandbox/backend.env -- tsx src/server.ts",
+    "dev:sandbox:watch": "dotenv -e ../sandbox/backend.env -- tsx watch src/server.ts",
+    "sandbox:up": "docker compose -f ../sandbox/docker-compose.yml --env-file ../sandbox/credentials.env up -d",
+    "sandbox:down": "docker compose -f ../sandbox/docker-compose.yml --env-file ../sandbox/credentials.env down",
+    "sandbox:down:clean": "docker compose -f ../sandbox/docker-compose.yml --env-file ../sandbox/credentials.env down -v",
+    "prisma:sandbox:deploy": "dotenv -e ../sandbox/backend.env -- prisma migrate deploy",
+    "prisma:sandbox:studio": "dotenv -e ../sandbox/backend.env -- prisma studio",
     "build": "tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
@@ -26,6 +34,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "dotenv-cli": "^8.0.0",
     "prisma": "^6.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
