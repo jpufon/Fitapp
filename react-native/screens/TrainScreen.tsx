@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -26,6 +26,8 @@ import {
 } from 'lucide-react-native';
 import { ChipSelector } from '../components/ChipSelector';
 import { borderRadius, colors, spacing, touchTarget, typography } from '../theme';
+import type { SurfaceTokens } from '../theme/surfaceTheme';
+import { useWalifitTheme } from '../theme/ThemeProvider';
 import type { RootStackParamList } from '../App';
 import { useTrainData, type TodayWorkout, type WorkoutHistoryItem } from '../hooks/useTrainData';
 
@@ -54,12 +56,14 @@ function deriveState(
 export default function TrainScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
+  const { surfaces } = useWalifitTheme();
+  const styles = useMemo(() => createStyles(surfaces), [surfaces]);
 
   const [duration, setDuration] = useState<string[]>(['45 min']);
   const [focus, setFocus] = useState<string[]>([]);
   const [equipment, setEquipment] = useState<string[]>(['Barbell', 'Dumbbells']);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isWaliExpanded, setIsWaliExpanded] = useState(true);
+  const [isWaliExpanded, setIsWaliExpanded] = useState(false);
 
   const { todayWorkout, history, historyQuery } = useTrainData(20);
 
@@ -170,10 +174,7 @@ export default function TrainScreen() {
 
         {/* Ask Wali */}
         <View style={styles.waliCard}>
-          <Pressable
-            onPress={() => setIsWaliExpanded(!isWaliExpanded)}
-            style={styles.waliHeader}
-          >
+          <View style={styles.waliHeader}>
             <View style={styles.iconCircleSmall}>
               <Sparkles size={20} color={colors.primary} strokeWidth={1.75} />
             </View>
@@ -181,12 +182,19 @@ export default function TrainScreen() {
               <Text style={styles.h2}>Ask Wali for a Workout</Text>
               <Text style={styles.muted}>Quick, personalised, ready in seconds</Text>
             </View>
-            {isWaliExpanded ? (
-              <ChevronUp size={20} color={colors.mutedForeground} strokeWidth={1.75} />
-            ) : (
-              <ChevronDown size={20} color={colors.mutedForeground} strokeWidth={1.75} />
-            )}
-          </Pressable>
+            <Pressable
+              onPress={() => setIsWaliExpanded((current) => !current)}
+              style={styles.waliToggle}
+              accessibilityRole="button"
+              accessibilityLabel={`${isWaliExpanded ? 'Collapse' : 'Expand'} Ask Wali workout options`}
+            >
+              {isWaliExpanded ? (
+                <ChevronUp size={20} color={surfaces.mutedForeground} strokeWidth={1.75} />
+              ) : (
+                <ChevronDown size={20} color={surfaces.mutedForeground} strokeWidth={1.75} />
+              )}
+            </Pressable>
+          </View>
 
           {isWaliExpanded && (
             <View style={styles.waliBody}>
@@ -282,7 +290,7 @@ export default function TrainScreen() {
             </View>
           ) : historyState === 'empty' ? (
             <View style={styles.feedbackCard}>
-              <Inbox size={20} color={colors.mutedForeground} strokeWidth={1.75} />
+              <Inbox size={20} color={surfaces.mutedForeground} strokeWidth={1.75} />
               <Text style={styles.feedbackTitle}>No recent workouts</Text>
               <Text style={styles.muted}>Completed sessions will appear here.</Text>
             </View>
@@ -334,7 +342,7 @@ export default function TrainScreen() {
                 <Text style={styles.muted}>Saved templates</Text>
               </View>
             </View>
-            <ChevronRight size={20} color={colors.mutedForeground} strokeWidth={1.75} />
+            <ChevronRight size={20} color={surfaces.mutedForeground} strokeWidth={1.75} />
           </Pressable>
 
           <Pressable style={styles.actionRow}>
@@ -345,7 +353,7 @@ export default function TrainScreen() {
                 <Text style={styles.muted}>500+ exercises</Text>
               </View>
             </View>
-            <ChevronRight size={20} color={colors.mutedForeground} strokeWidth={1.75} />
+            <ChevronRight size={20} color={surfaces.mutedForeground} strokeWidth={1.75} />
           </Pressable>
         </View>
       </ScrollView>
@@ -378,8 +386,9 @@ function formatStartedAt(value: string): string {
   return `started ${date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.background },
+function createStyles(s: SurfaceTokens) {
+  return StyleSheet.create({
+  root: { flex: 1, backgroundColor: s.background },
   scrollContent: {
     paddingHorizontal: spacing.md,
     paddingTop: spacing.lg,
@@ -390,29 +399,29 @@ const styles = StyleSheet.create({
   },
   h2: {
     fontSize: typography.fontSize.lg,
-    color: colors.foreground,
+    color: s.foreground,
     fontWeight: typography.fontWeight.semibold,
     marginBottom: spacing.xs,
   },
   h3: {
     fontSize: typography.fontSize.lg,
-    color: colors.foreground,
+    color: s.foreground,
     fontWeight: typography.fontWeight.semibold,
   },
   muted: {
     fontSize: typography.fontSize.sm,
-    color: colors.mutedForeground,
+    color: s.mutedForeground,
   },
   tinyLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.mutedForeground,
+    color: s.mutedForeground,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: spacing.sm,
   },
   buildProgramCard: {
-    backgroundColor: colors.card,
-    borderColor: colors.border,
+    backgroundColor: s.card,
+    borderColor: s.border,
     borderWidth: 1,
     borderRadius: borderRadius.md,
     padding: spacing.lg,
@@ -420,7 +429,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   resumeCard: {
-    backgroundColor: colors.card,
+    backgroundColor: s.card,
     borderColor: colors.primary,
     borderWidth: 1,
     borderRadius: borderRadius.md,
@@ -487,7 +496,7 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   waliCard: {
-    backgroundColor: colors.card,
+    backgroundColor: s.card,
     borderColor: colors.primary,
     borderWidth: 1,
     borderRadius: borderRadius.md,
@@ -499,13 +508,20 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: spacing.md,
   },
+  waliToggle: {
+    width: touchTarget.min,
+    height: touchTarget.min,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -spacing.xs,
+  },
   waliBody: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
     paddingTop: spacing.md,
     gap: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: s.border,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -515,15 +531,15 @@ const styles = StyleSheet.create({
   },
   recentCard: {
     width: 256,
-    backgroundColor: colors.card,
+    backgroundColor: s.card,
     borderRadius: borderRadius.md,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: s.border,
   },
   recentTitle: {
     fontSize: typography.fontSize.base,
-    color: colors.foreground,
+    color: s.foreground,
     fontWeight: typography.fontWeight.semibold,
     marginTop: spacing.xs,
     marginBottom: spacing.sm,
@@ -536,7 +552,7 @@ const styles = StyleSheet.create({
   },
   recentMetaText: {
     fontSize: typography.fontSize.xs,
-    color: colors.mutedForeground,
+    color: s.mutedForeground,
   },
   rpePill: {
     paddingHorizontal: spacing.sm,
@@ -553,36 +569,36 @@ const styles = StyleSheet.create({
     width: 256,
     height: 100,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.secondary,
+    backgroundColor: s.secondary,
   },
   feedbackCard: {
     alignItems: 'center',
-    backgroundColor: colors.card,
+    backgroundColor: s.card,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: s.border,
     padding: spacing.lg,
     gap: spacing.sm,
   },
   feedbackTitle: {
     fontSize: typography.fontSize.base,
-    color: colors.foreground,
+    color: s.foreground,
     fontWeight: typography.fontWeight.semibold,
     textAlign: 'center',
   },
   actionRow: {
-    backgroundColor: colors.card,
+    backgroundColor: s.card,
     borderRadius: borderRadius.md,
     padding: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: s.border,
   },
   actionTitle: {
     fontSize: typography.fontSize.base,
-    color: colors.foreground,
+    color: s.foreground,
     fontWeight: typography.fontWeight.semibold,
   },
   fab: {
@@ -603,4 +619,5 @@ const styles = StyleSheet.create({
   row4: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   row8: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   row12: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm + 4 },
-});
+  });
+}

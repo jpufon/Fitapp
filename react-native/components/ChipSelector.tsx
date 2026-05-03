@@ -1,5 +1,8 @@
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, spacing, typography } from '../theme';
+import type { SurfaceTokens } from '../theme/surfaceTheme';
+import { useWalifitTheme } from '../theme/ThemeProvider';
 
 interface ChipSelectorProps {
   options: string[];
@@ -14,6 +17,9 @@ export function ChipSelector({
   onSelect,
   multiSelect = false,
 }: ChipSelectorProps) {
+  const { surfaces } = useWalifitTheme();
+  const styles = useMemo(() => createStyles(surfaces), [surfaces]);
+
   const handleToggle = (option: string) => {
     if (multiSelect) {
       const next = selected.includes(option)
@@ -53,36 +59,38 @@ export function ChipSelector({
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  chip: {
-    minHeight: 36,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 9999,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipSelected: {
-    backgroundColor: colors.primary,
-  },
-  chipUnselected: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-  },
-  chipTextSelected: {
-    color: colors.primaryFg,
-  },
-  chipTextUnselected: {
-    color: colors.mutedForeground,
-  },
-});
+function createStyles(s: SurfaceTokens) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+    },
+    chip: {
+      minHeight: 36,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: 9999,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    chipSelected: {
+      backgroundColor: colors.primary,
+    },
+    chipUnselected: {
+      backgroundColor: s.card,
+      borderWidth: 1,
+      borderColor: s.border,
+    },
+    chipText: {
+      fontSize: typography.fontSize.sm,
+      fontWeight: typography.fontWeight.medium,
+    },
+    chipTextSelected: {
+      color: colors.primaryFg,
+    },
+    chipTextUnselected: {
+      color: s.mutedForeground,
+    },
+  });
+}

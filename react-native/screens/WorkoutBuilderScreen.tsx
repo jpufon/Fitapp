@@ -3,7 +3,7 @@
 // archive. Conditioning slots reuse the same row but expose interval/rounds
 // fields when the user picks that mode.
 
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   Alert, View, Text, ScrollView, TextInput, TouchableOpacity,
   StyleSheet, Modal, Pressable,
@@ -15,6 +15,8 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { RootStackParamList } from '../App'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
+import type { SurfaceTokens } from '../theme/surfaceTheme'
+import { useWalifitTheme } from '../theme/ThemeProvider'
 import {
   useWorkoutTemplates, useCreateTemplate, useUpdateTemplate,
   useDuplicateTemplate, useDeleteTemplate,
@@ -29,6 +31,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'WorkoutBuilder'>
 type ExerciseDraft = TemplateExercise & { mode: 'strength' | 'interval' | 'rounds' }
 
 export default function WorkoutBuilderScreen({ navigation }: Props) {
+  const { surfaces } = useWalifitTheme()
+  const styles = useMemo(() => createStyles(surfaces), [surfaces])
   const { data: templates, isLoading, error } = useWorkoutTemplates()
   const duplicate = useDuplicateTemplate()
   const remove = useDeleteTemplate()
@@ -69,7 +73,7 @@ export default function WorkoutBuilderScreen({ navigation }: Props) {
     <SafeAreaView style={styles.root} edges={['top']}>
       <View style={styles.navBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
-          <ChevronLeft size={22} color={colors.foreground} strokeWidth={1.75} />
+          <ChevronLeft size={22} color={surfaces.foreground} strokeWidth={1.75} />
         </TouchableOpacity>
         <Text style={styles.navTitle}>Workout Builder</Text>
         <TouchableOpacity onPress={() => setCreating(true)} style={styles.iconBtn} testID="builder-create-template">
@@ -107,11 +111,11 @@ export default function WorkoutBuilderScreen({ navigation }: Props) {
               ) : null}
               <View style={styles.templateActions}>
                 <TouchableOpacity onPress={() => setEditing(template)} style={styles.actionBtn}>
-                  <Edit3 size={16} color={colors.foreground} strokeWidth={1.75} />
+                  <Edit3 size={16} color={surfaces.foreground} strokeWidth={1.75} />
                   <Text style={styles.actionBtnText}>Edit</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => handleDuplicate(template.id)} style={styles.actionBtn} testID={`builder-duplicate-${template.id}`}>
-                  <Copy size={16} color={colors.foreground} strokeWidth={1.75} />
+                  <Copy size={16} color={surfaces.foreground} strokeWidth={1.75} />
                   <Text style={styles.actionBtnText}>Duplicate</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => handleDelete(template)} style={styles.actionBtn} testID={`builder-delete-${template.id}`}>
@@ -130,6 +134,8 @@ export default function WorkoutBuilderScreen({ navigation }: Props) {
 // ─── Editor ────────────────────────────────────────────────────────────────
 
 function TemplateEditor({ initial, onClose }: { initial: WorkoutTemplate | null; onClose: () => void }) {
+  const { surfaces } = useWalifitTheme()
+  const styles = useMemo(() => createStyles(surfaces), [surfaces])
   const create = useCreateTemplate()
   const update = useUpdateTemplate(initial?.id ?? '')
 
@@ -179,7 +185,7 @@ function TemplateEditor({ initial, onClose }: { initial: WorkoutTemplate | null;
     <SafeAreaView style={styles.root} edges={['top']}>
       <View style={styles.navBar}>
         <TouchableOpacity onPress={onClose} style={styles.iconBtn}>
-          <X size={22} color={colors.foreground} strokeWidth={1.75} />
+          <X size={22} color={surfaces.foreground} strokeWidth={1.75} />
         </TouchableOpacity>
         <Text style={styles.navTitle}>{initial ? 'Edit Template' : 'New Template'}</Text>
         <TouchableOpacity
@@ -199,7 +205,7 @@ function TemplateEditor({ initial, onClose }: { initial: WorkoutTemplate | null;
           value={name}
           onChangeText={setName}
           placeholder="Push Day A"
-          placeholderTextColor={colors.mutedForeground}
+          placeholderTextColor={surfaces.mutedForeground}
           testID="builder-template-name"
         />
 
@@ -209,7 +215,7 @@ function TemplateEditor({ initial, onClose }: { initial: WorkoutTemplate | null;
           value={description}
           onChangeText={setDescription}
           placeholder="Optional notes about this template"
-          placeholderTextColor={colors.mutedForeground}
+          placeholderTextColor={surfaces.mutedForeground}
           multiline
         />
 
@@ -220,6 +226,8 @@ function TemplateEditor({ initial, onClose }: { initial: WorkoutTemplate | null;
             draft={ex}
             onChange={(patch) => setExercises((curr) => curr.map((x, i) => (i === idx ? { ...x, ...patch } : x)))}
             onRemove={() => setExercises((curr) => curr.filter((_, i) => i !== idx))}
+            styles={styles}
+            surfaces={surfaces}
           />
         ))}
 
@@ -239,11 +247,13 @@ function TemplateEditor({ initial, onClose }: { initial: WorkoutTemplate | null;
 // ─── Exercise draft row ────────────────────────────────────────────────────
 
 function ExerciseDraftRow({
-  draft, onChange, onRemove,
+  draft, onChange, onRemove, styles, surfaces,
 }: {
   draft: ExerciseDraft
   onChange: (patch: Partial<ExerciseDraft>) => void
   onRemove: () => void
+  styles: WorkoutBuilderStyles
+  surfaces: SurfaceTokens
 }) {
   const setMode = (mode: ExerciseDraft['mode']) => {
     if (mode === draft.mode) return
@@ -267,53 +277,57 @@ function ExerciseDraftRow({
 
       <View style={styles.modePicker}>
         <ModeChip
-          icon={<Dumbbell size={14} color={draft.mode === 'strength' ? colors.primaryFg : colors.foreground} strokeWidth={1.75} />}
+          icon={<Dumbbell size={14} color={draft.mode === 'strength' ? colors.primaryFg : surfaces.foreground} strokeWidth={1.75} />}
           label="Strength"
           active={draft.mode === 'strength'}
           onPress={() => setMode('strength')}
           testID={`builder-row-${draft.exerciseName}-strength`}
+          styles={styles}
         />
         <ModeChip
-          icon={<Timer size={14} color={draft.mode === 'interval' ? colors.primaryFg : colors.foreground} strokeWidth={1.75} />}
+          icon={<Timer size={14} color={draft.mode === 'interval' ? colors.primaryFg : surfaces.foreground} strokeWidth={1.75} />}
           label="Interval"
           active={draft.mode === 'interval'}
           onPress={() => setMode('interval')}
           testID={`builder-row-${draft.exerciseName}-interval`}
+          styles={styles}
         />
         <ModeChip
-          icon={<Repeat size={14} color={draft.mode === 'rounds' ? colors.primaryFg : colors.foreground} strokeWidth={1.75} />}
+          icon={<Repeat size={14} color={draft.mode === 'rounds' ? colors.primaryFg : surfaces.foreground} strokeWidth={1.75} />}
           label="Rounds"
           active={draft.mode === 'rounds'}
           onPress={() => setMode('rounds')}
           testID={`builder-row-${draft.exerciseName}-rounds`}
+          styles={styles}
         />
       </View>
 
       {draft.mode === 'strength' ? (
         <View style={styles.draftFields}>
-          <NumField label="Sets" value={draft.defaultSets} onChange={(v) => onChange({ defaultSets: v ?? undefined })} />
-          <NumField label="Reps" value={draft.defaultReps ?? null} onChange={(v) => onChange({ defaultReps: v })} />
-          <NumField label="Rest (s)" value={draft.restS ?? null} onChange={(v) => onChange({ restS: v })} />
+          <NumField label="Sets" value={draft.defaultSets} onChange={(v) => onChange({ defaultSets: v ?? undefined })} styles={styles} surfaces={surfaces} />
+          <NumField label="Reps" value={draft.defaultReps ?? null} onChange={(v) => onChange({ defaultReps: v })} styles={styles} surfaces={surfaces} />
+          <NumField label="Rest (s)" value={draft.restS ?? null} onChange={(v) => onChange({ restS: v })} styles={styles} surfaces={surfaces} />
         </View>
       ) : draft.mode === 'interval' ? (
         <View style={styles.draftFields}>
-          <NumField label="Work (s)" value={draft.intervalWorkS ?? null} onChange={(v) => onChange({ intervalWorkS: v })} />
-          <NumField label="Rest (s)" value={draft.intervalRestS ?? null} onChange={(v) => onChange({ intervalRestS: v })} />
-          <NumField label="Total (s)" value={draft.durationS ?? null} onChange={(v) => onChange({ durationS: v })} />
+          <NumField label="Work (s)" value={draft.intervalWorkS ?? null} onChange={(v) => onChange({ intervalWorkS: v })} styles={styles} surfaces={surfaces} />
+          <NumField label="Rest (s)" value={draft.intervalRestS ?? null} onChange={(v) => onChange({ intervalRestS: v })} styles={styles} surfaces={surfaces} />
+          <NumField label="Total (s)" value={draft.durationS ?? null} onChange={(v) => onChange({ durationS: v })} styles={styles} surfaces={surfaces} />
         </View>
       ) : (
         <View style={styles.draftFields}>
-          <NumField label="Rounds" value={draft.rounds ?? null} onChange={(v) => onChange({ rounds: v })} />
-          <NumField label="Reps/round" value={draft.defaultReps ?? null} onChange={(v) => onChange({ defaultReps: v })} />
-          <NumField label="Rest (s)" value={draft.restS ?? null} onChange={(v) => onChange({ restS: v })} />
+          <NumField label="Rounds" value={draft.rounds ?? null} onChange={(v) => onChange({ rounds: v })} styles={styles} surfaces={surfaces} />
+          <NumField label="Reps/round" value={draft.defaultReps ?? null} onChange={(v) => onChange({ defaultReps: v })} styles={styles} surfaces={surfaces} />
+          <NumField label="Rest (s)" value={draft.restS ?? null} onChange={(v) => onChange({ restS: v })} styles={styles} surfaces={surfaces} />
         </View>
       )}
     </View>
   )
 }
 
-function ModeChip({ icon, label, active, onPress, testID }: {
+function ModeChip({ icon, label, active, onPress, testID, styles }: {
   icon: React.ReactNode; label: string; active: boolean; onPress: () => void; testID?: string
+  styles: WorkoutBuilderStyles
 }) {
   return (
     <TouchableOpacity onPress={onPress} style={[styles.modeChip, active && styles.modeChipActive]} testID={testID}>
@@ -323,8 +337,9 @@ function ModeChip({ icon, label, active, onPress, testID }: {
   )
 }
 
-function NumField({ label, value, onChange }: {
+function NumField({ label, value, onChange, styles, surfaces }: {
   label: string; value: number | null | undefined; onChange: (v: number | null) => void
+  styles: WorkoutBuilderStyles; surfaces: SurfaceTokens
 }) {
   return (
     <View style={{ flex: 1 }}>
@@ -337,7 +352,7 @@ function NumField({ label, value, onChange }: {
           onChange(Number.isFinite(n) ? n : null)
         }}
         keyboardType="number-pad"
-        placeholderTextColor={colors.mutedForeground}
+        placeholderTextColor={surfaces.mutedForeground}
       />
     </View>
   )
@@ -350,6 +365,8 @@ function ExercisePicker({
 }: {
   onCancel: () => void; onConfirm: (selected: Exercise[]) => void
 }) {
+  const { surfaces } = useWalifitTheme()
+  const styles = useMemo(() => createStyles(surfaces), [surfaces])
   const { data, isLoading } = useExerciseLibrary()
   const [query, setQuery] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -375,7 +392,7 @@ function ExercisePicker({
     <SafeAreaView style={styles.root} edges={['top']}>
       <View style={styles.navBar}>
         <TouchableOpacity onPress={onCancel} style={styles.iconBtn}>
-          <X size={22} color={colors.foreground} strokeWidth={1.75} />
+          <X size={22} color={surfaces.foreground} strokeWidth={1.75} />
         </TouchableOpacity>
         <Text style={styles.navTitle}>Pick exercises</Text>
         <TouchableOpacity
@@ -389,13 +406,13 @@ function ExercisePicker({
       </View>
 
       <View style={styles.searchRow}>
-        <Search size={16} color={colors.mutedForeground} strokeWidth={1.75} />
+        <Search size={16} color={surfaces.mutedForeground} strokeWidth={1.75} />
         <TextInput
           style={styles.searchInput}
           value={query}
           onChangeText={setQuery}
           placeholder="Search exercises"
-          placeholderTextColor={colors.mutedForeground}
+          placeholderTextColor={surfaces.mutedForeground}
         />
       </View>
 
@@ -449,42 +466,46 @@ function hasConditioning(exercises: ExerciseDraft[]): boolean {
 
 // ─── styles ───────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  root:               { flex: 1, backgroundColor: colors.background },
-  navBar:             { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm, paddingTop: spacing.sm, paddingBottom: spacing.sm, borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  navTitle:           { fontSize: typography.size.lg, fontWeight: typography.weight.bold, color: colors.foreground },
-  iconBtn:            { width: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
-  scroll:             { padding: spacing.screen, paddingBottom: spacing.xxl, gap: spacing.md },
-  stateBox:           { paddingTop: spacing.xl, alignItems: 'center', gap: spacing.md },
-  stateText:          { fontSize: typography.size.base, color: colors.mutedForeground, textAlign: 'center' },
-  primaryBtn:         { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.primary, borderRadius: radius.full, minHeight: touchTarget.comfortable, alignItems: 'center', justifyContent: 'center' },
-  primaryBtnText:     { fontSize: typography.size.sm, fontWeight: typography.weight.bold, color: colors.primaryFg },
-  templateCard:       { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, gap: spacing.sm },
-  templateHeader:     { flexDirection: 'row', alignItems: 'center' },
-  templateName:       { fontSize: typography.size.lg, fontWeight: typography.weight.bold, color: colors.foreground },
-  templateMeta:       { fontSize: typography.size.xs, color: colors.mutedForeground, marginTop: 2 },
-  templateDescription:{ fontSize: typography.size.sm, color: colors.foreground },
-  templateActions:    { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs },
-  actionBtn:          { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: spacing.xs, paddingHorizontal: spacing.sm, borderRadius: radius.md, backgroundColor: colors.muted },
-  actionBtnText:      { fontSize: typography.size.xs, fontWeight: typography.weight.semibold, color: colors.foreground },
-  fieldLabel:         { fontSize: typography.size.xs, fontWeight: typography.weight.semibold, color: colors.mutedForeground, marginTop: spacing.sm, textTransform: 'uppercase', letterSpacing: 0.6 },
-  input:              { backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, fontSize: typography.size.base, color: colors.foreground, minHeight: touchTarget.comfortable },
-  draftRow:           { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, gap: spacing.sm },
-  draftHeader:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  draftName:          { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: colors.foreground, flex: 1 },
-  draftFields:        { flexDirection: 'row', gap: spacing.sm },
-  modePicker:         { flexDirection: 'row', gap: spacing.xs },
-  modeChip:           { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.full, borderWidth: 0.5, borderColor: colors.border, backgroundColor: colors.muted, minHeight: touchTarget.min },
-  modeChipActive:     { backgroundColor: colors.primary, borderColor: colors.primary },
-  modeChipText:       { fontSize: typography.size.xs, fontWeight: typography.weight.semibold, color: colors.foreground },
-  numLabel:           { fontSize: 10, color: colors.mutedForeground, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 },
-  numInput:           { backgroundColor: colors.background, borderRadius: radius.sm, borderWidth: 0.5, borderColor: colors.border, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, fontSize: typography.size.base, color: colors.foreground, minHeight: touchTarget.min, textAlign: 'center' },
-  addExerciseBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: spacing.md, borderRadius: radius.lg, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.primary + '60', backgroundColor: colors.primary + '08' },
-  addExerciseBtnText: { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: colors.primary },
-  searchRow:          { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginHorizontal: spacing.screen, marginTop: spacing.sm, paddingHorizontal: spacing.md, backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, height: touchTarget.comfortable },
-  searchInput:        { flex: 1, fontSize: typography.size.base, color: colors.foreground },
-  pickerRow:          { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: 0.5, borderBottomColor: colors.border, gap: spacing.md },
-  pickerRowActive:    { backgroundColor: colors.primary + '10' },
-  pickerName:         { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: colors.foreground },
-  pickerMeta:         { fontSize: typography.size.xs, color: colors.mutedForeground, marginTop: 2 },
-})
+type WorkoutBuilderStyles = ReturnType<typeof createStyles>
+
+function createStyles(s: SurfaceTokens) {
+  return StyleSheet.create({
+    root:               { flex: 1, backgroundColor: s.background },
+    navBar:             { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm, paddingTop: spacing.sm, paddingBottom: spacing.sm, borderBottomWidth: 0.5, borderBottomColor: s.border },
+    navTitle:           { fontSize: typography.size.lg, fontWeight: typography.weight.bold, color: s.foreground },
+    iconBtn:            { width: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
+    scroll:             { padding: spacing.screen, paddingBottom: spacing.xxl, gap: spacing.md },
+    stateBox:           { paddingTop: spacing.xl, alignItems: 'center', gap: spacing.md },
+    stateText:          { fontSize: typography.size.base, color: s.mutedForeground, textAlign: 'center' },
+    primaryBtn:         { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.primary, borderRadius: radius.full, minHeight: touchTarget.comfortable, alignItems: 'center', justifyContent: 'center' },
+    primaryBtnText:     { fontSize: typography.size.sm, fontWeight: typography.weight.bold, color: colors.primaryFg },
+    templateCard:       { backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, padding: spacing.md, gap: spacing.sm },
+    templateHeader:     { flexDirection: 'row', alignItems: 'center' },
+    templateName:       { fontSize: typography.size.lg, fontWeight: typography.weight.bold, color: s.foreground },
+    templateMeta:       { fontSize: typography.size.xs, color: s.mutedForeground, marginTop: 2 },
+    templateDescription:{ fontSize: typography.size.sm, color: s.foreground },
+    templateActions:    { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs },
+    actionBtn:          { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: spacing.xs, paddingHorizontal: spacing.sm, borderRadius: radius.md, backgroundColor: s.muted },
+    actionBtnText:      { fontSize: typography.size.xs, fontWeight: typography.weight.semibold, color: s.foreground },
+    fieldLabel:         { fontSize: typography.size.xs, fontWeight: typography.weight.semibold, color: s.mutedForeground, marginTop: spacing.sm, textTransform: 'uppercase', letterSpacing: 0.6 },
+    input:              { backgroundColor: s.card, borderRadius: radius.md, borderWidth: 0.5, borderColor: s.border, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, fontSize: typography.size.base, color: s.foreground, minHeight: touchTarget.comfortable },
+    draftRow:           { backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, padding: spacing.md, gap: spacing.sm },
+    draftHeader:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    draftName:          { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: s.foreground, flex: 1 },
+    draftFields:        { flexDirection: 'row', gap: spacing.sm },
+    modePicker:         { flexDirection: 'row', gap: spacing.xs },
+    modeChip:           { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.full, borderWidth: 0.5, borderColor: s.border, backgroundColor: s.muted, minHeight: touchTarget.min },
+    modeChipActive:     { backgroundColor: colors.primary, borderColor: colors.primary },
+    modeChipText:       { fontSize: typography.size.xs, fontWeight: typography.weight.semibold, color: s.foreground },
+    numLabel:           { fontSize: 10, color: s.mutedForeground, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 },
+    numInput:           { backgroundColor: s.background, borderRadius: radius.sm, borderWidth: 0.5, borderColor: s.border, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, fontSize: typography.size.base, color: s.foreground, minHeight: touchTarget.min, textAlign: 'center' },
+    addExerciseBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: spacing.md, borderRadius: radius.lg, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.primary + '60', backgroundColor: colors.primary + '08' },
+    addExerciseBtnText: { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: colors.primary },
+    searchRow:          { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginHorizontal: spacing.screen, marginTop: spacing.sm, paddingHorizontal: spacing.md, backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, height: touchTarget.comfortable },
+    searchInput:        { flex: 1, fontSize: typography.size.base, color: s.foreground },
+    pickerRow:          { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: 0.5, borderBottomColor: s.border, gap: spacing.md },
+    pickerRowActive:    { backgroundColor: colors.primary + '10' },
+    pickerName:         { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: s.foreground },
+    pickerMeta:         { fontSize: typography.size.xs, color: s.mutedForeground, marginTop: 2 },
+  })
+}

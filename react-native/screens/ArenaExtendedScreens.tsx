@@ -2,7 +2,7 @@
 // Missing Arena screens: Friends, Add Friend, Friend Profile,
 // Group Sessions, Create Session, Challenges, Badges, DMs
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
   StyleSheet, Modal,
@@ -12,6 +12,8 @@ import {
   Search, Lock, Award, Check, X, Send,
 } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
+import type { SurfaceTokens } from '../theme/surfaceTheme'
+import { useWalifitTheme } from '../theme/ThemeProvider'
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -57,6 +59,8 @@ const MOCK_DM_THREADS = [
 // ─── Friends Screen ───────────────────────────────────────────────────────────
 
 export function FriendsScreen({ onBack }: { onBack: () => void }) {
+  const { surfaces } = useWalifitTheme()
+  const styles = useMemo(() => createStyles(surfaces), [surfaces])
   const [query, setQuery] = useState('')
   const [showAddFriend, setShowAddFriend] = useState(false)
 
@@ -64,7 +68,7 @@ export function FriendsScreen({ onBack }: { onBack: () => void }) {
     <View style={styles.container}>
       <View style={styles.navBar}>
         <TouchableOpacity style={styles.iconBtn} onPress={onBack}>
-          <ChevronRight color={colors.foreground} size={20} strokeWidth={1.75} style={{ transform: [{ rotate: '180deg' }] }} />
+          <ChevronRight color={surfaces.foreground} size={20} strokeWidth={1.75} style={{ transform: [{ rotate: '180deg' }] }} />
         </TouchableOpacity>
         <Text style={styles.navTitle}>Friends</Text>
         <TouchableOpacity style={styles.iconBtn} onPress={() => setShowAddFriend(true)}>
@@ -75,9 +79,9 @@ export function FriendsScreen({ onBack }: { onBack: () => void }) {
       <ScrollView contentContainerStyle={styles.content}>
         {/* Search */}
         <View style={styles.searchRow}>
-          <Search color={colors.mutedForeground} size={16} strokeWidth={1.75} />
+          <Search color={surfaces.mutedForeground} size={16} strokeWidth={1.75} />
           <TextInput style={styles.searchInput} value={query} onChangeText={setQuery}
-            placeholder="Search friends" placeholderTextColor={colors.mutedForeground} />
+            placeholder="Search friends" placeholderTextColor={surfaces.mutedForeground} />
         </View>
 
         {/* Pending requests */}
@@ -139,12 +143,12 @@ export function FriendsScreen({ onBack }: { onBack: () => void }) {
             <View style={styles.modalHeader}>
               <Text style={styles.navTitle}>Add friend</Text>
               <TouchableOpacity style={styles.iconBtn} onPress={() => setShowAddFriend(false)}>
-                <X color={colors.foreground} size={20} strokeWidth={1.75} />
+                <X color={surfaces.foreground} size={20} strokeWidth={1.75} />
               </TouchableOpacity>
             </View>
             <View style={styles.searchRow}>
-              <Search color={colors.mutedForeground} size={16} strokeWidth={1.75} />
-              <TextInput style={styles.searchInput} placeholder="Search by username" placeholderTextColor={colors.mutedForeground} autoFocus />
+              <Search color={surfaces.mutedForeground} size={16} strokeWidth={1.75} />
+              <TextInput style={styles.searchInput} placeholder="Search by username" placeholderTextColor={surfaces.mutedForeground} autoFocus />
             </View>
             <Text style={styles.sectionLabel}>Or share your invite link</Text>
             <TouchableOpacity style={styles.inviteLinkBtn}>
@@ -160,6 +164,8 @@ export function FriendsScreen({ onBack }: { onBack: () => void }) {
 // ─── Challenges Screen ────────────────────────────────────────────────────────
 
 export function ChallengesScreen({ onBack }: { onBack: () => void }) {
+  const { surfaces } = useWalifitTheme()
+  const styles = useMemo(() => createStyles(surfaces), [surfaces])
   const active   = MOCK_CHALLENGES.filter(c => c.active)
   const past     = MOCK_CHALLENGES.filter(c => !c.active)
 
@@ -171,7 +177,7 @@ export function ChallengesScreen({ onBack }: { onBack: () => void }) {
     <View style={styles.container}>
       <View style={styles.navBar}>
         <TouchableOpacity style={styles.iconBtn} onPress={onBack}>
-          <ChevronRight color={colors.foreground} size={20} strokeWidth={1.75} style={{ transform: [{ rotate: '180deg' }] }} />
+          <ChevronRight color={surfaces.foreground} size={20} strokeWidth={1.75} style={{ transform: [{ rotate: '180deg' }] }} />
         </TouchableOpacity>
         <Text style={styles.navTitle}>Challenges</Text>
         <View style={{ width: touchTarget.min }} />
@@ -186,14 +192,14 @@ export function ChallengesScreen({ onBack }: { onBack: () => void }) {
                 <Text style={[styles.challengeTypeTxt, { color: typeColor[c.type] }]}>{c.type}</Text>
               </View>
               <View style={styles.timerBadge}>
-                <Clock color={colors.mutedForeground} size={12} strokeWidth={1.75} />
+                <Clock color={surfaces.mutedForeground} size={12} strokeWidth={1.75} />
                 <Text style={styles.timerText}>{c.days}d left</Text>
               </View>
             </View>
             <Text style={styles.challengeTitle}>{c.title}</Text>
             <View style={styles.challengeMeta}>
               <View style={styles.challengeStatRow}>
-                <Users color={colors.mutedForeground} size={13} strokeWidth={1.75} />
+                <Users color={surfaces.mutedForeground} size={13} strokeWidth={1.75} />
                 <Text style={styles.challengeMetaTxt}>{c.participants} participants</Text>
               </View>
               <Text style={[styles.challengeMetaTxt, { color: typeColor[c.type] }]}>
@@ -223,8 +229,10 @@ export function ChallengesScreen({ onBack }: { onBack: () => void }) {
 // ─── Badges Screen ────────────────────────────────────────────────────────────
 
 export function BadgesScreen({ onBack }: { onBack: () => void }) {
+  const { surfaces } = useWalifitTheme()
+  const styles = useMemo(() => createStyles(surfaces), [surfaces])
   const rarityColor: Record<string, string> = {
-    Common: colors.mutedForeground, Rare: colors.blue,
+    Common: surfaces.mutedForeground, Rare: colors.blue,
     Epic: colors.purple, Legendary: colors.energy,
   }
   const categories = [...new Set(MOCK_BADGES.map(b => b.category))]
@@ -233,7 +241,7 @@ export function BadgesScreen({ onBack }: { onBack: () => void }) {
     <View style={styles.container}>
       <View style={styles.navBar}>
         <TouchableOpacity style={styles.iconBtn} onPress={onBack}>
-          <ChevronRight color={colors.foreground} size={20} strokeWidth={1.75} style={{ transform: [{ rotate: '180deg' }] }} />
+          <ChevronRight color={surfaces.foreground} size={20} strokeWidth={1.75} style={{ transform: [{ rotate: '180deg' }] }} />
         </TouchableOpacity>
         <Text style={styles.navTitle}>Badges</Text>
         <View style={{ width: touchTarget.min }} />
@@ -254,13 +262,13 @@ export function BadgesScreen({ onBack }: { onBack: () => void }) {
                   style={[styles.badgeCard, !badge.earned && styles.badgeCardLocked]}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.badgeIcon, { backgroundColor: badge.earned ? rarityColor[badge.rarity] + '20' : colors.muted }]}>
+                  <View style={[styles.badgeIcon, { backgroundColor: badge.earned ? rarityColor[badge.rarity] + '20' : surfaces.muted }]}>
                     {badge.earned
                       ? <Award color={rarityColor[badge.rarity]} size={22} strokeWidth={1.75} />
-                      : <Lock color={colors.mutedForeground} size={18} strokeWidth={1.75} />
+                      : <Lock color={surfaces.mutedForeground} size={18} strokeWidth={1.75} />
                     }
                   </View>
-                  <Text style={[styles.badgeName, !badge.earned && { color: colors.mutedForeground }]} numberOfLines={2}>
+                  <Text style={[styles.badgeName, !badge.earned && { color: surfaces.mutedForeground }]} numberOfLines={2}>
                     {badge.name}
                   </Text>
                   <View style={[styles.rarityTag, { backgroundColor: rarityColor[badge.rarity] + '18' }]}>
@@ -279,11 +287,14 @@ export function BadgesScreen({ onBack }: { onBack: () => void }) {
 // ─── Sessions Screen ──────────────────────────────────────────────────────────
 
 export function SessionsScreen({ onBack }: { onBack: () => void }) {
+  const { surfaces } = useWalifitTheme()
+  const styles = useMemo(() => createStyles(surfaces), [surfaces])
+
   return (
     <View style={styles.container}>
       <View style={styles.navBar}>
         <TouchableOpacity style={styles.iconBtn} onPress={onBack}>
-          <ChevronRight color={colors.foreground} size={20} strokeWidth={1.75} style={{ transform: [{ rotate: '180deg' }] }} />
+          <ChevronRight color={surfaces.foreground} size={20} strokeWidth={1.75} style={{ transform: [{ rotate: '180deg' }] }} />
         </TouchableOpacity>
         <Text style={styles.navTitle}>Group Sessions</Text>
         <TouchableOpacity style={[styles.createSessionBtn]}>
@@ -301,9 +312,9 @@ export function SessionsScreen({ onBack }: { onBack: () => void }) {
               <Text style={styles.sessionName}>{session.name}</Text>
               <View style={[
                 styles.sessionStatusBadge,
-                { backgroundColor: session.status === 'active' ? colors.primary + '18' : colors.muted }
+                { backgroundColor: session.status === 'active' ? colors.primary + '18' : surfaces.muted }
               ]}>
-                <Text style={[styles.sessionStatusText, { color: session.status === 'active' ? colors.primary : colors.mutedForeground }]}>
+                <Text style={[styles.sessionStatusText, { color: session.status === 'active' ? colors.primary : surfaces.mutedForeground }]}>
                   {session.status === 'active' ? 'Active now' : 'Upcoming'}
                 </Text>
               </View>
@@ -312,7 +323,7 @@ export function SessionsScreen({ onBack }: { onBack: () => void }) {
             <Text style={styles.sessionDate}>{session.date}</Text>
             <View style={styles.sessionMeta}>
               <View style={styles.sessionMetaRow}>
-                <Users color={colors.mutedForeground} size={13} strokeWidth={1.75} />
+                <Users color={surfaces.mutedForeground} size={13} strokeWidth={1.75} />
                 <Text style={styles.sessionMetaTxt}>{session.started}/{session.members} started</Text>
               </View>
               {session.ghostMode && (
@@ -339,6 +350,8 @@ export function SessionsScreen({ onBack }: { onBack: () => void }) {
 // ─── DMs Screen ───────────────────────────────────────────────────────────────
 
 export function DMsScreen({ onBack }: { onBack: () => void }) {
+  const { surfaces } = useWalifitTheme()
+  const styles = useMemo(() => createStyles(surfaces), [surfaces])
   // TODO: Supabase Realtime — subscribe to thread messages
   const [activeThread, setActiveThread] = useState<string | null>(null)
   const [message, setMessage] = useState('')
@@ -350,7 +363,7 @@ export function DMsScreen({ onBack }: { onBack: () => void }) {
       <View style={styles.container}>
         <View style={styles.navBar}>
           <TouchableOpacity style={styles.iconBtn} onPress={() => setActiveThread(null)}>
-            <ChevronRight color={colors.foreground} size={20} strokeWidth={1.75} style={{ transform: [{ rotate: '180deg' }] }} />
+            <ChevronRight color={surfaces.foreground} size={20} strokeWidth={1.75} style={{ transform: [{ rotate: '180deg' }] }} />
           </TouchableOpacity>
           <View style={styles.dmThreadHeader}>
             <View style={[styles.avatar, { backgroundColor: colors.primary + '20', width: 32, height: 32, borderRadius: 16 }]}>
@@ -363,7 +376,7 @@ export function DMsScreen({ onBack }: { onBack: () => void }) {
 
         <ScrollView contentContainerStyle={styles.dmMessages}>
           <View style={[styles.msgRow]}>
-            <View style={[styles.msgBubble, { backgroundColor: colors.card, maxWidth: '80%' }]}>
+            <View style={[styles.msgBubble, { backgroundColor: surfaces.card, maxWidth: '80%' }]}>
               <Text style={styles.msgText}>{thread.lastMsg}</Text>
               <Text style={styles.msgTime}>{thread.time}</Text>
             </View>
@@ -378,7 +391,7 @@ export function DMsScreen({ onBack }: { onBack: () => void }) {
 
         <View style={styles.dmInputBar}>
           <TextInput style={styles.dmInput} value={message} onChangeText={setMessage}
-            placeholder="Message..." placeholderTextColor={colors.mutedForeground} />
+            placeholder="Message..." placeholderTextColor={surfaces.mutedForeground} />
           <TouchableOpacity style={[styles.dmSendBtn, !message && { opacity: 0.4 }]} disabled={!message}>
             <Send color={colors.primaryFg} size={16} strokeWidth={1.75} />
           </TouchableOpacity>
@@ -391,7 +404,7 @@ export function DMsScreen({ onBack }: { onBack: () => void }) {
     <View style={styles.container}>
       <View style={styles.navBar}>
         <TouchableOpacity style={styles.iconBtn} onPress={onBack}>
-          <ChevronRight color={colors.foreground} size={20} strokeWidth={1.75} style={{ transform: [{ rotate: '180deg' }] }} />
+          <ChevronRight color={surfaces.foreground} size={20} strokeWidth={1.75} style={{ transform: [{ rotate: '180deg' }] }} />
         </TouchableOpacity>
         <Text style={styles.navTitle}>Messages</Text>
         <View style={{ width: touchTarget.min }} />
@@ -399,7 +412,7 @@ export function DMsScreen({ onBack }: { onBack: () => void }) {
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.dmNotice}>
-          <Lock color={colors.mutedForeground} size={14} strokeWidth={1.75} />
+          <Lock color={surfaces.mutedForeground} size={14} strokeWidth={1.75} />
           <Text style={styles.dmNoticeText}>DMs are available with mutual friends only</Text>
         </View>
         {MOCK_DM_THREADS.map(thread => (
@@ -426,83 +439,85 @@ export function DMsScreen({ onBack }: { onBack: () => void }) {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  container:          { flex: 1, backgroundColor: colors.background },
-  navBar:             { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm, paddingTop: spacing.xl, paddingBottom: spacing.sm, borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  navTitle:           { fontSize: typography.size.lg, fontWeight: typography.weight.bold, color: colors.foreground },
-  iconBtn:            { width: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
-  content:            { paddingHorizontal: spacing.screen, paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.sm },
-  sectionLabel:       { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: colors.mutedForeground },
-  searchRow:          { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, paddingHorizontal: spacing.md, height: touchTarget.comfortable },
-  searchInput:        { flex: 1, fontSize: typography.size.base, color: colors.foreground },
-  avatar:             { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  avatarText:         { fontSize: typography.size.sm, fontWeight: typography.weight.bold },
-  friendCard:         { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md },
-  requestCard:        { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md },
-  friendInfo:         { flex: 1 },
-  friendName:         { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: colors.foreground },
-  friendSub:          { fontSize: typography.size.xs, color: colors.mutedForeground, marginTop: 2 },
-  friendMeta:         { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 3 },
-  compatBadge:        { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.full },
-  compatText:         { fontSize: 10, fontWeight: typography.weight.bold },
-  dmBtn:              { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary + '15', alignItems: 'center', justifyContent: 'center' },
-  requestBtns:        { flexDirection: 'row', gap: spacing.sm },
-  declineBtn:         { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.destructive + '15', alignItems: 'center', justifyContent: 'center' },
-  acceptBtn:          { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  inviteLinkBtn:      { height: touchTarget.comfortable, backgroundColor: colors.card, borderRadius: radius.full, borderWidth: 0.5, borderColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  challengeCard:      { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, gap: spacing.xs },
-  challengeTop:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  challengeTypeBadge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.full },
-  challengeTypeTxt:   { fontSize: typography.size.xs, fontWeight: typography.weight.bold },
-  timerBadge:         { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  timerText:          { fontSize: typography.size.xs, color: colors.mutedForeground },
-  challengeTitle:     { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.foreground },
-  challengeMeta:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  challengeStatRow:   { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  challengeMetaTxt:   { fontSize: typography.size.sm, color: colors.mutedForeground },
-  challengeLeader:    { fontSize: typography.size.xs, color: colors.mutedForeground },
-  badgesEarned:       { fontSize: typography.size.base, color: colors.primary, fontWeight: typography.weight.semibold, textAlign: 'center' },
-  badgesGrid:         { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  badgeCard:          { width: '30%', backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, padding: spacing.sm, alignItems: 'center', gap: spacing.xs },
-  badgeCardLocked:    { opacity: 0.5 },
-  badgeIcon:          { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  badgeName:          { fontSize: typography.size.xs, fontWeight: typography.weight.semibold, color: colors.foreground, textAlign: 'center' },
-  rarityTag:          { paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.full },
-  rarityText:         { fontSize: 9, fontWeight: typography.weight.bold },
-  sessionCard:        { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, gap: spacing.xs },
-  sessionHeader:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sessionName:        { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.foreground },
-  sessionStatusBadge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.full },
-  sessionStatusText:  { fontSize: typography.size.xs, fontWeight: typography.weight.semibold },
-  sessionWorkout:     { fontSize: typography.size.sm, color: colors.foreground },
-  sessionDate:        { fontSize: typography.size.xs, color: colors.mutedForeground },
-  sessionMeta:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sessionMetaRow:     { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  sessionMetaTxt:     { fontSize: typography.size.xs, color: colors.mutedForeground },
-  ghostBadge:         { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.full },
-  ghostBadgeTxt:      { fontSize: typography.size.xs, fontWeight: typography.weight.semibold },
-  sessionStartBtn:    { height: touchTarget.comfortable, backgroundColor: colors.primary, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', marginTop: spacing.xs },
-  sessionStartBtnText:{ fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.primaryFg },
-  createSessionBtn:   { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, backgroundColor: colors.primary, borderRadius: radius.full },
-  createSessionBtnText:{ fontSize: typography.size.sm, fontWeight: typography.weight.bold, color: colors.primaryFg },
-  dmThread:           { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md },
-  dmNotice:           { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, padding: spacing.sm },
-  dmNoticeText:       { fontSize: typography.size.xs, color: colors.mutedForeground },
-  dmTime:             { fontSize: typography.size.xs, color: colors.mutedForeground },
-  dmThreadHeader:     { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  dmMessages:         { paddingHorizontal: spacing.screen, paddingTop: spacing.md, paddingBottom: spacing.xl, gap: spacing.md },
-  msgRow:             { flexDirection: 'row' },
-  msgRowMe:           { justifyContent: 'flex-end' },
-  msgBubble:          { borderRadius: radius.lg, padding: spacing.sm, gap: 3 },
-  msgText:            { fontSize: typography.size.sm, color: colors.foreground, lineHeight: 20 },
-  msgTime:            { fontSize: typography.size.xs, color: colors.mutedForeground },
-  dmInputBar:         { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.screen, paddingBottom: spacing.xl, backgroundColor: colors.background, borderTopWidth: 0.5, borderTopColor: colors.border },
-  dmInput:            { flex: 1, height: touchTarget.comfortable, backgroundColor: colors.card, borderRadius: radius.full, borderWidth: 0.5, borderColor: colors.border, paddingHorizontal: spacing.md, fontSize: typography.size.base, color: colors.foreground },
-  dmSendBtn:          { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  unreadDot:          { position: 'absolute', top: -2, right: -2, width: 16, height: 16, borderRadius: 8, backgroundColor: colors.destructive, alignItems: 'center', justifyContent: 'center' },
-  unreadTxt:          { fontSize: 9, fontWeight: typography.weight.bold, color: colors.white },
-  modalOverlay:       { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay },
-  modalSheet:         { backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
-  modalHandle:        { width: 36, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center' },
-  modalHeader:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-})
+function createStyles(s: SurfaceTokens) {
+  return StyleSheet.create({
+    container:          { flex: 1, backgroundColor: s.background },
+    navBar:             { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm, paddingTop: spacing.xl, paddingBottom: spacing.sm, borderBottomWidth: 0.5, borderBottomColor: s.border },
+    navTitle:           { fontSize: typography.size.lg, fontWeight: typography.weight.bold, color: s.foreground },
+    iconBtn:            { width: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
+    content:            { paddingHorizontal: spacing.screen, paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.sm },
+    sectionLabel:       { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: s.mutedForeground },
+    searchRow:          { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, paddingHorizontal: spacing.md, height: touchTarget.comfortable },
+    searchInput:        { flex: 1, fontSize: typography.size.base, color: s.foreground },
+    avatar:             { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    avatarText:         { fontSize: typography.size.sm, fontWeight: typography.weight.bold },
+    friendCard:         { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, padding: spacing.md },
+    requestCard:        { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, padding: spacing.md },
+    friendInfo:         { flex: 1 },
+    friendName:         { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: s.foreground },
+    friendSub:          { fontSize: typography.size.xs, color: s.mutedForeground, marginTop: 2 },
+    friendMeta:         { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 3 },
+    compatBadge:        { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.full },
+    compatText:         { fontSize: 10, fontWeight: typography.weight.bold },
+    dmBtn:              { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary + '15', alignItems: 'center', justifyContent: 'center' },
+    requestBtns:        { flexDirection: 'row', gap: spacing.sm },
+    declineBtn:         { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.destructive + '15', alignItems: 'center', justifyContent: 'center' },
+    acceptBtn:          { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+    inviteLinkBtn:      { height: touchTarget.comfortable, backgroundColor: s.card, borderRadius: radius.full, borderWidth: 0.5, borderColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+    challengeCard:      { backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, padding: spacing.md, gap: spacing.xs },
+    challengeTop:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    challengeTypeBadge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.full },
+    challengeTypeTxt:   { fontSize: typography.size.xs, fontWeight: typography.weight.bold },
+    timerBadge:         { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    timerText:          { fontSize: typography.size.xs, color: s.mutedForeground },
+    challengeTitle:     { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: s.foreground },
+    challengeMeta:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    challengeStatRow:   { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    challengeMetaTxt:   { fontSize: typography.size.sm, color: s.mutedForeground },
+    challengeLeader:    { fontSize: typography.size.xs, color: s.mutedForeground },
+    badgesEarned:       { fontSize: typography.size.base, color: colors.primary, fontWeight: typography.weight.semibold, textAlign: 'center' },
+    badgesGrid:         { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+    badgeCard:          { width: '30%', backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, padding: spacing.sm, alignItems: 'center', gap: spacing.xs },
+    badgeCardLocked:    { opacity: 0.5 },
+    badgeIcon:          { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+    badgeName:          { fontSize: typography.size.xs, fontWeight: typography.weight.semibold, color: s.foreground, textAlign: 'center' },
+    rarityTag:          { paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.full },
+    rarityText:         { fontSize: 9, fontWeight: typography.weight.bold },
+    sessionCard:        { backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, padding: spacing.md, gap: spacing.xs },
+    sessionHeader:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    sessionName:        { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: s.foreground },
+    sessionStatusBadge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.full },
+    sessionStatusText:  { fontSize: typography.size.xs, fontWeight: typography.weight.semibold },
+    sessionWorkout:     { fontSize: typography.size.sm, color: s.foreground },
+    sessionDate:        { fontSize: typography.size.xs, color: s.mutedForeground },
+    sessionMeta:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    sessionMetaRow:     { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    sessionMetaTxt:     { fontSize: typography.size.xs, color: s.mutedForeground },
+    ghostBadge:         { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.full },
+    ghostBadgeTxt:      { fontSize: typography.size.xs, fontWeight: typography.weight.semibold },
+    sessionStartBtn:    { height: touchTarget.comfortable, backgroundColor: colors.primary, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', marginTop: spacing.xs },
+    sessionStartBtnText:{ fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.primaryFg },
+    createSessionBtn:   { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, backgroundColor: colors.primary, borderRadius: radius.full },
+    createSessionBtnText:{ fontSize: typography.size.sm, fontWeight: typography.weight.bold, color: colors.primaryFg },
+    dmThread:           { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, padding: spacing.md },
+    dmNotice:           { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: s.card, borderRadius: radius.md, borderWidth: 0.5, borderColor: s.border, padding: spacing.sm },
+    dmNoticeText:       { fontSize: typography.size.xs, color: s.mutedForeground },
+    dmTime:             { fontSize: typography.size.xs, color: s.mutedForeground },
+    dmThreadHeader:     { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    dmMessages:         { paddingHorizontal: spacing.screen, paddingTop: spacing.md, paddingBottom: spacing.xl, gap: spacing.md },
+    msgRow:             { flexDirection: 'row' },
+    msgRowMe:           { justifyContent: 'flex-end' },
+    msgBubble:          { borderRadius: radius.lg, padding: spacing.sm, gap: 3 },
+    msgText:            { fontSize: typography.size.sm, color: s.foreground, lineHeight: 20 },
+    msgTime:            { fontSize: typography.size.xs, color: s.mutedForeground },
+    dmInputBar:         { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.screen, paddingBottom: spacing.xl, backgroundColor: s.background, borderTopWidth: 0.5, borderTopColor: s.border },
+    dmInput:            { flex: 1, height: touchTarget.comfortable, backgroundColor: s.card, borderRadius: radius.full, borderWidth: 0.5, borderColor: s.border, paddingHorizontal: spacing.md, fontSize: typography.size.base, color: s.foreground },
+    dmSendBtn:          { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+    unreadDot:          { position: 'absolute', top: -2, right: -2, width: 16, height: 16, borderRadius: 8, backgroundColor: colors.destructive, alignItems: 'center', justifyContent: 'center' },
+    unreadTxt:          { fontSize: 9, fontWeight: typography.weight.bold, color: colors.white },
+    modalOverlay:       { flex: 1, justifyContent: 'flex-end', backgroundColor: s.overlay },
+    modalSheet:         { backgroundColor: s.card, borderRadius: radius.xl, padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+    modalHandle:        { width: 36, height: 4, backgroundColor: s.border, borderRadius: 2, alignSelf: 'center' },
+    modalHeader:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  })
+}

@@ -20,7 +20,10 @@ export type StartWorkoutBody = z.infer<typeof StartWorkoutSchema>;
 
 // ─── POST /workouts/:id/sets ───────────────────────────────────────────────
 
+// `clientId` is the mobile-minted UUID per set tap. Unique per workout so
+// retries from the offline sync queue collapse into a single insert.
 export const LogSetSchema = z.object({
+  clientId: z.string().uuid(),
   exerciseName: z.string().min(1).max(120),
   exerciseId: z.string().optional(),
   setNumber: z.number().int().min(1).max(50),

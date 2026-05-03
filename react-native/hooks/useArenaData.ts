@@ -224,9 +224,15 @@ export function useArenaFeed() {
     };
     const channel = client.channel(`arena-feed-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
-    channel.on('broadcast', { event: 'new_feed_item' }, invalidateFeed);
-    channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feed' }, invalidateFeed);
-    channel.subscribe();
+    try {
+      channel.on('broadcast', { event: 'new_feed_item' }, invalidateFeed);
+      channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feed' }, invalidateFeed);
+      channel.subscribe();
+    } catch (error) {
+      console.warn('Arena realtime subscription failed', error);
+      void client.removeChannel(channel);
+      return;
+    }
 
     return () => {
       void client.removeChannel(channel);

@@ -4,6 +4,12 @@ import { requireAuth } from '../lib/auth.js';
 import { prisma } from '../lib/prisma.js';
 import { dateAtMidnight } from '../lib/dailyScore.js';
 import { computeScore } from '../lib/score.js';
+import { rateLimit } from '../lib/rateLimit.js';
+
+const writeDefault = rateLimit('write:default', 60, 60);
+// Tighter bucket for destructive routes — deleting an account should not be
+// reachable in a tight loop.
+const writeCritical = rateLimit('write:critical', 5, 60);
 
 const UnitInputSchema = z.enum(['kg', 'lbs', 'metric', 'imperial']);
 
@@ -89,7 +95,7 @@ export async function meRoutes(app: FastifyInstance) {
     return reply.send({ user });
   });
 
-  app.patch('/users/me', { preHandler: requireAuth }, async (request, reply) => {
+  app.patch('/users/me', { preHandler: [requireAuth, writeDefault] }, async (request, reply) => {
     const parsed = ProfileUpdateSchema.safeParse(request.body ?? {});
     if (!parsed.success) {
       return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.flatten() });
@@ -163,7 +169,7 @@ export async function meRoutes(app: FastifyInstance) {
     return reply.send({ user });
   });
 
-  app.patch('/users/me/onboarding', { preHandler: requireAuth }, async (request, reply) => {
+  app.patch('/users/me/onboarding', { preHandler: [requireAuth, writeDefault] }, async (request, reply) => {
     const parsed = OnboardingUpdateSchema.safeParse(request.body ?? {});
     if (!parsed.success) {
       return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.flatten() });
@@ -243,7 +249,7 @@ export async function meRoutes(app: FastifyInstance) {
       .send({ exportedAt: new Date().toISOString(), user });
   });
 
-  app.delete('/users/me', { preHandler: requireAuth }, async (request, reply) => {
+  app.delete('/users/me', { preHandler: [requireAuth, writeCritical] }, async (request, reply) => {
     const now = new Date();
     const deletionDueAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 

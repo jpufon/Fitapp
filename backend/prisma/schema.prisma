@@ -181,6 +181,10 @@ model WorkoutSet {
   id           String @id @default(uuid()) @db.Uuid
   workoutLogId String @db.Uuid
 
+  // Mobile-minted UUID per set tap. Unique per workout so retries from the
+  // offline sync queue collapse into a single insert.
+  clientId String @db.Uuid
+
   exerciseName String
   exerciseId   String?
 
@@ -201,6 +205,7 @@ model WorkoutSet {
 
   workout WorkoutLog @relation(fields: [workoutLogId], references: [id], onDelete: Cascade)
 
+  @@unique([workoutLogId, clientId])
   @@index([workoutLogId, setNumber])
   @@map("workout_sets")
 }

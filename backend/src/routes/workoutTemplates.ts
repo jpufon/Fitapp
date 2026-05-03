@@ -6,6 +6,9 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireAuth } from '../lib/auth.js';
 import { prisma } from '../lib/prisma.js';
+import { rateLimit } from '../lib/rateLimit.js';
+
+const writeDefault = rateLimit('write:default', 60, 60);
 
 const TemplateExerciseSchema = z.object({
   exerciseName: z.string().trim().min(1).max(120),
@@ -44,7 +47,7 @@ export async function workoutTemplateRoutes(app: FastifyInstance) {
   });
 
   // ── POST /workout-templates ────────────────────────────────────────────
-  app.post('/workout-templates', { preHandler: requireAuth }, async (request, reply) => {
+  app.post('/workout-templates', { preHandler: [requireAuth, writeDefault] }, async (request, reply) => {
     const parsed = CreateTemplateSchema.safeParse(request.body ?? {});
     if (!parsed.success) {
       return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.flatten() });
@@ -68,7 +71,7 @@ export async function workoutTemplateRoutes(app: FastifyInstance) {
   // ── PATCH /workout-templates/:id ───────────────────────────────────────
   app.patch<{ Params: { id: string } }>(
     '/workout-templates/:id',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, writeDefault] },
     async (request, reply) => {
       const parsed = UpdateTemplateSchema.safeParse(request.body ?? {});
       if (!parsed.success) {
@@ -100,7 +103,7 @@ export async function workoutTemplateRoutes(app: FastifyInstance) {
   // ── POST /workout-templates/:id/duplicate ──────────────────────────────
   app.post<{ Params: { id: string } }>(
     '/workout-templates/:id/duplicate',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, writeDefault] },
     async (request, reply) => {
       const source = await prisma.workoutTemplate.findFirst({
         where: { id: request.params.id, userId: request.user!.id },
@@ -127,7 +130,7 @@ export async function workoutTemplateRoutes(app: FastifyInstance) {
   // ── DELETE /workout-templates/:id ──────────────────────────────────────
   app.delete<{ Params: { id: string } }>(
     '/workout-templates/:id',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, writeDefault] },
     async (request, reply) => {
       const existing = await prisma.workoutTemplate.findFirst({
         where: { id: request.params.id, userId: request.user!.id },

@@ -35,6 +35,9 @@ export declare const colors: {
   };
   earthAmber: string;
   earthSage: string;
+  earthSand: string;
+  earthClay: string;
+  earthMoss: string;
   accent: {
     blue: string;
     purple: string;

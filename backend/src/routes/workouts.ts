@@ -9,10 +9,13 @@ import { requireAuth } from '../lib/auth.js';
 import { prisma } from '../lib/prisma.js';
 import { detectPRs } from '../lib/pr.js';
 import { recordWorkoutFeedItems } from '../lib/feed.js';
+import { rateLimit } from '../lib/rateLimit.js';
+
+const writeDefault = rateLimit('write:default', 60, 60);
 
 export async function workoutRoutes(app: FastifyInstance) {
   // ── POST /workouts — start a session ────────────────────────────────────
-  app.post('/workouts', { preHandler: requireAuth }, async (request, reply) => {
+  app.post('/workouts', { preHandler: [requireAuth, writeDefault] }, async (request, reply) => {
     const parsed = StartWorkoutSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.flatten() });
@@ -39,7 +42,7 @@ export async function workoutRoutes(app: FastifyInstance) {
   // ── POST /workouts/:id/sets — log a set ─────────────────────────────────
   app.post<{ Params: { id: string } }>(
     '/workouts/:id/sets',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, writeDefault] },
     async (request, reply) => {
       const parsed = LogSetSchema.safeParse(request.body);
       if (!parsed.success) {
@@ -58,9 +61,20 @@ export async function workoutRoutes(app: FastifyInstance) {
         return reply.code(409).send({ error: 'workout_already_finished' });
       }
 
-      const set = await prisma.workoutSet.create({
-        data: {
+      // Idempotent on (workoutLogId, clientId): retries from the offline
+      // sync queue collapse into the same row. Update is a no-op so a replay
+      // returns the originally-created set unchanged.
+      const set = await prisma.workoutSet.upsert({
+        where: {
+          workoutLogId_clientId: {
+            workoutLogId: workout.id,
+            clientId: parsed.data.clientId,
+          },
+        },
+        update: {},
+        create: {
           workoutLogId: workout.id,
+          clientId: parsed.data.clientId,
           exerciseName: parsed.data.exerciseName,
           exerciseId: parsed.data.exerciseId,
           setNumber: parsed.data.setNumber,
@@ -82,7 +96,7 @@ export async function workoutRoutes(app: FastifyInstance) {
   // ── PATCH /workouts/:id — finish + run PR detection ─────────────────────
   app.patch<{ Params: { id: string } }>(
     '/workouts/:id',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, writeDefault] },
     async (request, reply) => {
       const parsed = FinishWorkoutSchema.safeParse(request.body);
       if (!parsed.success) {

@@ -1,10 +1,13 @@
 // DEV ONLY — REMOVE BEFORE PRODUCTION BUILD
 
+import { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ChevronRight } from 'lucide-react-native';
-import { colors, spacing, borderRadius, typography } from '../theme';
+import { spacing, borderRadius, typography } from '../theme';
+import type { SurfaceTokens } from '../theme/surfaceTheme';
+import { useWalifitTheme } from '../theme/ThemeProvider';
 import type { RootStackParamList } from '../App';
 
 const SCREENS: Array<{ label: string; route: keyof RootStackParamList; params?: any }> = [
@@ -25,6 +28,8 @@ const SCREENS: Array<{ label: string; route: keyof RootStackParamList; params?: 
 
 export default function DevScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { surfaces } = useWalifitTheme();
+  const styles = useMemo(() => createStyles(surfaces), [surfaces]);
 
   return (
     <View style={styles.container}>
@@ -41,7 +46,7 @@ export default function DevScreen() {
             onPress={() => navigation.navigate(s.route as any, s.params)}
           >
             <Text style={styles.rowText}>{s.label}</Text>
-            <ChevronRight color={colors.mutedForeground} size={16} strokeWidth={1.75} />
+            <ChevronRight color={surfaces.mutedForeground} size={16} strokeWidth={1.75} />
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -49,42 +54,44 @@ export default function DevScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl + spacing.sm,
-    paddingBottom: spacing.md,
-    gap: spacing.xs,
-  },
-  title: {
-    fontSize: typography.fontSize['2xl'],
-    fontWeight: typography.fontWeight.bold,
-    color: colors.foreground,
-  },
-  subtitle: {
-    fontSize: typography.fontSize.sm,
-    color: colors.mutedForeground,
-  },
-  content: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xxl,
-    gap: spacing.sm,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    minHeight: 48,
-  },
-  rowText: {
-    fontSize: typography.fontSize.base,
-    color: colors.foreground,
-    fontWeight: typography.fontWeight.semibold,
-  },
-});
+function createStyles(s: SurfaceTokens) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: s.background },
+    header: {
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.xl + spacing.sm,
+      paddingBottom: spacing.md,
+      gap: spacing.xs,
+    },
+    title: {
+      fontSize: typography.fontSize['2xl'],
+      fontWeight: typography.fontWeight.bold,
+      color: s.foreground,
+    },
+    subtitle: {
+      fontSize: typography.fontSize.sm,
+      color: s.mutedForeground,
+    },
+    content: {
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.xxl,
+      gap: spacing.sm,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: s.card,
+      borderRadius: borderRadius.lg,
+      borderWidth: 1,
+      borderColor: s.border,
+      padding: spacing.md,
+      minHeight: 48,
+    },
+    rowText: {
+      fontSize: typography.fontSize.base,
+      color: s.foreground,
+      fontWeight: typography.fontWeight.semibold,
+    },
+  });
+}

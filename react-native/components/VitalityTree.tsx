@@ -13,6 +13,8 @@ import Svg, {
   Stop,
 } from 'react-native-svg';
 import { colors, pillarColors, spacing, borderRadius, typography, componentSizes } from '../theme';
+import type { SurfaceTokens } from '../theme/surfaceTheme';
+import { useWalifitTheme } from '../theme/ThemeProvider';
 
 const treeSizes = componentSizes.vitalityTree;
 
@@ -51,6 +53,12 @@ type GrowthStage = {
 };
 
 export default function VitalityTree({ score, treeStage, todayScore }: VitalityTreeProps) {
+  const { surfaces, effectiveColorScheme } = useWalifitTheme();
+  const styles = useMemo(() => createStyles(surfaces), [surfaces]);
+  const isLight = effectiveColorScheme === 'light';
+  const cardGradientColors = (isLight
+    ? [colors.earthSand + 'F2', colors.earthClay + 'E6', colors.earthMoss + 'F2']
+    : [surfaces.card + 'F2', surfaces.popover + 'E6', surfaces.backgroundAlt + 'F2']) as readonly [string, string, string];
   const growthState = useMemo(
     () => (treeStage ? getGrowthStateFromStage(treeStage) : getGrowthStateFromScore(score)),
     [score, treeStage]
@@ -111,7 +119,7 @@ export default function VitalityTree({ score, treeStage, todayScore }: VitalityT
       />
 
       <LinearGradient
-        colors={[colors.card + 'F2', colors.popover + 'E6', colors.backgroundAlt + 'F2']}
+        colors={cardGradientColors}
         style={styles.card}
       >
         <View style={styles.heroHeader}>
@@ -485,6 +493,8 @@ function PillarStat({
   weight: string;
   color: string;
 }) {
+  const { surfaces } = useWalifitTheme();
+  const styles = useMemo(() => createStyles(surfaces), [surfaces]);
   const boundedValue = Math.max(0, Math.min(100, value));
 
   return (
@@ -504,7 +514,8 @@ function PillarStat({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(s: SurfaceTokens) {
+  return StyleSheet.create({
   container: {
     position: 'relative',
   },
@@ -520,7 +531,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.xxl,
     padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border + '80',
+    borderColor: s.border + '80',
     overflow: 'hidden',
   },
   heroHeader: {
@@ -557,7 +568,7 @@ const styles = StyleSheet.create({
     minHeight: treeSizes.scoreBadgeMinHeight,
     borderRadius: borderRadius.xl,
     borderWidth: 1,
-    backgroundColor: colors.backgroundAlt + 'AA',
+    backgroundColor: s.backgroundAlt + 'AA',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.sm,
@@ -599,7 +610,7 @@ const styles = StyleSheet.create({
   pillar: {
     flex: 1,
     minWidth: 0,
-    backgroundColor: colors.secondary + '66',
+    backgroundColor: s.secondary + '66',
     borderRadius: borderRadius.lg,
     padding: spacing.sm,
     borderWidth: 1,
@@ -636,7 +647,7 @@ const styles = StyleSheet.create({
   pillarBar: {
     width: '100%',
     height: treeSizes.pillarBarHeight,
-    backgroundColor: colors.muted + '40',
+    backgroundColor: s.muted + '40',
     borderRadius: borderRadius.full,
     overflow: 'hidden',
     marginTop: spacing.sm,
@@ -645,4 +656,5 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: borderRadius.full,
   },
-});
+  });
+}

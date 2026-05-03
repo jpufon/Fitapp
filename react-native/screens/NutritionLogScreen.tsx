@@ -2,13 +2,15 @@
 // Tabs: Protein · Hydration · Steps (read-only from HealthKit/Google Fit)
 // Steps are NEVER manually entered — only synced from device health APIs
 
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { ArrowLeft, Footprints, Droplets, Beef, Info } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
+import type { SurfaceTokens } from '../theme/surfaceTheme'
+import { useWalifitTheme } from '../theme/ThemeProvider'
 import { useLogNutrition } from '../hooks/useMutations'
 import type { RootStackParamList } from '../App'
 
@@ -42,6 +44,8 @@ const MOCK_TODAY = {
 export default function NutritionLogScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const [tab, setTab] = useState<NutritionTab>('protein')
+  const { surfaces } = useWalifitTheme()
+  const styles = useMemo(() => createStyles(surfaces), [surfaces])
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -53,7 +57,7 @@ export default function NutritionLogScreen() {
           accessibilityRole="button"
           accessibilityLabel="Back to home"
         >
-          <ArrowLeft size={20} color={colors.foreground} strokeWidth={1.75} />
+          <ArrowLeft size={20} color={surfaces.foreground} strokeWidth={1.75} />
         </TouchableOpacity>
         <View style={styles.headerTitle}>
           <Text style={styles.title}>Nutrition</Text>
@@ -64,23 +68,25 @@ export default function NutritionLogScreen() {
 
       {/* Tab bar */}
       <View style={styles.tabBar}>
-        <TabBtn icon={Beef}       label="Protein"    tab="protein"   active={tab} onPress={setTab} color={colors.energy}  />
-        <TabBtn icon={Droplets}   label="Hydration"  tab="hydration" active={tab} onPress={setTab} color={colors.blue}    />
-        <TabBtn icon={Footprints} label="Steps"      tab="steps"     active={tab} onPress={setTab} color={colors.primary} />
+        <TabBtn icon={Beef}       label="Protein"    tab="protein"   active={tab} onPress={setTab} color={colors.energy}  styles={styles} surfaces={surfaces} />
+        <TabBtn icon={Droplets}   label="Hydration"  tab="hydration" active={tab} onPress={setTab} color={colors.blue}    styles={styles} surfaces={surfaces} />
+        <TabBtn icon={Footprints} label="Steps"      tab="steps"     active={tab} onPress={setTab} color={colors.primary} styles={styles} surfaces={surfaces} />
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {tab === 'protein'   && <ProteinTab />}
-        {tab === 'hydration' && <HydrationTab />}
-        {tab === 'steps'     && <StepsTab />}
+        {tab === 'protein'   && <ProteinTab styles={styles} surfaces={surfaces} />}
+        {tab === 'hydration' && <HydrationTab styles={styles} surfaces={surfaces} />}
+        {tab === 'steps'     && <StepsTab styles={styles} surfaces={surfaces} />}
       </ScrollView>
     </SafeAreaView>
   )
 }
 
+type NutritionStyles = ReturnType<typeof createStyles>
+
 // ─── Protein tab ──────────────────────────────────────────────────────────────
 
-function ProteinTab() {
+function ProteinTab({ styles, surfaces }: { styles: NutritionStyles; surfaces: SurfaceTokens }) {
   const [total, setTotal]   = useState(MOCK_TODAY.proteinG)
   const [custom, setCustom] = useState('')
   const logNutrition = useLogNutrition(formatLocalDate(new Date()))
@@ -128,7 +134,7 @@ function ProteinTab() {
           value={custom}
           onChangeText={setCustom}
           placeholder="Custom amount"
-          placeholderTextColor={colors.mutedForeground}
+          placeholderTextColor={surfaces.mutedForeground}
           keyboardType="number-pad"
         />
         <Text style={styles.customUnit}>g</Text>
@@ -165,7 +171,7 @@ function ProteinTab() {
 
 // ─── Hydration tab ────────────────────────────────────────────────────────────
 
-function HydrationTab() {
+function HydrationTab({ styles, surfaces: _surfaces }: { styles: NutritionStyles; surfaces: SurfaceTokens }) {
   const [waterMl, setWaterMl] = useState(MOCK_TODAY.waterMl)
   const logNutrition = useLogNutrition(formatLocalDate(new Date()))
   const goal    = MOCK_TODAY.waterGoal
@@ -238,7 +244,7 @@ function HydrationTab() {
 
 // ─── Steps tab (read-only) ────────────────────────────────────────────────────
 
-function StepsTab() {
+function StepsTab({ styles, surfaces: _surfaces }: { styles: NutritionStyles; surfaces: SurfaceTokens }) {
   const steps    = MOCK_TODAY.steps
   const goal     = MOCK_TODAY.stepsGoal
   const pct      = Math.min((steps / goal) * 100, 100)
@@ -291,9 +297,10 @@ function StepsTab() {
 
 // ─── Tab button ───────────────────────────────────────────────────────────────
 
-function TabBtn({ icon: Icon, label, tab, active, onPress, color }: {
+function TabBtn({ icon: Icon, label, tab, active, onPress, color, styles, surfaces }: {
   icon: React.ElementType; label: string; tab: NutritionTab
   active: NutritionTab; onPress: (t: NutritionTab) => void; color: string
+  styles: NutritionStyles; surfaces: SurfaceTokens
 }) {
   const isActive = active === tab
   return (
@@ -302,8 +309,8 @@ function TabBtn({ icon: Icon, label, tab, active, onPress, color }: {
       onPress={() => onPress(tab)}
       activeOpacity={0.7}
     >
-      <Icon color={isActive ? color : colors.mutedForeground} size={15} strokeWidth={1.75} />
-      <Text style={[styles.tabLabel, { color: isActive ? color : colors.mutedForeground }]}>{label}</Text>
+      <Icon color={isActive ? color : surfaces.mutedForeground} size={15} strokeWidth={1.75} />
+      <Text style={[styles.tabLabel, { color: isActive ? color : surfaces.mutedForeground }]}>{label}</Text>
     </TouchableOpacity>
   )
 }
@@ -317,48 +324,50 @@ function formatLocalDate(date: Date): string {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  container:       { flex: 1, backgroundColor: colors.background },
-  header:          { paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: spacing.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  backButton:      { width: touchTarget.min, height: touchTarget.min, borderRadius: radius.full, backgroundColor: colors.secondary, alignItems: 'center', justifyContent: 'center' },
-  headerTitle:     { flex: 1, alignItems: 'center' },
-  headerSpacer:    { width: touchTarget.min, height: touchTarget.min },
-  title:           { fontSize: typography.size['2xl'], fontWeight: typography.weight.bold, color: colors.foreground },
-  date:            { fontSize: typography.size.sm, color: colors.mutedForeground },
-  tabBar:          { flexDirection: 'row', marginHorizontal: spacing.screen, padding: 4, backgroundColor: colors.secondary, borderRadius: radius.xl, marginBottom: spacing.md },
-  tab:             { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 10, borderRadius: radius.lg, minHeight: touchTarget.min },
-  tabActive:       { backgroundColor: colors.card },
-  tabLabel:        { fontSize: typography.size.sm, fontWeight: typography.weight.semibold },
-  scroll:          { flex: 1 },
-  scrollContent:   { paddingBottom: spacing.xxl },
-  tabContent:      { paddingHorizontal: spacing.screen, gap: spacing.md },
-  progressCard:    { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, gap: spacing.sm },
-  progressHeader:  { gap: 2 },
-  progressNum:     { fontSize: typography.size.base },
-  progressMain:    { fontSize: typography.size['4xl'], fontWeight: typography.weight.extrabold },
-  progressGoal:    { fontSize: typography.size.lg, color: colors.mutedForeground },
-  progressLabel:   { fontSize: typography.size.sm, color: colors.mutedForeground },
-  progressBarTrack:{ height: 8, backgroundColor: colors.muted, borderRadius: radius.full, overflow: 'hidden' },
-  progressBarFill: { height: '100%', borderRadius: radius.full },
-  progressSub:     { fontSize: typography.size.xs, color: colors.mutedForeground },
-  glassesRow:      { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  glassIcon:       { width: 32, height: 32, borderRadius: radius.sm, backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center', borderWidth: 0.5, borderColor: colors.border },
-  sectionLabel:    { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: colors.mutedForeground },
-  presetsRow:      { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
-  presetBtn:       { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.card, borderRadius: radius.full, borderWidth: 0.5, borderColor: colors.border, minHeight: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
-  presetBtnText:   { fontSize: typography.size.base, fontWeight: typography.weight.bold },
-  customRow:       { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  customInput:     { flex: 1, height: touchTarget.comfortable, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, paddingHorizontal: spacing.md, fontSize: typography.size.base, color: colors.foreground },
-  customUnit:      { fontSize: typography.size.base, color: colors.mutedForeground },
-  customAddBtn:    { height: touchTarget.comfortable, paddingHorizontal: spacing.lg, backgroundColor: colors.primary, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
-  customAddBtnText:{ fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.primaryFg },
-  insightCard:     { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, borderLeftWidth: 3, borderLeftColor: colors.primary, padding: spacing.md, gap: 4 },
-  insightLabel:    { fontSize: typography.size.xs, fontWeight: typography.weight.bold, color: colors.primary },
-  insightText:     { fontSize: typography.size.sm, color: colors.foreground, lineHeight: 20 },
-  logRow:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.sm, borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  logLabel:        { fontSize: typography.size.sm, color: colors.foreground, fontWeight: typography.weight.medium },
-  logTime:         { fontSize: typography.size.xs, color: colors.mutedForeground },
-  logAmount:       { fontSize: typography.size.base, fontWeight: typography.weight.bold },
-  syncNotice:      { flexDirection: 'row', gap: spacing.sm, backgroundColor: colors.primary + '08', borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.primary + '30', padding: spacing.md },
-  syncNoticeText:  { flex: 1, fontSize: typography.size.sm, color: colors.foreground, lineHeight: 20 },
-})
+function createStyles(s: SurfaceTokens) {
+  return StyleSheet.create({
+    container:       { flex: 1, backgroundColor: s.background },
+    header:          { paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: spacing.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    backButton:      { width: touchTarget.min, height: touchTarget.min, borderRadius: radius.full, backgroundColor: s.secondary, alignItems: 'center', justifyContent: 'center' },
+    headerTitle:     { flex: 1, alignItems: 'center' },
+    headerSpacer:    { width: touchTarget.min, height: touchTarget.min },
+    title:           { fontSize: typography.size['2xl'], fontWeight: typography.weight.bold, color: s.foreground },
+    date:            { fontSize: typography.size.sm, color: s.mutedForeground },
+    tabBar:          { flexDirection: 'row', marginHorizontal: spacing.screen, padding: 4, backgroundColor: s.secondary, borderRadius: radius.xl, marginBottom: spacing.md },
+    tab:             { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 10, borderRadius: radius.lg, minHeight: touchTarget.min },
+    tabActive:       { backgroundColor: s.card },
+    tabLabel:        { fontSize: typography.size.sm, fontWeight: typography.weight.semibold },
+    scroll:          { flex: 1 },
+    scrollContent:   { paddingBottom: spacing.xxl },
+    tabContent:      { paddingHorizontal: spacing.screen, gap: spacing.md },
+    progressCard:    { backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, padding: spacing.md, gap: spacing.sm },
+    progressHeader:  { gap: 2 },
+    progressNum:     { fontSize: typography.size.base },
+    progressMain:    { fontSize: typography.size['4xl'], fontWeight: typography.weight.extrabold },
+    progressGoal:    { fontSize: typography.size.lg, color: s.mutedForeground },
+    progressLabel:   { fontSize: typography.size.sm, color: s.mutedForeground },
+    progressBarTrack:{ height: 8, backgroundColor: s.muted, borderRadius: radius.full, overflow: 'hidden' },
+    progressBarFill: { height: '100%', borderRadius: radius.full },
+    progressSub:     { fontSize: typography.size.xs, color: s.mutedForeground },
+    glassesRow:      { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+    glassIcon:       { width: 32, height: 32, borderRadius: radius.sm, backgroundColor: s.muted, alignItems: 'center', justifyContent: 'center', borderWidth: 0.5, borderColor: s.border },
+    sectionLabel:    { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: s.mutedForeground },
+    presetsRow:      { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
+    presetBtn:       { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: s.card, borderRadius: radius.full, borderWidth: 0.5, borderColor: s.border, minHeight: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
+    presetBtnText:   { fontSize: typography.size.base, fontWeight: typography.weight.bold },
+    customRow:       { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    customInput:     { flex: 1, height: touchTarget.comfortable, backgroundColor: s.card, borderRadius: radius.md, borderWidth: 0.5, borderColor: s.border, paddingHorizontal: spacing.md, fontSize: typography.size.base, color: s.foreground },
+    customUnit:      { fontSize: typography.size.base, color: s.mutedForeground },
+    customAddBtn:    { height: touchTarget.comfortable, paddingHorizontal: spacing.lg, backgroundColor: colors.primary, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+    customAddBtnText:{ fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.primaryFg },
+    insightCard:     { backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, borderLeftWidth: 3, borderLeftColor: colors.primary, padding: spacing.md, gap: 4 },
+    insightLabel:    { fontSize: typography.size.xs, fontWeight: typography.weight.bold, color: colors.primary },
+    insightText:     { fontSize: typography.size.sm, color: s.foreground, lineHeight: 20 },
+    logRow:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.sm, borderBottomWidth: 0.5, borderBottomColor: s.border },
+    logLabel:        { fontSize: typography.size.sm, color: s.foreground, fontWeight: typography.weight.medium },
+    logTime:         { fontSize: typography.size.xs, color: s.mutedForeground },
+    logAmount:       { fontSize: typography.size.base, fontWeight: typography.weight.bold },
+    syncNotice:      { flexDirection: 'row', gap: spacing.sm, backgroundColor: colors.primary + '08', borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.primary + '30', padding: spacing.md },
+    syncNoticeText:  { flex: 1, fontSize: typography.size.sm, color: s.foreground, lineHeight: 20 },
+  })
+}

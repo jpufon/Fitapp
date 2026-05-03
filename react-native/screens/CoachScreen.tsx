@@ -3,7 +3,7 @@
 // Contractor builds UI only — AI responses are mocked during development
 // Streaming responses render token-by-token
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform, Image,
@@ -11,6 +11,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Bot, Send, Paperclip, ChevronRight, RefreshCw, Check, Zap } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
+import type { SurfaceTokens } from '../theme/surfaceTheme'
+import { useWalifitTheme } from '../theme/ThemeProvider'
 
 type CoachView = 'home' | 'chat' | 'program'
 const coachIcon = require('../assets/coach-icon.png')
@@ -57,19 +59,23 @@ const SUGGESTIONS = [
 
 export default function CoachScreen() {
   const [view, setView] = useState<CoachView>('home')
+  const { surfaces } = useWalifitTheme()
+  const styles = useMemo(() => createStyles(surfaces), [surfaces])
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {view === 'home'    && <CoachHome    onStartChat={() => setView('chat')} onGenerate={() => setView('program')} />}
-      {view === 'chat'    && <CoachChat    onBack={() => setView('home')} />}
-      {view === 'program' && <ProgramArchitect onBack={() => setView('home')} />}
+      {view === 'home'    && <CoachHome    onStartChat={() => setView('chat')} onGenerate={() => setView('program')} styles={styles} surfaces={surfaces} />}
+      {view === 'chat'    && <CoachChat    onBack={() => setView('home')} styles={styles} surfaces={surfaces} />}
+      {view === 'program' && <ProgramArchitect onBack={() => setView('home')} styles={styles} surfaces={surfaces} />}
     </SafeAreaView>
   )
 }
 
+type CoachStyles = ReturnType<typeof createStyles>
+
 // ─── Coach Home ───────────────────────────────────────────────────────────────
 
-function CoachHome({ onStartChat, onGenerate }: { onStartChat: () => void; onGenerate: () => void }) {
+function CoachHome({ onStartChat, onGenerate, styles, surfaces }: { onStartChat: () => void; onGenerate: () => void; styles: CoachStyles; surfaces: SurfaceTokens }) {
   return (
     <ScrollView contentContainerStyle={styles.homeContent} showsVerticalScrollIndicator={false}>
       {/* Header */}
@@ -117,12 +123,14 @@ function CoachHome({ onStartChat, onGenerate }: { onStartChat: () => void; onGen
           desc="Ask anything about training"
           color={colors.primary}
           onPress={onStartChat}
+          styles={styles}
         />
         <ActionCard
           title="Generate program"
           desc="6-week training plan"
           color={colors.blue}
           onPress={onGenerate}
+          styles={styles}
         />
       </View>
 
@@ -131,7 +139,7 @@ function CoachHome({ onStartChat, onGenerate }: { onStartChat: () => void; onGen
       {SUGGESTIONS.map((s) => (
         <TouchableOpacity key={s} style={styles.suggestionRow} onPress={onStartChat} activeOpacity={0.7}>
           <Text style={styles.suggestionText}>{s}</Text>
-          <ChevronRight color={colors.mutedForeground} size={16} strokeWidth={1.75} />
+          <ChevronRight color={surfaces.mutedForeground} size={16} strokeWidth={1.75} />
         </TouchableOpacity>
       ))}
     </ScrollView>
@@ -140,7 +148,7 @@ function CoachHome({ onStartChat, onGenerate }: { onStartChat: () => void; onGen
 
 // ─── Coach Chat ───────────────────────────────────────────────────────────────
 
-function CoachChat({ onBack }: { onBack: () => void }) {
+function CoachChat({ onBack, styles, surfaces }: { onBack: () => void; styles: CoachStyles; surfaces: SurfaceTokens }) {
   const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES)
   const [input, setInput]       = useState('')
   const [typing, setTyping]     = useState(false)
@@ -169,7 +177,7 @@ function CoachChat({ onBack }: { onBack: () => void }) {
       {/* Header */}
       <View style={styles.chatHeader}>
         <TouchableOpacity style={styles.iconBtn} onPress={onBack}>
-          <ChevronRight color={colors.foreground} size={20} strokeWidth={1.75} style={{ transform: [{ rotate: '180deg' }] }} />
+          <ChevronRight color={surfaces.foreground} size={20} strokeWidth={1.75} style={{ transform: [{ rotate: '180deg' }] }} />
         </TouchableOpacity>
         <View style={styles.chatHeaderCenter}>
           <Text style={styles.chatTitle}>Wali AI</Text>
@@ -202,7 +210,7 @@ function CoachChat({ onBack }: { onBack: () => void }) {
             <View style={[
               styles.msgBubble,
               msg.role === 'ai'
-                ? { backgroundColor: colors.card, borderLeftWidth: 2, borderLeftColor: colors.primary }
+                ? { backgroundColor: surfaces.card, borderLeftWidth: 2, borderLeftColor: colors.primary }
                 : { backgroundColor: colors.primary },
             ]}>
               <Text style={[styles.msgText, msg.role === 'user' && { color: colors.primaryFg }]}>
@@ -222,8 +230,8 @@ function CoachChat({ onBack }: { onBack: () => void }) {
               <Image source={coachIcon} style={styles.msgCoachAvatarImage} resizeMode="contain" />
               <View style={styles.msgCoachAvatarSpark} />
             </View>
-            <View style={[styles.msgBubble, { backgroundColor: colors.card }]}>
-              <Text style={[styles.msgText, { color: colors.mutedForeground }]}>Wali is thinking...</Text>
+            <View style={[styles.msgBubble, { backgroundColor: surfaces.card }]}>
+              <Text style={[styles.msgText, { color: surfaces.mutedForeground }]}>Wali is thinking...</Text>
             </View>
           </View>
         )}
@@ -243,14 +251,14 @@ function CoachChat({ onBack }: { onBack: () => void }) {
       {/* Input bar */}
       <View style={styles.inputBar}>
         <TouchableOpacity style={styles.iconBtn}>
-          <Paperclip color={colors.mutedForeground} size={18} strokeWidth={1.75} />
+          <Paperclip color={surfaces.mutedForeground} size={18} strokeWidth={1.75} />
         </TouchableOpacity>
         <TextInput
           style={styles.chatInput}
           value={input}
           onChangeText={setInput}
           placeholder="Ask Wali anything..."
-          placeholderTextColor={colors.mutedForeground}
+          placeholderTextColor={surfaces.mutedForeground}
           multiline
           returnKeyType="send"
           onSubmitEditing={send}
@@ -269,7 +277,7 @@ function CoachChat({ onBack }: { onBack: () => void }) {
 
 // ─── Program Architect ────────────────────────────────────────────────────────
 
-function ProgramArchitect({ onBack }: { onBack: () => void }) {
+function ProgramArchitect({ onBack, styles, surfaces }: { onBack: () => void; styles: CoachStyles; surfaces: SurfaceTokens }) {
   const [step, setStep]       = useState<'intro' | 'generating' | 'review'>('intro')
   const [accepted, setAccepted] = useState(false)
 
@@ -277,7 +285,7 @@ function ProgramArchitect({ onBack }: { onBack: () => void }) {
     <View style={styles.flex}>
       <View style={styles.chatHeader}>
         <TouchableOpacity style={styles.iconBtn} onPress={onBack}>
-          <ChevronRight color={colors.foreground} size={20} strokeWidth={1.75} style={{ transform: [{ rotate: '180deg' }] }} />
+          <ChevronRight color={surfaces.foreground} size={20} strokeWidth={1.75} style={{ transform: [{ rotate: '180deg' }] }} />
         </TouchableOpacity>
         <Text style={styles.chatTitle}>Program Architect</Text>
         <View style={{ width: touchTarget.min }} />
@@ -295,10 +303,10 @@ function ProgramArchitect({ onBack }: { onBack: () => void }) {
               It takes about 15 seconds.
             </Text>
             <View style={styles.programSummary}>
-              <SummaryRow label="Goal"       value="Hybrid Performance" />
-              <SummaryRow label="Frequency"  value="4 days / week" />
-              <SummaryRow label="Duration"   value="6 weeks" />
-              <SummaryRow label="Equipment"  value="Full gym" />
+              <SummaryRow label="Goal"       value="Hybrid Performance" styles={styles} />
+              <SummaryRow label="Frequency"  value="4 days / week" styles={styles} />
+              <SummaryRow label="Duration"   value="6 weeks" styles={styles} />
+              <SummaryRow label="Equipment"  value="Full gym" styles={styles} />
             </View>
             <TouchableOpacity style={styles.generateBtn} onPress={() => {
               setStep('generating')
@@ -338,7 +346,7 @@ function ProgramArchitect({ onBack }: { onBack: () => void }) {
             {!accepted ? (
               <View style={styles.programActions}>
                 <TouchableOpacity style={styles.regenBtn} onPress={() => setStep('generating')}>
-                  <RefreshCw color={colors.foreground} size={16} strokeWidth={1.75} />
+                  <RefreshCw color={surfaces.foreground} size={16} strokeWidth={1.75} />
                   <Text style={styles.regenBtnText}>Regenerate</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.acceptBtn} onPress={() => setAccepted(true)}>
@@ -361,7 +369,7 @@ function ProgramArchitect({ onBack }: { onBack: () => void }) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function ActionCard({ title, desc, color, onPress }: { title: string; desc: string; color: string; onPress: () => void }) {
+function ActionCard({ title, desc, color, onPress, styles }: { title: string; desc: string; color: string; onPress: () => void; styles: CoachStyles }) {
   return (
     <TouchableOpacity style={styles.actionCard} onPress={onPress} activeOpacity={0.7}>
       <View style={[styles.actionDot, { backgroundColor: color + '20' }]}>
@@ -373,7 +381,7 @@ function ActionCard({ title, desc, color, onPress }: { title: string; desc: stri
   )
 }
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
+function SummaryRow({ label, value, styles }: { label: string; value: string; styles: CoachStyles }) {
   return (
     <View style={styles.summaryRow}>
       <Text style={styles.summaryLabel}>{label}</Text>
@@ -384,78 +392,80 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  container:          { flex: 1, backgroundColor: colors.background },
-  flex:               { flex: 1 },
-  homeContent:        { paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: spacing.xxl, gap: spacing.md },
-  homeHeader:         { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  aiAvatar:           { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
-  coachAvatar:        { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary + '18', borderWidth: 0.5, borderColor: colors.primary + '50', shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 10, shadowOffset: { width: 0, height: 0 }, elevation: 4, overflow: 'visible' },
-  coachAvatarHalo:    { position: 'absolute', width: 62, height: 62, borderRadius: 31, backgroundColor: colors.primary + '10', borderWidth: 1, borderColor: colors.primary + '30' },
-  coachAvatarImage:   { width: 38, height: 38, tintColor: colors.primary, transform: [{ rotate: '-6deg' }] },
-  coachAvatarSpark:   { position: 'absolute', right: 2, top: 4, width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primaryLight, borderWidth: 2, borderColor: colors.background },
-  homeTitle:          { fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: colors.foreground },
-  homeSubtitle:       { fontSize: typography.size.sm, color: colors.mutedForeground },
-  disclaimerBanner:   { backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, borderLeftWidth: 3, borderLeftColor: colors.energy, padding: spacing.sm },
-  disclaimerText:     { fontSize: typography.size.xs, color: colors.mutedForeground },
-  contextCard:        { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, gap: spacing.sm },
-  contextTitle:       { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.foreground },
-  contextItem:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  contextLabel:       { fontSize: typography.size.sm, color: colors.mutedForeground },
-  contextValue:       { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: colors.foreground },
-  sectionLabel:       { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: colors.mutedForeground },
-  actionsGrid:        { flexDirection: 'row', gap: spacing.sm },
-  actionCard:         { flex: 1, backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, gap: spacing.xs },
-  actionDot:          { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  actionDotInner:     { width: 12, height: 12, borderRadius: 6 },
-  actionTitle:        { fontSize: typography.size.sm, fontWeight: typography.weight.bold, color: colors.foreground },
-  actionDesc:         { fontSize: typography.size.xs, color: colors.mutedForeground },
-  suggestionRow:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, minHeight: touchTarget.comfortable },
-  suggestionText:     { fontSize: typography.size.sm, color: colors.foreground },
-  chatHeader:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm, paddingTop: spacing.xl, paddingBottom: spacing.sm, borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  iconBtn:            { width: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
-  chatHeaderCenter:   { alignItems: 'center' },
-  chatTitle:          { fontSize: typography.size.lg, fontWeight: typography.weight.bold, color: colors.foreground },
-  chatSubtitle:       { fontSize: typography.size.xs, color: colors.primary },
-  chatDisclaimer:     { backgroundColor: colors.card, paddingHorizontal: spacing.screen, paddingVertical: spacing.xs, borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  chatDisclaimerText: { fontSize: typography.size.xs, color: colors.mutedForeground, textAlign: 'center' },
-  messagesContent:    { paddingHorizontal: spacing.screen, paddingTop: spacing.md, paddingBottom: spacing.xl, gap: spacing.md },
-  msgRow:             { flexDirection: 'row', gap: spacing.sm, maxWidth: '90%' },
-  msgRowUser:         { alignSelf: 'flex-end', flexDirection: 'row-reverse' },
-  msgAvatar:          { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 },
-  msgCoachAvatar:     { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2, backgroundColor: colors.primary + '18', borderWidth: 0.5, borderColor: colors.primary + '50', shadowColor: colors.primary, shadowOpacity: 0.25, shadowRadius: 6, shadowOffset: { width: 0, height: 0 }, elevation: 2, overflow: 'visible' },
-  msgCoachAvatarImage:{ width: 20, height: 20, tintColor: colors.primary, transform: [{ rotate: '-6deg' }] },
-  msgCoachAvatarSpark:{ position: 'absolute', right: -1, top: 1, width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.background },
-  msgBubble:          { flex: 1, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.sm, gap: 3 },
-  msgText:            { fontSize: typography.size.sm, color: colors.foreground, lineHeight: 20 },
-  msgTime:            { fontSize: typography.size.xs, color: colors.mutedForeground },
-  suggestionsWrap:    { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  suggestionChip:     { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.primary + '10', borderRadius: radius.full, borderWidth: 0.5, borderColor: colors.primary + '40' },
-  suggestionChipText: { fontSize: typography.size.sm, fontWeight: typography.weight.semibold },
-  inputBar:           { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, padding: spacing.screen, paddingBottom: spacing.xl, backgroundColor: colors.background, borderTopWidth: 0.5, borderTopColor: colors.border },
-  chatInput:          { flex: 1, minHeight: touchTarget.comfortable, maxHeight: 120, backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, fontSize: typography.size.base, color: colors.foreground },
-  sendBtn:            { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  programContent:     { paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: spacing.xxl, gap: spacing.md, alignItems: 'center' },
-  programTitle:       { fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: colors.foreground, textAlign: 'center' },
-  programDesc:        { fontSize: typography.size.sm, color: colors.mutedForeground, textAlign: 'center', lineHeight: 20 },
-  programSummary:     { width: '100%', backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, overflow: 'hidden' },
-  summaryRow:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.md, borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  summaryLabel:       { fontSize: typography.size.sm, color: colors.mutedForeground },
-  summaryValue:       { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: colors.foreground },
-  generateBtn:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, width: '100%', height: touchTarget.comfortable, backgroundColor: colors.primary, borderRadius: radius.full },
-  generateBtnText:    { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.primaryFg },
-  generatingContainer:{ alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xxl },
-  generatingTitle:    { fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: colors.foreground },
-  generatingDesc:     { fontSize: typography.size.sm, color: colors.mutedForeground, textAlign: 'center', lineHeight: 20 },
-  weekTemplate:       { width: '100%', backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, overflow: 'hidden' },
-  weekTitle:          { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.foreground, padding: spacing.md, borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  dayRow:             { flexDirection: 'row', padding: spacing.md, borderBottomWidth: 0.5, borderBottomColor: colors.border + '60', gap: spacing.md },
-  dayLabel:           { width: 90, fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: colors.primary },
-  daySession:         { flex: 1, fontSize: typography.size.sm, color: colors.foreground },
-  programActions:     { flexDirection: 'row', gap: spacing.sm, width: '100%' },
-  regenBtn:           { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, height: touchTarget.comfortable, backgroundColor: colors.card, borderRadius: radius.full, borderWidth: 0.5, borderColor: colors.border },
-  regenBtnText:       { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: colors.foreground },
-  acceptBtn:          { flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, height: touchTarget.comfortable, backgroundColor: colors.primary, borderRadius: radius.full },
-  acceptBtnText:      { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.primaryFg },
-  acceptedCard:       { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, width: '100%', borderRadius: radius.lg, borderWidth: 0.5, padding: spacing.md },
-})
+function createStyles(s: SurfaceTokens) {
+  return StyleSheet.create({
+    container:          { flex: 1, backgroundColor: s.background },
+    flex:               { flex: 1 },
+    homeContent:        { paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: spacing.xxl, gap: spacing.md },
+    homeHeader:         { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+    aiAvatar:           { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+    coachAvatar:        { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary + '18', borderWidth: 0.5, borderColor: colors.primary + '50', shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 10, shadowOffset: { width: 0, height: 0 }, elevation: 4, overflow: 'visible' },
+    coachAvatarHalo:    { position: 'absolute', width: 62, height: 62, borderRadius: 31, backgroundColor: colors.primary + '10', borderWidth: 1, borderColor: colors.primary + '30' },
+    coachAvatarImage:   { width: 38, height: 38, tintColor: colors.primary, transform: [{ rotate: '-6deg' }] },
+    coachAvatarSpark:   { position: 'absolute', right: 2, top: 4, width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primaryLight, borderWidth: 2, borderColor: s.background },
+    homeTitle:          { fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: s.foreground },
+    homeSubtitle:       { fontSize: typography.size.sm, color: s.mutedForeground },
+    disclaimerBanner:   { backgroundColor: s.card, borderRadius: radius.md, borderWidth: 0.5, borderColor: s.border, borderLeftWidth: 3, borderLeftColor: colors.energy, padding: spacing.sm },
+    disclaimerText:     { fontSize: typography.size.xs, color: s.mutedForeground },
+    contextCard:        { backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, padding: spacing.md, gap: spacing.sm },
+    contextTitle:       { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: s.foreground },
+    contextItem:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    contextLabel:       { fontSize: typography.size.sm, color: s.mutedForeground },
+    contextValue:       { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: s.foreground },
+    sectionLabel:       { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: s.mutedForeground },
+    actionsGrid:        { flexDirection: 'row', gap: spacing.sm },
+    actionCard:         { flex: 1, backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, padding: spacing.md, gap: spacing.xs },
+    actionDot:          { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+    actionDotInner:     { width: 12, height: 12, borderRadius: 6 },
+    actionTitle:        { fontSize: typography.size.sm, fontWeight: typography.weight.bold, color: s.foreground },
+    actionDesc:         { fontSize: typography.size.xs, color: s.mutedForeground },
+    suggestionRow:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, padding: spacing.md, minHeight: touchTarget.comfortable },
+    suggestionText:     { fontSize: typography.size.sm, color: s.foreground },
+    chatHeader:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm, paddingTop: spacing.xl, paddingBottom: spacing.sm, borderBottomWidth: 0.5, borderBottomColor: s.border },
+    iconBtn:            { width: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
+    chatHeaderCenter:   { alignItems: 'center' },
+    chatTitle:          { fontSize: typography.size.lg, fontWeight: typography.weight.bold, color: s.foreground },
+    chatSubtitle:       { fontSize: typography.size.xs, color: colors.primary },
+    chatDisclaimer:     { backgroundColor: s.card, paddingHorizontal: spacing.screen, paddingVertical: spacing.xs, borderBottomWidth: 0.5, borderBottomColor: s.border },
+    chatDisclaimerText: { fontSize: typography.size.xs, color: s.mutedForeground, textAlign: 'center' },
+    messagesContent:    { paddingHorizontal: spacing.screen, paddingTop: spacing.md, paddingBottom: spacing.xl, gap: spacing.md },
+    msgRow:             { flexDirection: 'row', gap: spacing.sm, maxWidth: '90%' },
+    msgRowUser:         { alignSelf: 'flex-end', flexDirection: 'row-reverse' },
+    msgAvatar:          { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 },
+    msgCoachAvatar:     { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2, backgroundColor: colors.primary + '18', borderWidth: 0.5, borderColor: colors.primary + '50', shadowColor: colors.primary, shadowOpacity: 0.25, shadowRadius: 6, shadowOffset: { width: 0, height: 0 }, elevation: 2, overflow: 'visible' },
+    msgCoachAvatarImage:{ width: 20, height: 20, tintColor: colors.primary, transform: [{ rotate: '-6deg' }] },
+    msgCoachAvatarSpark:{ position: 'absolute', right: -1, top: 1, width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: s.background },
+    msgBubble:          { flex: 1, backgroundColor: s.card, borderRadius: radius.lg, padding: spacing.sm, gap: 3 },
+    msgText:            { fontSize: typography.size.sm, color: s.foreground, lineHeight: 20 },
+    msgTime:            { fontSize: typography.size.xs, color: s.mutedForeground },
+    suggestionsWrap:    { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+    suggestionChip:     { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.primary + '10', borderRadius: radius.full, borderWidth: 0.5, borderColor: colors.primary + '40' },
+    suggestionChipText: { fontSize: typography.size.sm, fontWeight: typography.weight.semibold },
+    inputBar:           { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, padding: spacing.screen, paddingBottom: spacing.xl, backgroundColor: s.background, borderTopWidth: 0.5, borderTopColor: s.border },
+    chatInput:          { flex: 1, minHeight: touchTarget.comfortable, maxHeight: 120, backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, fontSize: typography.size.base, color: s.foreground },
+    sendBtn:            { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+    programContent:     { paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: spacing.xxl, gap: spacing.md, alignItems: 'center' },
+    programTitle:       { fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: s.foreground, textAlign: 'center' },
+    programDesc:        { fontSize: typography.size.sm, color: s.mutedForeground, textAlign: 'center', lineHeight: 20 },
+    programSummary:     { width: '100%', backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, overflow: 'hidden' },
+    summaryRow:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.md, borderBottomWidth: 0.5, borderBottomColor: s.border },
+    summaryLabel:       { fontSize: typography.size.sm, color: s.mutedForeground },
+    summaryValue:       { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: s.foreground },
+    generateBtn:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, width: '100%', height: touchTarget.comfortable, backgroundColor: colors.primary, borderRadius: radius.full },
+    generateBtnText:    { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.primaryFg },
+    generatingContainer:{ alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xxl },
+    generatingTitle:    { fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: s.foreground },
+    generatingDesc:     { fontSize: typography.size.sm, color: s.mutedForeground, textAlign: 'center', lineHeight: 20 },
+    weekTemplate:       { width: '100%', backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, overflow: 'hidden' },
+    weekTitle:          { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: s.foreground, padding: spacing.md, borderBottomWidth: 0.5, borderBottomColor: s.border },
+    dayRow:             { flexDirection: 'row', padding: spacing.md, borderBottomWidth: 0.5, borderBottomColor: s.border + '60', gap: spacing.md },
+    dayLabel:           { width: 90, fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: colors.primary },
+    daySession:         { flex: 1, fontSize: typography.size.sm, color: s.foreground },
+    programActions:     { flexDirection: 'row', gap: spacing.sm, width: '100%' },
+    regenBtn:           { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, height: touchTarget.comfortable, backgroundColor: s.card, borderRadius: radius.full, borderWidth: 0.5, borderColor: s.border },
+    regenBtnText:       { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: s.foreground },
+    acceptBtn:          { flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, height: touchTarget.comfortable, backgroundColor: colors.primary, borderRadius: radius.full },
+    acceptBtnText:      { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.primaryFg },
+    acceptedCard:       { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, width: '100%', borderRadius: radius.lg, borderWidth: 0.5, padding: spacing.md },
+  })
+}

@@ -26,6 +26,7 @@
     "@fastify/sensible": "^6.0.1",
     "@prisma/client": "^6.0.0",
     "@supabase/supabase-js": "^2.103.3",
+    "@upstash/redis": "^1.37.0",
     "dotenv": "^16.4.5",
     "fastify": "^5.1.0",
     "jose": "^6.2.3",

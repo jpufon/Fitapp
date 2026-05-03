@@ -4,6 +4,9 @@ import { requireAuth } from '../lib/auth.js';
 import { dateAtMidnightForUser } from '../lib/dailyScore.js';
 import { applyNutritionDelta } from '../lib/nutritionLedger.js';
 import { persistStreak } from '../lib/streakEngine.js';
+import { rateLimit } from '../lib/rateLimit.js';
+
+const writeNutrition = rateLimit('write:nutrition', 120, 60);
 
 export async function nutritionRoutes(app: FastifyInstance) {
   // ── POST /nutrition/simple/:date — additive protein/water + absolute steps ─
@@ -12,7 +15,7 @@ export async function nutritionRoutes(app: FastifyInstance) {
   // offline sync queue collapse on the (userId, clientId) unique index.
   app.post<{ Params: { date: string } }>(
     '/nutrition/simple/:date',
-    { preHandler: requireAuth },
+    { preHandler: [requireAuth, writeNutrition] },
     async (request, reply) => {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(request.params.date)) {
         return reply.code(400).send({ error: 'invalid_date', expected: 'YYYY-MM-DD' });

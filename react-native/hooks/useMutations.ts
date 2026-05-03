@@ -31,6 +31,9 @@ export type {
 // internally so the offline queue replays a stable idempotency key.
 export type LogNutritionInput = Omit<LogNutritionBody, 'clientId'>;
 
+// Body shape callers pass to useLogSet. The hook mints `clientId` internally.
+export type LogSetInput = Omit<LogSetBody, 'clientId'>;
+
 export type UpdateDailyTargetsBody = {
   proteinTargetG?: number;
   waterTargetMl?: number;
@@ -46,8 +49,15 @@ function invalidateHome(qc: ReturnType<typeof useQueryClient>) {
 export function useStartWorkout() {
   const qc = useQueryClient();
   return useMutation({
+    // Mint `id` if the caller didn't supply one. The offline sync queue
+    // replays the same body on retry, so a stable id collapses retries
+    // onto the same row via the upsert in `POST /workouts`.
     mutationFn: (body: StartWorkoutBody) =>
-      apiMutate<{ workout: { id: string } }>({ method: 'POST', path: '/workouts', body }),
+      apiMutate<{ workout: { id: string } }>({
+        method: 'POST',
+        path: '/workouts',
+        body: { ...body, id: body.id ?? randomUUID() },
+      }),
     onSuccess: () => invalidateHome(qc),
   });
 }
@@ -57,11 +67,11 @@ export function useStartWorkout() {
 export function useLogSet(workoutId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: LogSetBody) =>
+    mutationFn: (input: LogSetInput) =>
       apiMutate<{ set: unknown }>({
         method: 'POST',
         path: `/workouts/${workoutId}/sets`,
-        body,
+        body: { ...input, clientId: randomUUID() } satisfies LogSetBody,
       }),
     onSuccess: () => invalidateHome(qc),
   });

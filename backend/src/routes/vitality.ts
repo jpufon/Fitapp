@@ -4,10 +4,13 @@ import { requireAuth } from '../lib/auth.js';
 import { prisma } from '../lib/prisma.js';
 import { upsertDailyScore, dateAtMidnightForUser } from '../lib/dailyScore.js';
 import { persistStreak, currentDayKeyWithGrace, dayKeyToDbDate } from '../lib/streakEngine.js';
+import { rateLimit } from '../lib/rateLimit.js';
+
+const writeVitality = rateLimit('write:vitality', 30, 60);
 
 export async function vitalityRoutes(app: FastifyInstance) {
   // ── POST /vitality/recompute ───────────────────────────────────────────
-  app.post('/vitality/recompute', { preHandler: requireAuth }, async (request, reply) => {
+  app.post('/vitality/recompute', { preHandler: [requireAuth, writeVitality] }, async (request, reply) => {
     const parsed = RecomputeVitalitySchema.safeParse(request.body ?? {});
     if (!parsed.success) {
       return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.flatten() });
@@ -28,7 +31,7 @@ export async function vitalityRoutes(app: FastifyInstance) {
   // ── POST /vitality/freeze — burn one freeze token to protect a day ─────
   // Idempotent: if the date is already a freeze day, no token is burned.
   // Past + today only — future dates are rejected.
-  app.post('/vitality/freeze', { preHandler: requireAuth }, async (request, reply) => {
+  app.post('/vitality/freeze', { preHandler: [requireAuth, writeVitality] }, async (request, reply) => {
     const parsed = UseFreezeSchema.safeParse(request.body ?? {});
     if (!parsed.success) {
       return reply.code(400).send({ error: 'invalid_body', issues: parsed.error.flatten() });

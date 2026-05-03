@@ -3,10 +3,12 @@
 // Haptic at 10s remaining, audio + haptic at 0s
 // +/- 15s adjustments, skip, pause
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native'
 import { X, Plus, Minus, SkipForward, ChevronUp } from 'lucide-react-native'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
+import type { SurfaceTokens } from '../theme/surfaceTheme'
+import { useWalifitTheme } from '../theme/ThemeProvider'
 
 const DEFAULT_REST_S = 90
 
@@ -19,6 +21,8 @@ interface RestTimerSheetProps {
 }
 
 export function RestTimerSheet({ visible, onExpand, onComplete }: RestTimerSheetProps) {
+  const { surfaces } = useWalifitTheme()
+  const styles = useMemo(() => createStyles(surfaces), [surfaces])
   const [seconds, setSeconds]   = useState(DEFAULT_REST_S)
   const [running, setRunning]   = useState(true)
   const timerRef                = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -62,11 +66,11 @@ export function RestTimerSheet({ visible, onExpand, onComplete }: RestTimerSheet
         <Text style={styles.sheetLabel}>Rest</Text>
         <TouchableOpacity style={styles.sheetTimer} onPress={onExpand} activeOpacity={0.7}>
           <Text style={[styles.sheetTime, seconds <= 10 && { color: colors.destructive }]}>{display}</Text>
-          <ChevronUp color={colors.mutedForeground} size={14} strokeWidth={1.75} />
+          <ChevronUp color={surfaces.mutedForeground} size={14} strokeWidth={1.75} />
         </TouchableOpacity>
         <View style={styles.sheetBtns}>
           <TouchableOpacity style={styles.sheetAdjBtn} onPress={() => setSeconds(s => Math.max(0, s - 15))}>
-            <Minus color={colors.mutedForeground} size={14} strokeWidth={2} />
+            <Minus color={surfaces.mutedForeground} size={14} strokeWidth={2} />
             <Text style={styles.sheetAdjText}>15s</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.sheetAdjBtn} onPress={() => setSeconds(s => s + 15)}>
@@ -74,7 +78,7 @@ export function RestTimerSheet({ visible, onExpand, onComplete }: RestTimerSheet
             <Text style={[styles.sheetAdjText, { color: colors.primary }]}>15s</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.sheetSkipBtn} onPress={onComplete}>
-            <SkipForward color={colors.mutedForeground} size={16} strokeWidth={1.75} />
+            <SkipForward color={surfaces.mutedForeground} size={16} strokeWidth={1.75} />
           </TouchableOpacity>
         </View>
       </View>
@@ -91,6 +95,8 @@ interface RestTimerFullScreenProps {
 }
 
 export function RestTimerFullScreen({ visible, onCollapse, onComplete }: RestTimerFullScreenProps) {
+  const { surfaces } = useWalifitTheme()
+  const styles = useMemo(() => createStyles(surfaces), [surfaces])
   const [seconds, setSeconds] = useState(DEFAULT_REST_S)
   const [running, setRunning] = useState(true)
   const timerRef              = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -119,7 +125,7 @@ export function RestTimerFullScreen({ visible, onCollapse, onComplete }: RestTim
       <View style={styles.fullContainer}>
         {/* Close */}
         <TouchableOpacity style={styles.collapseBtn} onPress={onCollapse}>
-          <X color={colors.foreground} size={20} strokeWidth={1.75} />
+          <X color={surfaces.foreground} size={20} strokeWidth={1.75} />
         </TouchableOpacity>
 
         <Text style={styles.fullTitle}>Rest timer</Text>
@@ -137,14 +143,14 @@ export function RestTimerFullScreen({ visible, onCollapse, onComplete }: RestTim
         {/* Adjustments */}
         <View style={styles.adjustRow}>
           <TouchableOpacity style={styles.adjustBtn} onPress={() => setSeconds(s => Math.max(0, s - 15))}>
-            <Minus color={colors.foreground} size={20} strokeWidth={2} />
+            <Minus color={surfaces.foreground} size={20} strokeWidth={2} />
             <Text style={styles.adjustLabel}>−15s</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.pauseBtn, { backgroundColor: running ? colors.card : colors.primary }]}
+            style={[styles.pauseBtn, { backgroundColor: running ? surfaces.card : colors.primary }]}
             onPress={() => setRunning(r => !r)}
           >
-            <Text style={[styles.pauseBtnText, { color: running ? colors.foreground : colors.primaryFg }]}>
+            <Text style={[styles.pauseBtnText, { color: running ? surfaces.foreground : colors.primaryFg }]}>
               {running ? 'Pause' : 'Resume'}
             </Text>
           </TouchableOpacity>
@@ -156,7 +162,7 @@ export function RestTimerFullScreen({ visible, onCollapse, onComplete }: RestTim
 
         {/* Skip */}
         <TouchableOpacity style={styles.skipBtn} onPress={onComplete}>
-          <SkipForward color={colors.mutedForeground} size={18} strokeWidth={1.75} />
+          <SkipForward color={surfaces.mutedForeground} size={18} strokeWidth={1.75} />
           <Text style={styles.skipBtnText}>Skip rest</Text>
         </TouchableOpacity>
 
@@ -184,37 +190,39 @@ export function RestTimerFullScreen({ visible, onCollapse, onComplete }: RestTim
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  sheet:              { backgroundColor: colors.card, borderTopWidth: 0.5, borderTopColor: colors.border, paddingHorizontal: spacing.screen, paddingBottom: spacing.lg, paddingTop: spacing.sm },
-  sheetProgress:      { height: 3, backgroundColor: colors.muted, borderRadius: 2, overflow: 'hidden', marginBottom: spacing.sm },
-  sheetProgressFill:  { height: '100%', backgroundColor: colors.primary, borderRadius: 2 },
-  sheetRow:           { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  sheetLabel:         { fontSize: typography.size.sm, color: colors.mutedForeground, width: 32 },
-  sheetTimer:         { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  sheetTime:          { fontSize: typography.size['2xl'], fontWeight: typography.weight.extrabold, color: colors.foreground },
-  sheetBtns:          { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  sheetAdjBtn:        { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, backgroundColor: colors.muted, borderRadius: radius.sm, minHeight: touchTarget.min },
-  sheetAdjText:       { fontSize: typography.size.xs, color: colors.mutedForeground, fontWeight: typography.weight.semibold },
-  sheetSkipBtn:       { width: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
-  fullContainer:      { flex: 1, backgroundColor: colors.background, alignItems: 'center', paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: spacing.xxl },
-  collapseBtn:        { alignSelf: 'flex-start', width: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
-  fullTitle:          { fontSize: typography.size.lg, fontWeight: typography.weight.semibold, color: colors.mutedForeground, marginTop: spacing.xl },
-  ringContainer:      { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  ringOuter:          { width: 220, height: 220, borderRadius: 110, borderWidth: 6, borderColor: colors.muted, alignItems: 'center', justifyContent: 'center' },
-  ringInner:          { width: 200, height: 200, borderRadius: 100, borderWidth: 4, alignItems: 'center', justifyContent: 'center', gap: spacing.xs },
-  fullTime:           { fontSize: 56, fontWeight: typography.weight.extrabold, color: colors.foreground },
-  fullSubTime:        { fontSize: typography.size.sm, color: colors.mutedForeground },
-  adjustRow:          { flexDirection: 'row', alignItems: 'center', gap: spacing.md, width: '100%', marginBottom: spacing.lg },
-  adjustBtn:          { flex: 1, alignItems: 'center', gap: 4 },
-  adjustLabel:        { fontSize: typography.size.sm, color: colors.mutedForeground },
-  pauseBtn:           { flex: 2, height: touchTarget.comfortable, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', borderWidth: 0.5, borderColor: colors.border },
-  pauseBtnText:       { fontSize: typography.size.base, fontWeight: typography.weight.bold },
-  skipBtn:            { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xl },
-  skipBtnText:        { fontSize: typography.size.base, color: colors.mutedForeground },
-  presetsSection:     { width: '100%', gap: spacing.sm },
-  presetsLabel:       { fontSize: typography.size.sm, color: colors.mutedForeground, textAlign: 'center' },
-  presetsRow:         { flexDirection: 'row', justifyContent: 'center', gap: spacing.sm },
-  presetPill:         { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, backgroundColor: colors.card, borderRadius: radius.full, borderWidth: 0.5, borderColor: colors.border, minHeight: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
-  presetPillActive:   { borderColor: colors.primary, backgroundColor: colors.primary + '10' },
-  presetPillText:     { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: colors.mutedForeground },
-})
+function createStyles(s: SurfaceTokens) {
+  return StyleSheet.create({
+    sheet:              { backgroundColor: s.card, borderTopWidth: 0.5, borderTopColor: s.border, paddingHorizontal: spacing.screen, paddingBottom: spacing.lg, paddingTop: spacing.sm },
+    sheetProgress:      { height: 3, backgroundColor: s.muted, borderRadius: 2, overflow: 'hidden', marginBottom: spacing.sm },
+    sheetProgressFill:  { height: '100%', backgroundColor: colors.primary, borderRadius: 2 },
+    sheetRow:           { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+    sheetLabel:         { fontSize: typography.size.sm, color: s.mutedForeground, width: 32 },
+    sheetTimer:         { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+    sheetTime:          { fontSize: typography.size['2xl'], fontWeight: typography.weight.extrabold, color: s.foreground },
+    sheetBtns:          { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+    sheetAdjBtn:        { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, backgroundColor: s.muted, borderRadius: radius.sm, minHeight: touchTarget.min },
+    sheetAdjText:       { fontSize: typography.size.xs, color: s.mutedForeground, fontWeight: typography.weight.semibold },
+    sheetSkipBtn:       { width: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
+    fullContainer:      { flex: 1, backgroundColor: s.background, alignItems: 'center', paddingHorizontal: spacing.screen, paddingTop: spacing.xl, paddingBottom: spacing.xxl },
+    collapseBtn:        { alignSelf: 'flex-start', width: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
+    fullTitle:          { fontSize: typography.size.lg, fontWeight: typography.weight.semibold, color: s.mutedForeground, marginTop: spacing.xl },
+    ringContainer:      { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    ringOuter:          { width: 220, height: 220, borderRadius: 110, borderWidth: 6, borderColor: s.muted, alignItems: 'center', justifyContent: 'center' },
+    ringInner:          { width: 200, height: 200, borderRadius: 100, borderWidth: 4, alignItems: 'center', justifyContent: 'center', gap: spacing.xs },
+    fullTime:           { fontSize: 56, fontWeight: typography.weight.extrabold, color: s.foreground },
+    fullSubTime:        { fontSize: typography.size.sm, color: s.mutedForeground },
+    adjustRow:          { flexDirection: 'row', alignItems: 'center', gap: spacing.md, width: '100%', marginBottom: spacing.lg },
+    adjustBtn:          { flex: 1, alignItems: 'center', gap: 4 },
+    adjustLabel:        { fontSize: typography.size.sm, color: s.mutedForeground },
+    pauseBtn:           { flex: 2, height: touchTarget.comfortable, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', borderWidth: 0.5, borderColor: s.border },
+    pauseBtnText:       { fontSize: typography.size.base, fontWeight: typography.weight.bold },
+    skipBtn:            { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xl },
+    skipBtnText:        { fontSize: typography.size.base, color: s.mutedForeground },
+    presetsSection:     { width: '100%', gap: spacing.sm },
+    presetsLabel:       { fontSize: typography.size.sm, color: s.mutedForeground, textAlign: 'center' },
+    presetsRow:         { flexDirection: 'row', justifyContent: 'center', gap: spacing.sm },
+    presetPill:         { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, backgroundColor: s.card, borderRadius: radius.full, borderWidth: 0.5, borderColor: s.border, minHeight: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
+    presetPillActive:   { borderColor: colors.primary, backgroundColor: colors.primary + '10' },
+    presetPillText:     { fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: s.mutedForeground },
+  })
+}

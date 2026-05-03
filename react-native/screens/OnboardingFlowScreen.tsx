@@ -4,7 +4,7 @@
 // Each step persists locally to MMKV and PATCHes the server (queued if offline).
 // Fires Wali AI cold-start 1.5s after onboardingComplete = true (backend).
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -37,6 +37,8 @@ import {
   AlertCircle,
 } from 'lucide-react-native';
 import { colors, pillarColors, spacing, typography, radius, touchTarget } from '../theme';
+import type { SurfaceTokens } from '../theme/surfaceTheme';
+import { useWalifitTheme } from '../theme/ThemeProvider';
 import {
   useOnboardingStore,
   defaultsForGoal,
@@ -89,6 +91,8 @@ const INJURY_OPTIONS: { id: Injury; label: string }[] = [
 
 export default function OnboardingFlowScreen({ onComplete }: OnboardingFlowProps) {
   const step = useOnboardingStore((s) => s.currentStep);
+  const { surfaces } = useWalifitTheme();
+  const styles = useMemo(() => createStyles(surfaces), [surfaces]);
 
   const visibleSteps: OnboardingStep[] = STEP_ORDER.filter((s) => s !== 'complete');
   const stepIndex = visibleSteps.indexOf(step);
@@ -102,28 +106,30 @@ export default function OnboardingFlowScreen({ onComplete }: OnboardingFlowProps
         </View>
       )}
 
-      {step !== 'goal' && step !== 'complete' && <BackButton />}
+      {step !== 'goal' && step !== 'complete' && <BackButton styles={styles} surfaces={surfaces} />}
 
-      {step === 'goal' && <GoalStep />}
-      {step === 'experience' && <ExperienceStep />}
-      {step === 'frequency' && <FrequencyStep />}
-      {step === 'equipment' && <EquipmentStep />}
-      {step === 'injuries' && <InjuriesStep />}
-      {step === 'units' && <UnitsStep />}
-      {step === 'targets' && <TargetsStep />}
-      {step === 'import' && <ImportStep />}
-      {step === 'complete' && <CompleteStep onDone={onComplete} />}
+      {step === 'goal' && <GoalStep styles={styles} surfaces={surfaces} />}
+      {step === 'experience' && <ExperienceStep styles={styles} surfaces={surfaces} />}
+      {step === 'frequency' && <FrequencyStep styles={styles} />}
+      {step === 'equipment' && <EquipmentStep styles={styles} surfaces={surfaces} />}
+      {step === 'injuries' && <InjuriesStep styles={styles} surfaces={surfaces} />}
+      {step === 'units' && <UnitsStep styles={styles} />}
+      {step === 'targets' && <TargetsStep styles={styles} />}
+      {step === 'import' && <ImportStep styles={styles} />}
+      {step === 'complete' && <CompleteStep onDone={onComplete} styles={styles} />}
     </SafeAreaView>
   );
 }
 
+type OnboardingStyles = ReturnType<typeof createStyles>;
+
 // ─── Shared building blocks ───────────────────────────────────────────────────
 
-function BackButton() {
+function BackButton({ styles, surfaces }: { styles: OnboardingStyles; surfaces: SurfaceTokens }) {
   const back = useOnboardingStore((s) => s.back);
   return (
     <TouchableOpacity style={styles.backBtn} onPress={() => back()} accessibilityLabel="Go back">
-      <ArrowLeft color={colors.foreground} size={20} strokeWidth={1.75} />
+      <ArrowLeft color={surfaces.foreground} size={20} strokeWidth={1.75} />
     </TouchableOpacity>
   );
 }
@@ -132,10 +138,12 @@ function ContinueButton({
   label = 'Continue',
   disabled = false,
   onPress,
+  styles,
 }: {
   label?: string;
   disabled?: boolean;
   onPress: () => void;
+  styles: OnboardingStyles;
 }) {
   return (
     <TouchableOpacity
@@ -153,7 +161,7 @@ function ContinueButton({
 
 // ─── Goal step ────────────────────────────────────────────────────────────────
 
-function GoalStep() {
+function GoalStep({ styles, surfaces }: { styles: OnboardingStyles; surfaces: SurfaceTokens }) {
   const goal = useOnboardingStore((s) => s.goal);
   const update = useOnboardingStore((s) => s.update);
   const next = useOnboardingStore((s) => s.next);
@@ -177,11 +185,11 @@ function GoalStep() {
               <View
                 style={[
                   styles.optionIconWrap,
-                  { backgroundColor: active ? colors.primary + '20' : colors.muted },
+                  { backgroundColor: active ? colors.primary + '20' : surfaces.muted },
                 ]}
               >
                 <g.icon
-                  color={active ? colors.primary : colors.mutedForeground}
+                  color={active ? colors.primary : surfaces.mutedForeground}
                   size={22}
                   strokeWidth={1.75}
                 />
@@ -198,14 +206,14 @@ function GoalStep() {
         })}
       </View>
 
-      <ContinueButton disabled={!goal} onPress={() => next()} />
+      <ContinueButton disabled={!goal} onPress={() => next()} styles={styles} />
     </ScrollView>
   );
 }
 
 // ─── Experience step ──────────────────────────────────────────────────────────
 
-function ExperienceStep() {
+function ExperienceStep({ styles, surfaces }: { styles: OnboardingStyles; surfaces: SurfaceTokens }) {
   const experience = useOnboardingStore((s) => s.experience);
   const update = useOnboardingStore((s) => s.update);
   const next = useOnboardingStore((s) => s.next);
@@ -230,11 +238,11 @@ function ExperienceStep() {
               <View
                 style={[
                   styles.optionIconWrap,
-                  { backgroundColor: active ? colors.primary + '20' : colors.muted },
+                  { backgroundColor: active ? colors.primary + '20' : surfaces.muted },
                 ]}
               >
                 <opt.icon
-                  color={active ? colors.primary : colors.mutedForeground}
+                  color={active ? colors.primary : surfaces.mutedForeground}
                   size={22}
                   strokeWidth={1.75}
                 />
@@ -251,14 +259,14 @@ function ExperienceStep() {
         })}
       </View>
 
-      <ContinueButton disabled={!experience} onPress={() => next()} />
+      <ContinueButton disabled={!experience} onPress={() => next()} styles={styles} />
     </ScrollView>
   );
 }
 
 // ─── Frequency step ───────────────────────────────────────────────────────────
 
-function FrequencyStep() {
+function FrequencyStep({ styles }: { styles: OnboardingStyles }) {
   const freq = useOnboardingStore((s) => s.trainingDaysPerWeek);
   const update = useOnboardingStore((s) => s.update);
   const next = useOnboardingStore((s) => s.next);
@@ -292,14 +300,14 @@ function FrequencyStep() {
         </Text>
       </View>
 
-      <ContinueButton onPress={() => next()} />
+      <ContinueButton onPress={() => next()} styles={styles} />
     </View>
   );
 }
 
 // ─── Equipment step ───────────────────────────────────────────────────────────
 
-function EquipmentStep() {
+function EquipmentStep({ styles, surfaces }: { styles: OnboardingStyles; surfaces: SurfaceTokens }) {
   const equipment = useOnboardingStore((s) => s.equipment);
   const update = useOnboardingStore((s) => s.update);
   const next = useOnboardingStore((s) => s.next);
@@ -325,7 +333,7 @@ function EquipmentStep() {
               activeOpacity={0.7}
             >
               <opt.icon
-                color={active ? colors.primary : colors.mutedForeground}
+                color={active ? colors.primary : surfaces.mutedForeground}
                 size={18}
                 strokeWidth={1.75}
               />
@@ -338,14 +346,14 @@ function EquipmentStep() {
         })}
       </View>
 
-      <ContinueButton disabled={equipment.length === 0} onPress={() => next()} />
+      <ContinueButton disabled={equipment.length === 0} onPress={() => next()} styles={styles} />
     </ScrollView>
   );
 }
 
 // ─── Injuries step ────────────────────────────────────────────────────────────
 
-function InjuriesStep() {
+function InjuriesStep({ styles, surfaces }: { styles: OnboardingStyles; surfaces: SurfaceTokens }) {
   const injuries = useOnboardingStore((s) => s.injuries);
   const injuryNotes = useOnboardingStore((s) => s.injuryNotes);
   const update = useOnboardingStore((s) => s.update);
@@ -382,13 +390,13 @@ function InjuriesStep() {
             >
               {opt.id === 'none' ? (
                 <Check
-                  color={active ? colors.primary : colors.mutedForeground}
+                  color={active ? colors.primary : surfaces.mutedForeground}
                   size={16}
                   strokeWidth={2}
                 />
               ) : (
                 <AlertCircle
-                  color={active ? colors.primary : colors.mutedForeground}
+                  color={active ? colors.primary : surfaces.mutedForeground}
                   size={16}
                   strokeWidth={1.75}
                 />
@@ -405,21 +413,21 @@ function InjuriesStep() {
       <TextInput
         style={styles.textArea}
         placeholder="e.g. tight hip flexors, recovering from minor surgery"
-        placeholderTextColor={colors.mutedForeground}
+        placeholderTextColor={surfaces.mutedForeground}
         value={injuryNotes}
         onChangeText={(t) => update({ injuryNotes: t })}
         multiline
         maxLength={300}
       />
 
-      <ContinueButton onPress={() => next()} />
+      <ContinueButton onPress={() => next()} styles={styles} />
     </ScrollView>
   );
 }
 
 // ─── Units step ───────────────────────────────────────────────────────────────
 
-function UnitsStep() {
+function UnitsStep({ styles }: { styles: OnboardingStyles }) {
   const units = useOnboardingStore((s) => s.units);
   const update = useOnboardingStore((s) => s.update);
   const next = useOnboardingStore((s) => s.next);
@@ -447,14 +455,14 @@ function UnitsStep() {
         ))}
       </View>
 
-      <ContinueButton onPress={() => next()} />
+      <ContinueButton onPress={() => next()} styles={styles} />
     </View>
   );
 }
 
 // ─── Targets step ─────────────────────────────────────────────────────────────
 
-function TargetsStep() {
+function TargetsStep({ styles }: { styles: OnboardingStyles }) {
   const goal = useOnboardingStore((s) => s.goal);
   const proteinTargetG = useOnboardingStore((s) => s.proteinTargetG);
   const waterTargetMl = useOnboardingStore((s) => s.waterTargetMl);
@@ -486,6 +494,7 @@ function TargetsStep() {
           min={40}
           max={400}
           onChange={(v) => update({ proteinTargetG: v })}
+          styles={styles}
         />
       </View>
 
@@ -503,6 +512,7 @@ function TargetsStep() {
           min={1000}
           max={6000}
           onChange={(v) => update({ waterTargetMl: v })}
+          styles={styles}
         />
       </View>
 
@@ -522,7 +532,7 @@ function TargetsStep() {
         </TouchableOpacity>
       )}
 
-      <ContinueButton onPress={() => next()} />
+      <ContinueButton onPress={() => next()} styles={styles} />
     </ScrollView>
   );
 }
@@ -533,13 +543,16 @@ function Stepper({
   min,
   max,
   onChange,
+  styles,
 }: {
   value: number;
   step: number;
   min: number;
   max: number;
   onChange: (v: number) => void;
+  styles: OnboardingStyles;
 }) {
+  const { surfaces } = useWalifitTheme();
   const dec = () => onChange(Math.max(min, value - step));
   const inc = () => onChange(Math.min(max, value + step));
   return (
@@ -550,7 +563,7 @@ function Stepper({
         activeOpacity={0.7}
         disabled={value <= min}
       >
-        <Minus color={colors.foreground} size={16} strokeWidth={2} />
+        <Minus color={surfaces.foreground} size={16} strokeWidth={2} />
       </TouchableOpacity>
       <TouchableOpacity
         style={[styles.stepperBtn, value >= max && styles.stepperBtnDisabled]}
@@ -558,7 +571,7 @@ function Stepper({
         activeOpacity={0.7}
         disabled={value >= max}
       >
-        <Plus color={colors.foreground} size={16} strokeWidth={2} />
+        <Plus color={surfaces.foreground} size={16} strokeWidth={2} />
       </TouchableOpacity>
     </View>
   );
@@ -566,7 +579,7 @@ function Stepper({
 
 // ─── Import step ──────────────────────────────────────────────────────────────
 
-function ImportStep() {
+function ImportStep({ styles }: { styles: OnboardingStyles }) {
   const update = useOnboardingStore((s) => s.update);
   const next = useOnboardingStore((s) => s.next);
   const [loading, setLoading] = useState(false);
@@ -635,7 +648,7 @@ function ImportStep() {
               ))}
             </View>
           </View>
-          <ContinueButton label="Looks good — continue" onPress={() => next()} />
+          <ContinueButton label="Looks good — continue" onPress={() => next()} styles={styles} />
         </>
       )}
     </View>
@@ -644,7 +657,7 @@ function ImportStep() {
 
 // ─── Complete step ────────────────────────────────────────────────────────────
 
-function CompleteStep({ onDone }: { onDone: () => void }) {
+function CompleteStep({ onDone, styles }: { onDone: () => void; styles: OnboardingStyles }) {
   const finish = useOnboardingStore((s) => s.finish);
 
   // CompleteStep is reached via next() which already moved currentStep to 'complete'
@@ -675,277 +688,279 @@ function CompleteStep({ onDone }: { onDone: () => void }) {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  progressBar: { height: 3, backgroundColor: colors.muted, marginTop: 44 },
-  progressFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 2 },
-  backBtn: {
-    width: touchTarget.min,
-    height: touchTarget.min,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  stepContent: {
-    flexGrow: 1,
-    paddingHorizontal: spacing.screen,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.xxl,
-    gap: spacing.md,
-  },
-  stepTitle: {
-    fontSize: typography.size['2xl'],
-    fontWeight: typography.weight.bold,
-    color: colors.foreground,
-  },
-  stepSub: { fontSize: typography.size.sm, color: colors.mutedForeground, lineHeight: 20 },
-  optionsList: { gap: spacing.sm, flex: 1 },
-  optionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    borderWidth: 0.5,
-    borderColor: colors.border,
-    padding: spacing.md,
-    minHeight: touchTarget.comfortable,
-  },
-  optionCardActive: { borderColor: colors.primary, borderWidth: 1.5 },
-  optionIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  optionText: { flex: 1 },
-  optionLabel: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.foreground,
-  },
-  optionSub: { fontSize: typography.size.xs, color: colors.mutedForeground, marginTop: 2 },
-  freqGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  freqCard: {
-    width: '30%',
-    aspectRatio: 1.2,
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    borderWidth: 0.5,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 3,
-  },
-  freqCardActive: {
-    borderColor: colors.primary,
-    borderWidth: 1.5,
-    backgroundColor: colors.primary + '08',
-  },
-  freqNum: {
-    fontSize: typography.size['3xl'],
-    fontWeight: typography.weight.extrabold,
-    color: colors.foreground,
-  },
-  freqLabel: { fontSize: typography.size.xs, color: colors.mutedForeground },
-  freqInfo: {
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    borderWidth: 0.5,
-    borderColor: colors.border,
-  },
-  freqInfoText: { fontSize: typography.size.sm, color: colors.mutedForeground, textAlign: 'center' },
-  chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.card,
-    borderRadius: radius.full,
-    borderWidth: 0.5,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    minHeight: touchTarget.min,
-  },
-  chipActive: {
-    borderColor: colors.primary,
-    borderWidth: 1.5,
-    backgroundColor: colors.primary + '10',
-  },
-  chipLabel: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.foreground,
-  },
-  fieldLabel: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.mutedForeground,
-    marginTop: spacing.md,
-  },
-  textArea: {
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    borderWidth: 0.5,
-    borderColor: colors.border,
-    padding: spacing.md,
-    minHeight: 88,
-    color: colors.foreground,
-    fontSize: typography.size.sm,
-    textAlignVertical: 'top',
-  },
-  unitsRow: { flexDirection: 'row', gap: spacing.md },
-  unitCard: {
-    flex: 1,
-    height: 100,
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    borderWidth: 0.5,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-  },
-  unitCardActive: {
-    borderColor: colors.primary,
-    borderWidth: 2,
-    backgroundColor: colors.primary + '08',
-  },
-  unitLabel: {
-    fontSize: typography.size['3xl'],
-    fontWeight: typography.weight.extrabold,
-    color: colors.foreground,
-  },
-  unitSub: { fontSize: typography.size.xs, color: colors.mutedForeground },
-  targetRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    borderWidth: 0.5,
-    borderColor: colors.border,
-    padding: spacing.md,
-  },
-  targetIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  targetTextWrap: { flex: 1 },
-  targetLabel: {
-    fontSize: typography.size.sm,
-    color: colors.mutedForeground,
-    fontWeight: typography.weight.medium,
-  },
-  targetValue: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.extrabold,
-    color: colors.foreground,
-  },
-  targetUnit: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
-    color: colors.mutedForeground,
-  },
-  stepperWrap: { flexDirection: 'row', gap: spacing.xs },
-  stepperBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.muted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepperBtnDisabled: { opacity: 0.4 },
-  suggestionBtn: { paddingVertical: spacing.sm, alignItems: 'center' },
-  suggestionBtnText: {
-    fontSize: typography.size.sm,
-    color: colors.primary,
-    fontWeight: typography.weight.semibold,
-  },
-  importCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
-    padding: spacing.xl,
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  importLoading: { alignItems: 'center', gap: spacing.sm },
-  importLoadingText: { fontSize: typography.size.lg, fontWeight: typography.weight.semibold },
-  importLoadingSub: {
-    fontSize: typography.size.sm,
-    color: colors.mutedForeground,
-    textAlign: 'center',
-  },
-  importCardTitle: {
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.bold,
-    color: colors.foreground,
-    textAlign: 'center',
-  },
-  importCardSub: {
-    fontSize: typography.size.sm,
-    color: colors.mutedForeground,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  parsedItems: { width: '100%', gap: spacing.xs },
-  parsedItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  parsedItemText: { fontSize: typography.size.sm, color: colors.foreground },
-  skipBtn: { alignItems: 'center', paddingVertical: spacing.md, minHeight: touchTarget.min },
-  skipBtnText: { fontSize: typography.size.base, color: colors.mutedForeground },
-  nextBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    height: touchTarget.comfortable,
-    backgroundColor: colors.primary,
-    borderRadius: radius.full,
-  },
-  nextBtnDisabled: { opacity: 0.4 },
-  nextBtnText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.bold,
-    color: colors.primaryFg,
-  },
-  completeContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.screen,
-    paddingBottom: spacing.xxl,
-    gap: spacing.lg,
-  },
-  completTree: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: colors.primary + '15',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  completeTitle: {
-    fontSize: 28,
-    fontWeight: typography.weight.extrabold,
-    color: colors.foreground,
-    textAlign: 'center',
-  },
-  completeSub: {
-    fontSize: typography.size.base,
-    color: colors.mutedForeground,
-    textAlign: 'center',
-    lineHeight: 26,
-  },
-});
+function createStyles(s: SurfaceTokens) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: s.background },
+    progressBar: { height: 3, backgroundColor: s.muted, marginTop: 44 },
+    progressFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 2 },
+    backBtn: {
+      width: touchTarget.min,
+      height: touchTarget.min,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginLeft: spacing.sm,
+      marginTop: spacing.sm,
+    },
+    stepContent: {
+      flexGrow: 1,
+      paddingHorizontal: spacing.screen,
+      paddingTop: spacing.lg,
+      paddingBottom: spacing.xxl,
+      gap: spacing.md,
+    },
+    stepTitle: {
+      fontSize: typography.size['2xl'],
+      fontWeight: typography.weight.bold,
+      color: s.foreground,
+    },
+    stepSub: { fontSize: typography.size.sm, color: s.mutedForeground, lineHeight: 20 },
+    optionsList: { gap: spacing.sm, flex: 1 },
+    optionCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      backgroundColor: s.card,
+      borderRadius: radius.lg,
+      borderWidth: 0.5,
+      borderColor: s.border,
+      padding: spacing.md,
+      minHeight: touchTarget.comfortable,
+    },
+    optionCardActive: { borderColor: colors.primary, borderWidth: 1.5 },
+    optionIconWrap: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    optionText: { flex: 1 },
+    optionLabel: {
+      fontSize: typography.size.base,
+      fontWeight: typography.weight.semibold,
+      color: s.foreground,
+    },
+    optionSub: { fontSize: typography.size.xs, color: s.mutedForeground, marginTop: 2 },
+    freqGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+    freqCard: {
+      width: '30%',
+      aspectRatio: 1.2,
+      backgroundColor: s.card,
+      borderRadius: radius.lg,
+      borderWidth: 0.5,
+      borderColor: s.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 3,
+    },
+    freqCardActive: {
+      borderColor: colors.primary,
+      borderWidth: 1.5,
+      backgroundColor: colors.primary + '08',
+    },
+    freqNum: {
+      fontSize: typography.size['3xl'],
+      fontWeight: typography.weight.extrabold,
+      color: s.foreground,
+    },
+    freqLabel: { fontSize: typography.size.xs, color: s.mutedForeground },
+    freqInfo: {
+      backgroundColor: s.card,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      borderWidth: 0.5,
+      borderColor: s.border,
+    },
+    freqInfoText: { fontSize: typography.size.sm, color: s.mutedForeground, textAlign: 'center' },
+    chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+    chip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      backgroundColor: s.card,
+      borderRadius: radius.full,
+      borderWidth: 0.5,
+      borderColor: s.border,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      minHeight: touchTarget.min,
+    },
+    chipActive: {
+      borderColor: colors.primary,
+      borderWidth: 1.5,
+      backgroundColor: colors.primary + '10',
+    },
+    chipLabel: {
+      fontSize: typography.size.sm,
+      fontWeight: typography.weight.semibold,
+      color: s.foreground,
+    },
+    fieldLabel: {
+      fontSize: typography.size.sm,
+      fontWeight: typography.weight.semibold,
+      color: s.mutedForeground,
+      marginTop: spacing.md,
+    },
+    textArea: {
+      backgroundColor: s.card,
+      borderRadius: radius.md,
+      borderWidth: 0.5,
+      borderColor: s.border,
+      padding: spacing.md,
+      minHeight: 88,
+      color: s.foreground,
+      fontSize: typography.size.sm,
+      textAlignVertical: 'top',
+    },
+    unitsRow: { flexDirection: 'row', gap: spacing.md },
+    unitCard: {
+      flex: 1,
+      height: 100,
+      backgroundColor: s.card,
+      borderRadius: radius.lg,
+      borderWidth: 0.5,
+      borderColor: s.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.xs,
+    },
+    unitCardActive: {
+      borderColor: colors.primary,
+      borderWidth: 2,
+      backgroundColor: colors.primary + '08',
+    },
+    unitLabel: {
+      fontSize: typography.size['3xl'],
+      fontWeight: typography.weight.extrabold,
+      color: s.foreground,
+    },
+    unitSub: { fontSize: typography.size.xs, color: s.mutedForeground },
+    targetRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      backgroundColor: s.card,
+      borderRadius: radius.lg,
+      borderWidth: 0.5,
+      borderColor: s.border,
+      padding: spacing.md,
+    },
+    targetIconWrap: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    targetTextWrap: { flex: 1 },
+    targetLabel: {
+      fontSize: typography.size.sm,
+      color: s.mutedForeground,
+      fontWeight: typography.weight.medium,
+    },
+    targetValue: {
+      fontSize: typography.size.xl,
+      fontWeight: typography.weight.extrabold,
+      color: s.foreground,
+    },
+    targetUnit: {
+      fontSize: typography.size.sm,
+      fontWeight: typography.weight.medium,
+      color: s.mutedForeground,
+    },
+    stepperWrap: { flexDirection: 'row', gap: spacing.xs },
+    stepperBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: s.muted,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    stepperBtnDisabled: { opacity: 0.4 },
+    suggestionBtn: { paddingVertical: spacing.sm, alignItems: 'center' },
+    suggestionBtnText: {
+      fontSize: typography.size.sm,
+      color: colors.primary,
+      fontWeight: typography.weight.semibold,
+    },
+    importCard: {
+      backgroundColor: s.card,
+      borderRadius: radius.xl,
+      borderWidth: 1,
+      borderColor: s.border,
+      borderStyle: 'dashed',
+      padding: spacing.xl,
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    importLoading: { alignItems: 'center', gap: spacing.sm },
+    importLoadingText: { fontSize: typography.size.lg, fontWeight: typography.weight.semibold },
+    importLoadingSub: {
+      fontSize: typography.size.sm,
+      color: s.mutedForeground,
+      textAlign: 'center',
+    },
+    importCardTitle: {
+      fontSize: typography.size.lg,
+      fontWeight: typography.weight.bold,
+      color: s.foreground,
+      textAlign: 'center',
+    },
+    importCardSub: {
+      fontSize: typography.size.sm,
+      color: s.mutedForeground,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+    parsedItems: { width: '100%', gap: spacing.xs },
+    parsedItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    parsedItemText: { fontSize: typography.size.sm, color: s.foreground },
+    skipBtn: { alignItems: 'center', paddingVertical: spacing.md, minHeight: touchTarget.min },
+    skipBtnText: { fontSize: typography.size.base, color: s.mutedForeground },
+    nextBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      height: touchTarget.comfortable,
+      backgroundColor: colors.primary,
+      borderRadius: radius.full,
+    },
+    nextBtnDisabled: { opacity: 0.4 },
+    nextBtnText: {
+      fontSize: typography.size.base,
+      fontWeight: typography.weight.bold,
+      color: colors.primaryFg,
+    },
+    completeContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: spacing.screen,
+      paddingBottom: spacing.xxl,
+      gap: spacing.lg,
+    },
+    completTree: {
+      width: 160,
+      height: 160,
+      borderRadius: 80,
+      backgroundColor: colors.primary + '15',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    completeTitle: {
+      fontSize: 28,
+      fontWeight: typography.weight.extrabold,
+      color: s.foreground,
+      textAlign: 'center',
+    },
+    completeSub: {
+      fontSize: typography.size.base,
+      color: s.mutedForeground,
+      textAlign: 'center',
+      lineHeight: 26,
+    },
+  });
+}

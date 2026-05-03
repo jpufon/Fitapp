@@ -12,7 +12,7 @@ describe('resolveSurfaces', () => {
       systemColorScheme: 'dark',
       uiMode: 'default',
     });
-    expect(r.surfaces.background).toBe('#f7f7f5');
+    expect(r.surfaces.background).toBe('#ECE6D8');
     expect(r.surfaceSource).toBe('appearance');
     expect(r.statusBarStyle).toBe('dark');
   });
@@ -56,7 +56,7 @@ describe('resolveSurfaces', () => {
       systemColorScheme: 'light',
       uiMode: 'default',
     });
-    expect(light.surfaces.background).toBe('#f7f7f5');
+    expect(light.surfaces.background).toBe('#ECE6D8');
     const dark = resolveSurfaces({
       appearance: 'system',
       systemColorScheme: 'dark',
