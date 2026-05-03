@@ -1,5 +1,5 @@
 import './global.css';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -24,6 +24,8 @@ import { configureQueryClient, queryClient } from './lib/queryClient';
 import { getCachedJson, setCachedJson } from './lib/storage';
 import { useSyncBootstrap } from './hooks/useSyncBootstrap';
 import { hasSupabaseConfig, supabase } from './utils/supabase';
+import { ThemeProvider, useWalifitTheme } from './theme/ThemeProvider';
+import { ThemeRouteSync } from './theme/ThemeRouteSync';
 
 // Screens
 import AuthScreen from './screens/AuthScreen';
@@ -96,7 +98,37 @@ const BOOT_ROUTE_CACHE_KEY = 'boot.last-route';
 
 function BootScreen() {
   const navigation = useNavigation<RootNav>();
+  const { surfaces } = useWalifitTheme();
   const [error, setError] = useState<string | null>(null);
+  const bootStyles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: spacing.sm,
+          paddingHorizontal: spacing.lg,
+          backgroundColor: surfaces.background,
+        },
+        title: {
+          color: surfaces.foreground,
+          fontSize: typography.fontSize.base,
+          fontWeight: '700',
+        },
+        error: {
+          color: colors.destructive,
+          fontSize: typography.fontSize.sm,
+          textAlign: 'center',
+        },
+        note: {
+          color: surfaces.mutedForeground,
+          fontSize: typography.fontSize.xs,
+          textAlign: 'center',
+        },
+      }),
+    [surfaces],
+  );
 
   const routeFromAuthState = useCallback(async () => {
     setError(null);
@@ -187,6 +219,7 @@ function TreeDetailScreenWrapper() {
 }
 
 function MainTabs() {
+  const { surfaces } = useWalifitTheme();
   return (
     <Tab.Navigator
       detachInactiveScreens
@@ -195,15 +228,15 @@ function MainTabs() {
         lazy: true,
         freezeOnBlur: true,
         tabBarStyle: {
-          backgroundColor: colors.card + 'CC',
-          borderTopColor: colors.border + '80',
+          backgroundColor: surfaces.card + 'CC',
+          borderTopColor: surfaces.border + '80',
           borderTopWidth: 1,
           paddingTop: 8,
           paddingBottom: 8,
           height: 70,
         },
         tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.mutedForeground,
+        tabBarInactiveTintColor: surfaces.mutedForeground,
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
@@ -225,18 +258,18 @@ function MainTabs() {
   );
 }
 
-export default function App() {
-  useEffect(() => {
-    configureQueryClient();
-  }, []);
+function ThemedStatusBar() {
+  const { statusBarStyle } = useWalifitTheme();
+  return <StatusBar style={statusBarStyle} />;
+}
 
-  useSyncBootstrap();
-
+function AppNavigation() {
   return (
-    <SafeAreaProvider>
-      <StatusBar style="light" />
+    <>
+      <ThemedStatusBar />
       <QueryClientProvider client={queryClient}>
         <NavigationContainer>
+          <ThemeRouteSync />
           <Stack.Navigator initialRouteName="Boot" screenOptions={{ headerShown: false }}>
             <Stack.Screen name="Boot" component={BootScreen} />
             <Stack.Screen name="Auth" component={AuthScreenWrapper} />
@@ -268,32 +301,22 @@ export default function App() {
           </Stack.Navigator>
         </NavigationContainer>
       </QueryClientProvider>
-    </SafeAreaProvider>
+    </>
   );
 }
 
-const bootStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    backgroundColor: colors.background,
-  },
-  title: {
-    color: colors.foreground,
-    fontSize: typography.fontSize.base,
-    fontWeight: '700',
-  },
-  error: {
-    color: colors.destructive,
-    fontSize: typography.fontSize.sm,
-    textAlign: 'center',
-  },
-  note: {
-    color: colors.mutedForeground,
-    fontSize: typography.fontSize.xs,
-    textAlign: 'center',
-  },
-});
+export default function App() {
+  useEffect(() => {
+    configureQueryClient();
+  }, []);
+
+  useSyncBootstrap();
+
+  return (
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <AppNavigation />
+      </ThemeProvider>
+    </SafeAreaProvider>
+  );
+}

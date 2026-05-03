@@ -3,7 +3,7 @@
 // Notifications, Account, Delete Confirm, Data Export, Legal, About
 // Apple App Store: account deletion is a hard requirement
 
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   Alert, Linking, View, Text, TextInput, TouchableOpacity, ScrollView,
   Switch, StyleSheet, Modal,
@@ -15,6 +15,8 @@ import {
 } from 'lucide-react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { colors, spacing, typography, radius, touchTarget } from '../theme'
+import type { AppearancePreference, SurfaceTokens } from '../theme/surfaceTheme'
+import { useWalifitTheme } from '../theme/ThemeProvider'
 import type { RootStackParamList } from '../App'
 import { apiMutate, apiQuery } from '../lib/api'
 import { hasSupabaseConfig, supabase } from '../utils/supabase'
@@ -37,7 +39,68 @@ const MOCK_USER = {
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
+function createSettingsStyles(s: SurfaceTokens) {
+  return StyleSheet.create({
+    container:          { flex: 1, backgroundColor: s.background },
+    flex:               { flex: 1 },
+    navBar:             { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm, paddingTop: spacing.xl, paddingBottom: spacing.sm, borderBottomWidth: 0.5, borderBottomColor: s.border },
+    navTitle:           { fontSize: typography.size.lg, fontWeight: typography.weight.bold, color: s.foreground },
+    iconBtn:            { width: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
+    content:            { paddingHorizontal: spacing.screen, paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+    sectionBlock:       { gap: spacing.xs },
+    sectionTitle:       { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: s.mutedForeground, textTransform: 'uppercase', letterSpacing: 0.5 },
+    card:               { backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, overflow: 'hidden' },
+    settingsRow:        { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md, minHeight: touchTarget.comfortable },
+    settingsRowBorder:  { borderBottomWidth: 0.5, borderBottomColor: s.border },
+    settingsIcon:       { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    settingsText:       { flex: 1, gap: 2 },
+    settingsLabel:      { fontSize: typography.size.base, fontWeight: typography.weight.medium, color: s.foreground },
+    settingsDesc:       { fontSize: typography.size.sm, color: s.mutedForeground },
+    disclaimer:         { backgroundColor: s.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: s.border, borderLeftWidth: 3, borderLeftColor: colors.primary, padding: spacing.md, gap: spacing.xs },
+    disclaimerTitle:    { fontSize: typography.size.sm, fontWeight: typography.weight.bold, color: colors.primary },
+    disclaimerText:     { fontSize: typography.size.xs, color: s.mutedForeground, lineHeight: 18 },
+    logoutBtn:          { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md },
+    avatarSection:      { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md },
+    avatarLg:           { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+    avatarText:         { fontSize: typography.size['2xl'], fontWeight: typography.weight.bold, color: colors.primaryFg },
+    link:               { fontSize: typography.size.sm, fontWeight: typography.weight.semibold },
+    fieldLabel:         { fontSize: typography.size.sm, fontWeight: typography.weight.medium, color: s.mutedForeground },
+    fieldInput:         { height: touchTarget.comfortable, backgroundColor: s.card, borderRadius: radius.md, borderWidth: 0.5, borderColor: s.border, paddingHorizontal: spacing.md, fontSize: typography.size.base, color: s.foreground },
+    saveBtn:            { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, height: touchTarget.comfortable, backgroundColor: colors.primary, borderRadius: radius.full, borderWidth: 0.5, borderColor: 'transparent' },
+    saveBtnText:        { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.primaryFg },
+    switchRow:          { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md },
+    footNote:           { fontSize: typography.size.xs, color: s.mutedForeground, textAlign: 'center', lineHeight: 18 },
+    unitsToggle:        { flexDirection: 'row', backgroundColor: s.secondary, borderRadius: radius.xl, padding: 4, gap: 4 },
+    unitOption:         { flex: 1, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.lg },
+    unitOptionActive:   { backgroundColor: s.card, borderWidth: 0.5, borderColor: colors.primary },
+    unitOptionText:     { fontSize: typography.size.lg, fontWeight: typography.weight.bold, color: s.mutedForeground },
+    daysRow:            { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
+    dayPill:            { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: s.card, borderRadius: radius.full, borderWidth: 0.5, borderColor: s.border, minHeight: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
+    dayPillActive:      { borderColor: colors.primary, backgroundColor: colors.primary + '10' },
+    dayPillText:        { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: s.mutedForeground },
+    inlineInputRow:     { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+    inlineInput:        { width: 70, height: 36, backgroundColor: s.muted, borderRadius: radius.sm, paddingHorizontal: spacing.sm, fontSize: typography.size.base, color: s.foreground, textAlign: 'right', borderWidth: 0.5, borderColor: s.border },
+    stepsGoalValue:     { fontSize: typography.size.base, color: s.mutedForeground, fontWeight: typography.weight.semibold },
+    deleteBtn:          { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.destructive + '08', borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.destructive + '30', padding: spacing.md, minHeight: touchTarget.comfortable },
+    warningCard:        { backgroundColor: colors.destructive + '08', borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.destructive + '40', padding: spacing.lg, alignItems: 'center', gap: spacing.sm },
+    warningTitle:       { fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: colors.destructive },
+    warningText:        { fontSize: typography.size.sm, color: s.foreground, textAlign: 'center', lineHeight: 22 },
+    deleteInput:        { height: touchTarget.comfortable, backgroundColor: s.card, borderRadius: radius.md, borderWidth: 1, borderColor: s.border, paddingHorizontal: spacing.md, fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: colors.destructive, textAlign: 'center' },
+    deleteConfirmBtn:   { height: touchTarget.comfortable, backgroundColor: colors.destructive, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
+    deleteConfirmBtnText:{ fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.white },
+    cancelBtn:          { height: touchTarget.comfortable, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
+    cancelBtnText:      { fontSize: typography.size.base, color: s.mutedForeground },
+    exportItem:         { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    exportItemText:     { fontSize: typography.size.sm, color: s.foreground },
+    tagline:            { fontSize: typography.size.sm, color: s.mutedForeground, textAlign: 'center' },
+  })
+}
+
+type SettingsStyles = ReturnType<typeof createSettingsStyles>
+
 export default function SettingsScreen({ navigation }: NativeStackScreenProps<RootStackParamList, 'Settings'>) {
+  const { surfaces, appearance, setAppearance } = useWalifitTheme()
+  const styles = useMemo(() => createSettingsStyles(surfaces), [surfaces])
   const onClose = () => navigation.goBack()
   const [view, setView]   = useState<SettingsView>('home')
   const [user, setUser]   = useState(MOCK_USER)
@@ -75,23 +138,24 @@ export default function SettingsScreen({ navigation }: NativeStackScreenProps<Ro
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {view === 'home'          && <SettingsHome    user={user} onNav={setView} onClose={onClose} />}
-      {view === 'profile'       && <EditProfile     user={user} onSave={u => { void saveProfile(u).catch(showSaveError) }} onBack={back} />}
-      {view === 'preferences'   && <Preferences     user={user} onSave={u => { void saveProfile(u).catch(showSaveError) }} onBack={back} />}
-      {view === 'notifications' && <NotificationPrefs onBack={back} />}
-      {view === 'account'       && <AccountManagement onNav={setView} onBack={back} />}
-      {view === 'delete'        && <DeleteAccount   onConfirm={deleteAccount} onBack={back} />}
-      {view === 'export'        && <DataExport      onBack={back} />}
-      {view === 'legal'         && <LegalPrivacy    onBack={back} />}
-      {view === 'about'         && <About           onBack={back} />}
+      {view === 'home'          && <SettingsHome    user={user} onNav={setView} onClose={onClose} styles={styles} surfaces={surfaces} />}
+      {view === 'profile'       && <EditProfile     user={user} onSave={u => { void saveProfile(u).catch(showSaveError) }} onBack={back} styles={styles} surfaces={surfaces} />}
+      {view === 'preferences'   && <Preferences     user={user} onSave={u => { void saveProfile(u).catch(showSaveError) }} onBack={back} styles={styles} surfaces={surfaces} appearance={appearance} setAppearance={setAppearance} />}
+      {view === 'notifications' && <NotificationPrefs onBack={back} styles={styles} surfaces={surfaces} />}
+      {view === 'account'       && <AccountManagement onNav={setView} onBack={back} styles={styles} surfaces={surfaces} />}
+      {view === 'delete'        && <DeleteAccount   onConfirm={deleteAccount} onBack={back} styles={styles} surfaces={surfaces} />}
+      {view === 'export'        && <DataExport      onBack={back} styles={styles} surfaces={surfaces} />}
+      {view === 'legal'         && <LegalPrivacy    onBack={back} styles={styles} surfaces={surfaces} />}
+      {view === 'about'         && <About           onBack={back} styles={styles} surfaces={surfaces} />}
     </SafeAreaView>
   )
 }
 
 // ─── Settings Home ────────────────────────────────────────────────────────────
 
-function SettingsHome({ user, onNav, onClose }: {
+function SettingsHome({ user, onNav, onClose, styles, surfaces }: {
   user: typeof MOCK_USER; onNav: (v: SettingsView) => void; onClose: () => void
+  styles: SettingsStyles; surfaces: SurfaceTokens
 }) {
   const SECTIONS = [
     {
@@ -122,7 +186,7 @@ function SettingsHome({ user, onNav, onClose }: {
     <View style={styles.flex}>
       <View style={styles.navBar}>
         <TouchableOpacity style={styles.iconBtn} onPress={onClose}>
-          <ArrowLeft color={colors.foreground} size={20} strokeWidth={1.75} />
+          <ArrowLeft color={surfaces.foreground} size={20} strokeWidth={1.75} />
         </TouchableOpacity>
         <Text style={styles.navTitle}>Settings</Text>
         <View style={{ width: touchTarget.min }} />
@@ -147,7 +211,7 @@ function SettingsHome({ user, onNav, onClose }: {
                     <Text style={styles.settingsLabel}>{item.label}</Text>
                     <Text style={styles.settingsDesc}>{item.desc}</Text>
                   </View>
-                  <ChevronRight color={colors.mutedForeground} size={16} strokeWidth={1.75} />
+                  <ChevronRight color={surfaces.mutedForeground} size={16} strokeWidth={1.75} />
                 </TouchableOpacity>
               ))}
             </View>
@@ -175,15 +239,16 @@ function SettingsHome({ user, onNav, onClose }: {
 
 // ─── Edit Profile ─────────────────────────────────────────────────────────────
 
-function EditProfile({ user, onSave, onBack }: {
+function EditProfile({ user, onSave, onBack, styles, surfaces }: {
   user: typeof MOCK_USER; onSave: (u: Partial<typeof MOCK_USER>) => void; onBack: () => void
+  styles: SettingsStyles; surfaces: SurfaceTokens
 }) {
   const [name, setName]     = useState(user.displayName)
   const [username, setUser] = useState(user.username)
 
   return (
     <View style={styles.flex}>
-      <SubNavBar title="Edit Profile" onBack={onBack} />
+      <SubNavBar title="Edit Profile" onBack={onBack} styles={styles} surfaces={surfaces} />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.avatarSection}>
           <View style={styles.avatarLg}>
@@ -191,8 +256,8 @@ function EditProfile({ user, onSave, onBack }: {
           </View>
           <TouchableOpacity><Text style={[styles.link, { color: colors.primary }]}>Change photo</Text></TouchableOpacity>
         </View>
-        <FormField label="Display name"  value={name}     onChange={setName}  />
-        <FormField label="Username"      value={username} onChange={setUser}  />
+        <FormField label="Display name"  value={name}     onChange={setName}  surfaces={surfaces} styles={styles} />
+        <FormField label="Username"      value={username} onChange={setUser}  surfaces={surfaces} styles={styles} />
         <TouchableOpacity style={styles.saveBtn} onPress={() => onSave({ displayName: name, username })}>
           <Text style={styles.saveBtnText}>Save changes</Text>
         </TouchableOpacity>
@@ -203,8 +268,11 @@ function EditProfile({ user, onSave, onBack }: {
 
 // ─── Preferences ──────────────────────────────────────────────────────────────
 
-function Preferences({ user, onSave, onBack }: {
+function Preferences({ user, onSave, onBack, styles, surfaces, appearance, setAppearance }: {
   user: typeof MOCK_USER; onSave: (u: Partial<typeof MOCK_USER>) => void; onBack: () => void
+  styles: SettingsStyles; surfaces: SurfaceTokens
+  appearance: AppearancePreference
+  setAppearance: (v: AppearancePreference) => void
 }) {
   const [units, setUnits]   = useState<'kg' | 'lbs'>(user.units)
   const [protein, setProtein] = useState(String(user.proteinGoal))
@@ -216,8 +284,27 @@ function Preferences({ user, onSave, onBack }: {
 
   return (
     <View style={styles.flex}>
-      <SubNavBar title="Preferences" onBack={onBack} />
+      <SubNavBar title="Preferences" onBack={onBack} styles={styles} surfaces={surfaces} />
       <ScrollView contentContainerStyle={styles.content}>
+
+        <Text style={styles.sectionTitle}>Appearance</Text>
+        <Text style={[styles.settingsDesc, { paddingHorizontal: 0, marginBottom: spacing.xs }]}>
+          Workout and Analytics screens can switch the shell automatically (see docs/waliFit_Theme_Precedence.md).
+        </Text>
+        <View style={styles.unitsToggle}>
+          {(['dark', 'light', 'system'] as const).map((opt) => (
+            <TouchableOpacity
+              key={opt}
+              style={[styles.unitOption, appearance === opt && styles.unitOptionActive]}
+              onPress={() => setAppearance(opt)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.unitOptionText, appearance === opt && { color: colors.primary }]}>
+                {opt === 'system' ? 'System' : opt === 'dark' ? 'Dark' : 'Light'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
         <Text style={styles.sectionTitle}>Units</Text>
         <View style={styles.unitsToggle}>
@@ -233,8 +320,8 @@ function Preferences({ user, onSave, onBack }: {
 
         <Text style={styles.sectionTitle}>Daily targets</Text>
         <View style={styles.card}>
-          <FormRowInline label="Protein goal"  value={protein} onChange={setProtein} unit="g"       />
-          <FormRowInline label="Water goal"    value={water}   onChange={setWater}   unit="ml"      />
+          <FormRowInline label="Protein goal"  value={protein} onChange={setProtein} unit="g"       styles={styles} />
+          <FormRowInline label="Water goal"    value={water}   onChange={setWater}   unit="ml"      styles={styles} />
           <View style={[styles.settingsRow, styles.settingsRowBorder]}>
             <View style={styles.settingsText}>
               <Text style={styles.settingsLabel}>Steps goal</Text>
@@ -257,7 +344,7 @@ function Preferences({ user, onSave, onBack }: {
           ))}
         </View>
 
-        <TouchableOpacity style={styles.saveBtn} onPress={() => onSave({ units, proteinGoal: parseInt(protein), waterGoal: parseInt(water), stepsGoal: user.stepsGoal, trainingDays })}>
+        <TouchableOpacity style={styles.saveBtn} onPress={() => onSave({ units, proteinGoal: Number.parseInt(protein, 10), waterGoal: Number.parseInt(water, 10), stepsGoal: user.stepsGoal, trainingDays })}>
           <Text style={styles.saveBtnText}>Save preferences</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -267,7 +354,7 @@ function Preferences({ user, onSave, onBack }: {
 
 // ─── Notifications ────────────────────────────────────────────────────────────
 
-function NotificationPrefs({ onBack }: { onBack: () => void }) {
+function NotificationPrefs({ onBack, styles, surfaces }: { onBack: () => void; styles: SettingsStyles; surfaces: SurfaceTokens }) {
   const [prefs, setPrefs] = useState({
     workoutReminder: true,
     streakAlert:     true,
@@ -289,7 +376,7 @@ function NotificationPrefs({ onBack }: { onBack: () => void }) {
 
   return (
     <View style={styles.flex}>
-      <SubNavBar title="Notifications" onBack={onBack} />
+      <SubNavBar title="Notifications" onBack={onBack} styles={styles} surfaces={surfaces} />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.card}>
           {items.map((item, i) => (
@@ -301,8 +388,8 @@ function NotificationPrefs({ onBack }: { onBack: () => void }) {
               <Switch
                 value={prefs[item.key as keyof typeof prefs]}
                 onValueChange={() => toggle(item.key as keyof typeof prefs)}
-                trackColor={{ false: colors.muted, true: colors.primary }}
-                thumbColor={colors.foreground}
+                trackColor={{ false: surfaces.muted, true: colors.primary }}
+                thumbColor={surfaces.foreground}
               />
             </View>
           ))}
@@ -315,17 +402,17 @@ function NotificationPrefs({ onBack }: { onBack: () => void }) {
 
 // ─── Account Management ───────────────────────────────────────────────────────
 
-function AccountManagement({ onNav, onBack }: { onNav: (v: SettingsView) => void; onBack: () => void }) {
+function AccountManagement({ onNav, onBack, styles, surfaces }: { onNav: (v: SettingsView) => void; onBack: () => void; styles: SettingsStyles; surfaces: SurfaceTokens }) {
   return (
     <View style={styles.flex}>
-      <SubNavBar title="Account" onBack={onBack} />
+      <SubNavBar title="Account" onBack={onBack} styles={styles} surfaces={surfaces} />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.card}>
-          <SettingsLink label="Change email"    desc="Update your login email"  onPress={() => {}} />
-          <SettingsLink label="Change password" desc="Update your password"     onPress={() => {}} last />
+          <SettingsLink label="Change email"    desc="Update your login email"  onPress={() => {}} styles={styles} surfaces={surfaces} />
+          <SettingsLink label="Change password" desc="Update your password"     onPress={() => {}} styles={styles} surfaces={surfaces} last />
         </View>
         <View style={styles.card}>
-          <SettingsLink label="Export my data" desc="Download all your data as JSON" onPress={() => onNav('export')} last />
+          <SettingsLink label="Export my data" desc="Download all your data as JSON" onPress={() => onNav('export')} styles={styles} surfaces={surfaces} last />
         </View>
         <TouchableOpacity style={styles.deleteBtn} onPress={() => onNav('delete')} activeOpacity={0.7}>
           <Trash2 color={colors.destructive} size={16} strokeWidth={1.75} />
@@ -338,13 +425,13 @@ function AccountManagement({ onNav, onBack }: { onNav: (v: SettingsView) => void
 
 // ─── Delete Account ───────────────────────────────────────────────────────────
 
-function DeleteAccount({ onConfirm, onBack }: { onConfirm: () => void; onBack: () => void }) {
+function DeleteAccount({ onConfirm, onBack, styles, surfaces }: { onConfirm: () => void; onBack: () => void; styles: SettingsStyles; surfaces: SurfaceTokens }) {
   const [typed, setTyped] = useState('')
   const confirmed = typed === 'DELETE'
 
   return (
     <View style={styles.flex}>
-      <SubNavBar title="Delete account" onBack={onBack} />
+      <SubNavBar title="Delete account" onBack={onBack} styles={styles} surfaces={surfaces} />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={[styles.warningCard]}>
           <AlertTriangle color={colors.destructive} size={28} strokeWidth={1.75} />
@@ -360,7 +447,7 @@ function DeleteAccount({ onConfirm, onBack }: { onConfirm: () => void; onBack: (
           value={typed}
           onChangeText={setTyped}
           placeholder="Type DELETE"
-          placeholderTextColor={colors.mutedForeground}
+          placeholderTextColor={surfaces.mutedForeground}
           autoCapitalize="characters"
         />
         <TouchableOpacity
@@ -380,7 +467,7 @@ function DeleteAccount({ onConfirm, onBack }: { onConfirm: () => void; onBack: (
 
 // ─── Data Export ──────────────────────────────────────────────────────────────
 
-function DataExport({ onBack }: { onBack: () => void }) {
+function DataExport({ onBack, styles, surfaces }: { onBack: () => void; styles: SettingsStyles; surfaces: SurfaceTokens }) {
   const [exported, setExported] = useState(false)
   const [loading, setLoading] = useState(false)
   const exportData = async () => {
@@ -396,7 +483,7 @@ function DataExport({ onBack }: { onBack: () => void }) {
   }
   return (
     <View style={styles.flex}>
-      <SubNavBar title="Export data" onBack={onBack} />
+      <SubNavBar title="Export data" onBack={onBack} styles={styles} surfaces={surfaces} />
       <View style={styles.content}>
         <View style={styles.card}>
           <Text style={styles.settingsLabel}>Your export will include:</Text>
@@ -407,7 +494,7 @@ function DataExport({ onBack }: { onBack: () => void }) {
             </View>
           ))}
         </View>
-        <TouchableOpacity style={[styles.saveBtn, exported && { backgroundColor: colors.card, borderColor: colors.primary }]} onPress={exportData}>
+        <TouchableOpacity style={[styles.saveBtn, exported && { backgroundColor: surfaces.card, borderColor: colors.primary }]} onPress={exportData}>
           <Download color={exported ? colors.primary : colors.primaryFg} size={16} strokeWidth={1.75} />
           <Text style={[styles.saveBtnText, exported && { color: colors.primary }]}>
             {loading ? 'Preparing export...' : exported ? 'Export requested' : 'Export my data'}
@@ -420,7 +507,7 @@ function DataExport({ onBack }: { onBack: () => void }) {
 
 // ─── Legal & Privacy ──────────────────────────────────────────────────────────
 
-function LegalPrivacy({ onBack }: { onBack: () => void }) {
+function LegalPrivacy({ onBack, styles, surfaces }: { onBack: () => void; styles: SettingsStyles; surfaces: SurfaceTokens }) {
   const [aiOptOut, setAiOptOut] = useState(false)
   const updateOptOut = (value: boolean) => {
     setAiOptOut(value)
@@ -432,11 +519,11 @@ function LegalPrivacy({ onBack }: { onBack: () => void }) {
   }
   return (
     <View style={styles.flex}>
-      <SubNavBar title="Privacy & Legal" onBack={onBack} />
+      <SubNavBar title="Privacy & Legal" onBack={onBack} styles={styles} surfaces={surfaces} />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.card}>
-          <SettingsLink label="Privacy Policy"    desc="How we handle your data"        onPress={() => { void Linking.openURL('https://walifit.app/privacy') }} />
-          <SettingsLink label="Terms of Service"  desc="Rules and AI disclaimer"        onPress={() => { void Linking.openURL('https://walifit.app/terms') }} last />
+          <SettingsLink label="Privacy Policy"    desc="How we handle your data"        onPress={() => { void Linking.openURL('https://walifit.app/privacy') }} styles={styles} surfaces={surfaces} />
+          <SettingsLink label="Terms of Service"  desc="Rules and AI disclaimer"        onPress={() => { void Linking.openURL('https://walifit.app/terms') }} styles={styles} surfaces={surfaces} last />
         </View>
         <View style={styles.card}>
           <View style={styles.switchRow}>
@@ -445,8 +532,8 @@ function LegalPrivacy({ onBack }: { onBack: () => void }) {
               <Text style={styles.settingsDesc}>Your data will not be used to improve AI models</Text>
             </View>
             <Switch value={aiOptOut} onValueChange={updateOptOut}
-              trackColor={{ false: colors.muted, true: colors.primary }}
-              thumbColor={colors.foreground}
+              trackColor={{ false: surfaces.muted, true: colors.primary }}
+              thumbColor={surfaces.foreground}
             />
           </View>
         </View>
@@ -472,16 +559,16 @@ function showSaveError(error: unknown) {
 
 // ─── About ────────────────────────────────────────────────────────────────────
 
-function About({ onBack }: { onBack: () => void }) {
+function About({ onBack, styles, surfaces }: { onBack: () => void; styles: SettingsStyles; surfaces: SurfaceTokens }) {
   return (
     <View style={styles.flex}>
-      <SubNavBar title="About" onBack={onBack} />
+      <SubNavBar title="About" onBack={onBack} styles={styles} surfaces={surfaces} />
       <View style={styles.content}>
         <View style={styles.card}>
-          <InfoRow label="Version"     value="1.0.0" />
-          <InfoRow label="Build"       value="2026.04.20" />
-          <InfoRow label="Support"     value="support@walifit.app" />
-          <InfoRow label="Licenses"    value="Open source" last />
+          <InfoRow label="Version"     value="1.0.0" styles={styles} />
+          <InfoRow label="Build"       value="2026.04.20" styles={styles} />
+          <InfoRow label="Support"     value="support@walifit.app" styles={styles} />
+          <InfoRow label="Licenses"    value="Open source" styles={styles} last />
         </View>
         <Text style={styles.tagline}>Build the loop. Grow the tree. Compete with the world.</Text>
       </View>
@@ -491,11 +578,11 @@ function About({ onBack }: { onBack: () => void }) {
 
 // ─── Reusable sub-components ──────────────────────────────────────────────────
 
-function SubNavBar({ title, onBack }: { title: string; onBack: () => void }) {
+function SubNavBar({ title, onBack, styles, surfaces }: { title: string; onBack: () => void; styles: SettingsStyles; surfaces: SurfaceTokens }) {
   return (
     <View style={styles.navBar}>
       <TouchableOpacity style={styles.iconBtn} onPress={onBack}>
-        <ArrowLeft color={colors.foreground} size={20} strokeWidth={1.75} />
+        <ArrowLeft color={surfaces.foreground} size={20} strokeWidth={1.75} />
       </TouchableOpacity>
       <Text style={styles.navTitle}>{title}</Text>
       <View style={{ width: touchTarget.min }} />
@@ -503,16 +590,16 @@ function SubNavBar({ title, onBack }: { title: string; onBack: () => void }) {
   )
 }
 
-function FormField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function FormField({ label, value, onChange, surfaces, styles }: { label: string; value: string; onChange: (v: string) => void; surfaces: SurfaceTokens; styles: SettingsStyles }) {
   return (
     <View style={{ gap: spacing.xs }}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <TextInput style={styles.fieldInput} value={value} onChangeText={onChange} placeholderTextColor={colors.mutedForeground} />
+      <TextInput style={styles.fieldInput} value={value} onChangeText={onChange} placeholderTextColor={surfaces.mutedForeground} />
     </View>
   )
 }
 
-function FormRowInline({ label, value, onChange, unit }: { label: string; value: string; onChange: (v: string) => void; unit: string }) {
+function FormRowInline({ label, value, onChange, unit, styles }: { label: string; value: string; onChange: (v: string) => void; unit: string; styles: SettingsStyles }) {
   return (
     <View style={[styles.settingsRow, styles.settingsRowBorder]}>
       <Text style={styles.settingsLabel}>{label}</Text>
@@ -524,19 +611,19 @@ function FormRowInline({ label, value, onChange, unit }: { label: string; value:
   )
 }
 
-function SettingsLink({ label, desc, onPress, last }: { label: string; desc: string; onPress: () => void; last?: boolean }) {
+function SettingsLink({ label, desc, onPress, last, styles, surfaces }: { label: string; desc: string; onPress: () => void; last?: boolean; styles: SettingsStyles; surfaces: SurfaceTokens }) {
   return (
     <TouchableOpacity style={[styles.settingsRow, !last && styles.settingsRowBorder]} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.settingsText}>
         <Text style={styles.settingsLabel}>{label}</Text>
         <Text style={styles.settingsDesc}>{desc}</Text>
       </View>
-      <ChevronRight color={colors.mutedForeground} size={16} strokeWidth={1.75} />
+      <ChevronRight color={surfaces.mutedForeground} size={16} strokeWidth={1.75} />
     </TouchableOpacity>
   )
 }
 
-function InfoRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+function InfoRow({ label, value, last, styles }: { label: string; value: string; last?: boolean; styles: SettingsStyles }) {
   return (
     <View style={[styles.settingsRow, !last && styles.settingsRowBorder]}>
       <Text style={styles.settingsLabel}>{label}</Text>
@@ -544,60 +631,3 @@ function InfoRow({ label, value, last }: { label: string; value: string; last?: 
     </View>
   )
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  container:          { flex: 1, backgroundColor: colors.background },
-  flex:               { flex: 1 },
-  navBar:             { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm, paddingTop: spacing.xl, paddingBottom: spacing.sm, borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  navTitle:           { fontSize: typography.size.lg, fontWeight: typography.weight.bold, color: colors.foreground },
-  iconBtn:            { width: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
-  content:            { paddingHorizontal: spacing.screen, paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
-  sectionBlock:       { gap: spacing.xs },
-  sectionTitle:       { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: colors.mutedForeground, textTransform: 'uppercase', letterSpacing: 0.5 },
-  card:               { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, overflow: 'hidden' },
-  settingsRow:        { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md, minHeight: touchTarget.comfortable },
-  settingsRowBorder:  { borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  settingsIcon:       { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  settingsText:       { flex: 1, gap: 2 },
-  settingsLabel:      { fontSize: typography.size.base, fontWeight: typography.weight.medium, color: colors.foreground },
-  settingsDesc:       { fontSize: typography.size.sm, color: colors.mutedForeground },
-  disclaimer:         { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, borderLeftWidth: 3, borderLeftColor: colors.primary, padding: spacing.md, gap: spacing.xs },
-  disclaimerTitle:    { fontSize: typography.size.sm, fontWeight: typography.weight.bold, color: colors.primary },
-  disclaimerText:     { fontSize: typography.size.xs, color: colors.mutedForeground, lineHeight: 18 },
-  logoutBtn:          { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md },
-  avatarSection:      { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md },
-  avatarLg:           { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  avatarText:         { fontSize: typography.size['2xl'], fontWeight: typography.weight.bold, color: colors.primaryFg },
-  link:               { fontSize: typography.size.sm, fontWeight: typography.weight.semibold },
-  fieldLabel:         { fontSize: typography.size.sm, fontWeight: typography.weight.medium, color: colors.mutedForeground },
-  fieldInput:         { height: touchTarget.comfortable, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 0.5, borderColor: colors.border, paddingHorizontal: spacing.md, fontSize: typography.size.base, color: colors.foreground },
-  saveBtn:            { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, height: touchTarget.comfortable, backgroundColor: colors.primary, borderRadius: radius.full, borderWidth: 0.5, borderColor: 'transparent' },
-  saveBtnText:        { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.primaryFg },
-  switchRow:          { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md },
-  footNote:           { fontSize: typography.size.xs, color: colors.mutedForeground, textAlign: 'center', lineHeight: 18 },
-  unitsToggle:        { flexDirection: 'row', backgroundColor: colors.secondary, borderRadius: radius.xl, padding: 4, gap: 4 },
-  unitOption:         { flex: 1, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.lg },
-  unitOptionActive:   { backgroundColor: colors.card, borderWidth: 0.5, borderColor: colors.primary },
-  unitOptionText:     { fontSize: typography.size.lg, fontWeight: typography.weight.bold, color: colors.mutedForeground },
-  daysRow:            { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
-  dayPill:            { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.card, borderRadius: radius.full, borderWidth: 0.5, borderColor: colors.border, minHeight: touchTarget.min, alignItems: 'center', justifyContent: 'center' },
-  dayPillActive:      { borderColor: colors.primary, backgroundColor: colors.primary + '10' },
-  dayPillText:        { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: colors.mutedForeground },
-  inlineInputRow:     { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  inlineInput:        { width: 70, height: 36, backgroundColor: colors.muted, borderRadius: radius.sm, paddingHorizontal: spacing.sm, fontSize: typography.size.base, color: colors.foreground, textAlign: 'right', borderWidth: 0.5, borderColor: colors.border },
-  stepsGoalValue:     { fontSize: typography.size.base, color: colors.mutedForeground, fontWeight: typography.weight.semibold },
-  deleteBtn:          { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.destructive + '08', borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.destructive + '30', padding: spacing.md, minHeight: touchTarget.comfortable },
-  warningCard:        { backgroundColor: colors.destructive + '08', borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.destructive + '40', padding: spacing.lg, alignItems: 'center', gap: spacing.sm },
-  warningTitle:       { fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: colors.destructive },
-  warningText:        { fontSize: typography.size.sm, color: colors.foreground, textAlign: 'center', lineHeight: 22 },
-  deleteInput:        { height: touchTarget.comfortable, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md, fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: colors.destructive, textAlign: 'center' },
-  deleteConfirmBtn:   { height: touchTarget.comfortable, backgroundColor: colors.destructive, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
-  deleteConfirmBtnText:{ fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.white },
-  cancelBtn:          { height: touchTarget.comfortable, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
-  cancelBtnText:      { fontSize: typography.size.base, color: colors.mutedForeground },
-  exportItem:         { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  exportItemText:     { fontSize: typography.size.sm, color: colors.foreground },
-  tagline:            { fontSize: typography.size.sm, color: colors.mutedForeground, textAlign: 'center' },
-})

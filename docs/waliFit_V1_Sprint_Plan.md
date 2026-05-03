@@ -14,6 +14,7 @@
 | Roadmap | Week-by-week Gantt timeline showing what's in flight when. |
 | Dependencies | Critical path and build order — read this before reordering anything. |
 | Risks & Gates | Validation gate after Sprint 3 (Vitality Tree must work end-to-end), top risks, AI compliance gate before launch. |
+| **Sprint delivery QA gate** | **Mandatory before calling any sprint “delivered”** — checklist + sign-off below; enforces `waliFit_QA_Agent_Playbook.md`. |
 
 ## Conventions
 
@@ -30,9 +31,35 @@
 
 ---
 
+## Sprint delivery QA gate (enforce every sprint)
+
+A sprint is **not delivered** until this gate is complete. It operationalizes the QA architect model in **`docs/waliFit_QA_Agent_Playbook.md`** (especially §2 ownership, §3 screen map, §7 budgets, §8 release checklist).
+
+Copy the **Sign-off** row into sprint notes / PR description when closing the sprint.
+
+| # | Gate | What “green” means | Owner |
+|---|------|-------------------|--------|
+| 1 | **Automation — backend** | `Fitapp/backend`: `npm run typecheck` passes on the sprint branch (or main after merge). | Eng |
+| 2 | **Automation — mobile smoke** | `Fitapp/react-native`: `npm install` + `npm run smoke:ui` passes **whenever** this sprint changed `screens/`, `hooks/`, `lib/`, `components/`, or `App.tsx`. If no RN changes: mark **N/A** with sprint note. | Eng |
+| 3 | **CI / security** | No intentional merge with failing repo checks you rely on (e.g. `Fitapp/security/.github/workflows/security.yml` on connected branches). If deps or GitHub root changed: dependency audit still acceptable or follow-up filed as P0. | Eng |
+| 4 | **Story scope** | All **P0** stories committed for this sprint are **Done**, or explicitly **Deferred** with product + tech lead written reason (link to decision). No silent drops. | Tech lead + Product |
+| 5 | **Manual smoke (device)** | At least **one** physical or emulator run: app launches → past Boot → **happy path** for this sprint’s primary user-facing surface (e.g. S2: calendar + builder; S5: WaliRun + Settings). Log device/OS in sprint notes. | Eng or QA |
+| 6 | **Performance / reliability** | If this sprint touched **APIs or heavy UI** (lists, maps, AI): confirm no intentional regression vs playbook **§7** p95 targets; otherwise **N/A** one line in notes. | Eng |
+| 7 | **Compliance touch** | If this sprint touched **permissions, AI surfaces, account deletion/export, or store-facing copy**: run mental pass vs playbook **§6** + roadmap; list “no change” or what was verified. | Tech lead |
+| 8 | **Flakes / debt** | Any **skipped** or **flaky** automated test has a tracked follow-up (issue ID); no infinite `@skip` without ticket. | Eng |
+| 9 | **Docs & continuity** | Backlog/workbook: sprint status updated; known risks for **next** sprint captured in one paragraph (carry-over). | Tech lead |
+
+**Sign-off (paste into sprint close-out):**
+
+- Sprint: **S\_\_** · Date: **\_\_\_\_** · Smoke/UI: **PASS / N/A** · typecheck: **PASS** · Device manual: **DONE (device: \_\_\_)** · Compliance row: **DONE / N/A** · Signer: **\_\_\_\_\_\_**
+
+**Hard gates (unchanged):** Sprint 3 Vitality validation and Sprint 8 AI compliance / submission readiness **still block** their respective phases — this per-sprint gate does not replace them; it runs **in addition** every sprint.
+
+---
+
 # Sprint Plan — V1 Build
 
-Eight sprints, run sequentially. Validation gate after Sprint 3. Phases reference Technical Architecture build sequence.
+Eight sprints, run sequentially. **Each sprint closes with the Sprint delivery QA gate above.** Validation gate after Sprint 3. Phases reference Technical Architecture build sequence.
 
 ## Sprint 1 — Foundation + Training Core (Pt 1)
 - **Phases:** Phase 1 + 2a
@@ -797,7 +824,9 @@ Read this before reordering work. Skipping the build order causes live migration
 
 # Risks & Gates
 
-Two hard gates: Sprint 3 (Vitality Tree) and Sprint 8 (AI compliance + GO/NO-GO).
+**Every sprint:** [Sprint delivery QA gate](#sprint-delivery-qa-gate-enforce-every-sprint) (automation + device smoke + sign-off) — required for delivery, not optional documentation.
+
+Two **hard** cross-sprint gates: Sprint 3 (Vitality Tree) and Sprint 8 (AI compliance + GO/NO-GO).
 
 | Risk / Gate | Sprint | Likelihood | Impact | Mitigation | Owner |
 |-------------|--------|------------|--------|------------|-------|
