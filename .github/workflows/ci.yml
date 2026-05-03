@@ -1,0 +1,63 @@
+# PR / push verification — complements walifit-qa-agent skill (automated gate).
+name: CI
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shared-typecheck:
+    name: packages/shared typecheck
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/shared
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: packages/shared/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+
+  backend-typecheck:
+    name: backend typecheck
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run typecheck
+
+  react-native:
+    name: react-native test + tsc
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: react-native
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: react-native/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npx tsc --noEmit

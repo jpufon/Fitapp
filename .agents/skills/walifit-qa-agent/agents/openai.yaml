@@ -1,0 +1,7 @@
+/interface:
+  display_name: "waliFit QA Agent"
+  short_description: "Verify waliFit changes with tests, types, and theme QA checklist"
+  default_prompt: "Use $walifit-qa-agent to run waliFit QA on this change: automated checks, theme rules from docs/waliFit_Theme_Precedence.md, and a concise pass/fail report."
+
+policy:
+  allow_implicit_invocation: true
