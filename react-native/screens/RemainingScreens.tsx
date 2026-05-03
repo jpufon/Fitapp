@@ -21,9 +21,6 @@ const MOCK_TREE = {
   stage:        'Growing',
   stageNext:    'Thriving',
   pointsToNext: 6,
-  protein:      { score: 78, pct: 0.30, goal: 180, current: 142 },
-  water:        { score: 91, pct: 0.30, goal: 2500, current: 2250 },
-  steps:        { score: 82, pct: 0.40, goal: 8000, current: 6240 },
   history:      [72, 68, 75, 80, 85, 81, 85],
 }
 
@@ -55,35 +52,18 @@ export function TreeDetailScreen({ onClose }: { onClose: () => void }) {
           </Text>
         </View>
 
-        {/* Pillar breakdown */}
-        <Text style={styles.sectionLabel}>Daily contributors</Text>
-        <View style={styles.pillarsCard}>
-          <PillarRow
-            label="Steps (40%)"
-            icon={<Trees color={colors.primary} size={16} strokeWidth={1.75} />}
-            score={MOCK_TREE.steps.score}
-            current={`${MOCK_TREE.steps.current.toLocaleString()} / ${MOCK_TREE.steps.goal.toLocaleString()}`}
-            color={colors.primary}
-            pct={MOCK_TREE.steps.current / MOCK_TREE.steps.goal}
-          />
-          <View style={styles.divider} />
-          <PillarRow
-            label="Protein (30%)"
-            icon={<Trees color={colors.energy} size={16} strokeWidth={1.75} />}
-            score={MOCK_TREE.protein.score}
-            current={`${MOCK_TREE.protein.current}g / ${MOCK_TREE.protein.goal}g`}
-            color={colors.energy}
-            pct={MOCK_TREE.protein.current / MOCK_TREE.protein.goal}
-          />
-          <View style={styles.divider} />
-          <PillarRow
-            label="Hydration (30%)"
-            icon={<Trees color={colors.blue} size={16} strokeWidth={1.75} />}
-            score={MOCK_TREE.water.score}
-            current={`${MOCK_TREE.water.current}ml / ${MOCK_TREE.water.goal}ml`}
-            color={colors.blue}
-            pct={MOCK_TREE.water.current / MOCK_TREE.water.goal}
-          />
+        <Text style={styles.sectionLabel}>Growth progress</Text>
+        <View style={styles.growthCard}>
+          <View style={styles.growthHeader}>
+            <Text style={styles.growthValue}>{MOCK_TREE.score}%</Text>
+            <Text style={styles.growthCopy}>Your tree is in the {MOCK_TREE.stage.toLowerCase()} stage.</Text>
+          </View>
+          <View style={styles.growthTrack}>
+            <View style={[styles.growthFill, { width: `${MOCK_TREE.score}%` as any }]} />
+          </View>
+          <Text style={styles.growthHint}>
+            Update Today's Progress on Home to feed this score throughout the day.
+          </Text>
         </View>
 
         {/* 7-day history */}
@@ -330,30 +310,6 @@ export function SyncStatusIndicator({ pendingCount, onSync }: {
   )
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function PillarRow({ label, icon, score, current, color, pct }: {
-  label: string; icon: React.ReactNode; score: number; current: string; color: string; pct: number
-}) {
-  return (
-    <View style={styles.pillarRow}>
-      <View style={styles.pillarLeft}>
-        {icon}
-        <View>
-          <Text style={styles.pillarLabel}>{label}</Text>
-          <Text style={styles.pillarCurrent}>{current}</Text>
-        </View>
-      </View>
-      <View style={styles.pillarRight}>
-        <View style={styles.pillarBarTrack}>
-          <View style={[styles.pillarBarFill, { width: `${Math.min(pct * 100, 100)}%` as any, backgroundColor: color }]} />
-        </View>
-        <Text style={[styles.pillarScore, { color }]}>{score}</Text>
-      </View>
-    </View>
-  )
-}
-
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
@@ -369,16 +325,13 @@ const styles = StyleSheet.create({
   stageBadge:       { backgroundColor: colors.primary + '18', paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.full },
   stageText:        { fontSize: typography.size.base, fontWeight: typography.weight.bold, color: colors.primary },
   treeNextInfo:     { fontSize: typography.size.sm, color: colors.mutedForeground },
-  pillarsCard:      { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, overflow: 'hidden' },
-  pillarRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.md },
-  pillarLeft:       { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 },
-  pillarLabel:      { fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: colors.foreground },
-  pillarCurrent:    { fontSize: typography.size.xs, color: colors.mutedForeground, marginTop: 2 },
-  pillarRight:      { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, justifyContent: 'flex-end' },
-  pillarBarTrack:   { flex: 1, height: 6, backgroundColor: colors.muted, borderRadius: 3, overflow: 'hidden' },
-  pillarBarFill:    { height: '100%', borderRadius: 3 },
-  pillarScore:      { width: 28, textAlign: 'right', fontSize: typography.size.sm, fontWeight: typography.weight.bold },
-  divider:          { height: 0.5, backgroundColor: colors.border },
+  growthCard:       { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, gap: spacing.sm },
+  growthHeader:     { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  growthValue:      { fontSize: typography.size['3xl'], fontWeight: typography.weight.extrabold, color: colors.primary },
+  growthCopy:       { flex: 1, fontSize: typography.size.sm, color: colors.foreground, lineHeight: 20 },
+  growthTrack:      { height: 8, backgroundColor: colors.muted, borderRadius: radius.full, overflow: 'hidden' },
+  growthFill:       { height: '100%', backgroundColor: colors.primary, borderRadius: radius.full },
+  growthHint:       { fontSize: typography.size.xs, color: colors.mutedForeground, lineHeight: 18 },
   historyCard:      { flexDirection: 'row', alignItems: 'flex-end', backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 0.5, borderColor: colors.border, padding: spacing.md, height: 100, gap: spacing.xs },
   historyBar:       { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end', gap: 3 },
   historyBarFill:   { width: '100%', borderRadius: 2 },

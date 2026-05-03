@@ -60,7 +60,6 @@ export type RootStackParamList = {
   WaliAI: undefined;
   Analytics: undefined;
   Notifications: undefined;
-  AccountSettings: undefined;
   PrivacyLegal: undefined;
   Profile: undefined;
   Dev: undefined;
@@ -255,7 +254,6 @@ export default function App() {
             <Stack.Screen name="WaliAI" component={ProfileDestinationScreen} />
             <Stack.Screen name="Analytics" component={ProfileDestinationScreen} />
             <Stack.Screen name="Notifications" component={ProfileDestinationScreen} />
-            <Stack.Screen name="AccountSettings" component={ProfileDestinationScreen} />
             <Stack.Screen name="PrivacyLegal" component={ProfileDestinationScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen name="Dev" component={DevScreen} />

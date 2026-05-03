@@ -2,6 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireAuth } from '../lib/auth.js';
 import { prisma } from '../lib/prisma.js';
+import { dateAtMidnight } from '../lib/dailyScore.js';
+import { computeScore } from '../lib/score.js';
 
 const UnitInputSchema = z.enum(['kg', 'lbs', 'metric', 'imperial']);
 
@@ -117,6 +119,39 @@ export async function meRoutes(app: FastifyInstance) {
         termsAcceptedAt: dateFromIso(input.termsAcceptedAt),
       },
     });
+
+    const updatesDailyTarget =
+      input.stepsGoal != null ||
+      input.proteinTargetG != null ||
+      input.waterTargetMl != null;
+    if (updatesDailyTarget) {
+      const today = dateAtMidnight();
+      const dailyScore = await prisma.dailyScore.findUnique({
+        where: { userId_date: { userId: request.user!.id, date: today } },
+      });
+
+      if (dailyScore) {
+        const merged = {
+          stepsCount: dailyScore.stepsCount,
+          stepsGoal: input.stepsGoal ?? dailyScore.stepsGoal,
+          proteinG: dailyScore.proteinG,
+          proteinTargetG: input.proteinTargetG ?? dailyScore.proteinTargetG,
+          waterMl: dailyScore.waterMl,
+          waterTargetMl: input.waterTargetMl ?? dailyScore.waterTargetMl,
+          isRestDay: dailyScore.isRestDay,
+        };
+        const computed = computeScore(merged);
+        await prisma.dailyScore.update({
+          where: { id: dailyScore.id },
+          data: {
+            stepsGoal: merged.stepsGoal,
+            proteinTargetG: merged.proteinTargetG,
+            waterTargetMl: merged.waterTargetMl,
+            ...computed,
+          },
+        });
+      }
+    }
 
     if (input.timezone) {
       await prisma.vitalityState.update({

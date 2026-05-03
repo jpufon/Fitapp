@@ -15,7 +15,6 @@ type RouteName =
   | 'WaliAI'
   | 'Analytics'
   | 'Notifications'
-  | 'AccountSettings'
   | 'PrivacyLegal';
 
 type Props = NativeStackScreenProps<RootStackParamList, RouteName>;
@@ -24,7 +23,6 @@ const TITLE_MAP: Record<RouteName, string> = {
   WaliAI: 'Chat with Wali AI',
   Analytics: 'Progress & Analytics',
   Notifications: 'Notifications',
-  AccountSettings: 'Account Settings',
   PrivacyLegal: 'Privacy & Legal',
 };
 
